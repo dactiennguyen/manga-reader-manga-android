@@ -1,10 +1,13 @@
-import { EyeOff, Info, Plus, Puzzle, Settings } from 'lucide-react-native';
-import { memo, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
+import { Favicon } from '../../components/Favicon';
+import { ChevronDown, EyeOff, Plus, Puzzle, Search } from '../../components/icons';
 import {
-  Badge,
+  Button,
+  Checkbox,
   Chip,
   ChipRow,
   Divider,
@@ -12,43 +15,35 @@ import {
   Header,
   IconButton,
   Screen,
-  Section,
-  Segmented,
+  SearchField,
 } from '../../components/ui';
 import { getHost } from '../../lib/url';
 import { ENGINE_LIST, languageName } from '../../sources';
-import type { ContentType, Engine, EngineId, SourceConfig } from '../../sources/types';
+import type { ContentType, EngineId, SourceConfig } from '../../sources/types';
 import { useAllowNsfw } from '../../store/useSettings';
 import { useSources } from '../../store/useSources';
 import { font, radius, space, useTheme } from '../../theme';
-import { Favicon } from '../../components/Favicon';
+import { LanguageSheet } from './LanguageSheet';
 
-type ContentFilter = 'all' | ContentType;
-
-const CONTENT_FILTERS: { value: ContentFilter; label: string }[] = [
-  { value: 'all', label: 'Tất cả' },
+const CONTENT_FILTERS: { value: ContentType; label: string }[] = [
   { value: 'manga', label: 'Truyện tranh' },
   { value: 'novel', label: 'Tiểu thuyết' },
 ];
 
-const CONTENT_LABEL: Record<ContentType, string> = { manga: 'Truyện tranh', novel: 'Tiểu thuyết' };
+const CUSTOM_ENGINES = ENGINE_LIST.filter(e => e.allowCustomSites);
 
-type EngineGroup = {
-  engine: Engine;
-  /** Số site của engine, không tính bộ lọc. */
-  total: number;
-  visible: SourceConfig[];
-};
-
-/** "Manage add-ons": các addon (engine) và site đang dùng chúng. */
+/** "Supported sites": danh sách site, bật/tắt bằng ô chọn, lọc theo ngôn ngữ và loại truyện. */
 export function AddonsScreen() {
   const navigation = useAppNavigation();
   const { c } = useTheme();
   const sources = useSources(s => s.sources);
   const updateSource = useSources(s => s.updateSource);
   const allowNsfw = useAllowNsfw();
-  const [content, setContent] = useState<ContentFilter>('all');
+  const [content, setContent] = useState<ContentType | null>(null);
   const [lang, setLang] = useState<string | null>(null);
+  const [langOpen, setLangOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [text, setText] = useState('');
 
   const languages = useMemo(
     () =>
@@ -59,261 +54,304 @@ export function AddonsScreen() {
   );
   // Ngôn ngữ đã chọn không còn site nào (vừa xoá/ẩn) thì coi như bỏ lọc.
   const activeLang = lang && languages.includes(lang) ? lang : null;
+  const q = searching ? text.trim().toLowerCase() : '';
+  const filtered = !!content || !!activeLang || !!q;
 
-  const { groups, hiddenNsfw } = useMemo(() => {
-    let hidden = 0;
-    const list: EngineGroup[] = ENGINE_LIST.filter(e => content === 'all' || e.contents.includes(content)).map(
-      engine => {
-        const own = sources.filter(s => s.engine === engine.id);
-        const matching = own.filter(
-          s => (content === 'all' || s.content === content) && (!activeLang || s.lang === activeLang),
-        );
-        const visible = matching.filter(s => allowNsfw || !s.nsfw);
-        hidden += matching.length - visible.length;
-        return { engine, total: own.length, visible };
-      },
+  const { shown, hiddenNsfw } = useMemo(() => {
+    const matching = sources.filter(
+      s =>
+        (!content || s.content === content) &&
+        (!activeLang || s.lang === activeLang) &&
+        (!q || s.name.toLowerCase().includes(q) || s.id.includes(q)),
     );
-    return { groups: list, hiddenNsfw: hidden };
-  }, [sources, content, activeLang, allowNsfw]);
+    const visible = matching
+      .filter(s => allowNsfw || !s.nsfw)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return { shown: visible, hiddenNsfw: matching.length - visible.length };
+  }, [sources, content, activeLang, q, allowNsfw]);
 
-  const addSite = (engine?: EngineId) => navigation.navigate('AddSite', engine ? { engine } : undefined);
+  const closeSearch = useCallback(() => {
+    setSearching(false);
+    setText('');
+  }, []);
+
+  // Phím back khi đang tìm thì đóng ô tìm trước.
+  useFocusEffect(
+    useCallback(() => {
+      if (!searching) {
+        return;
+      }
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        closeSearch();
+        return true;
+      });
+      return () => sub.remove();
+    }, [searching, closeSearch]),
+  );
+
+  const addSite = useCallback(
+    (engine?: EngineId) => navigation.navigate('AddSite', engine ? { engine } : undefined),
+    [navigation],
+  );
+  const openSource = useCallback(
+    (source: SourceConfig) => navigation.navigate('Catalog', { sourceId: source.id }),
+    [navigation],
+  );
+  const openSettings = useCallback(
+    (source: SourceConfig) => navigation.navigate('SourceSettings', { sourceId: source.id }),
+    [navigation],
+  );
+  const toggleSource = useCallback(
+    (source: SourceConfig, enabled: boolean) => updateSource(source.id, { enabled }),
+    [updateSource],
+  );
+  const clearFilters = () => {
+    setContent(null);
+    setLang(null);
+    setText('');
+  };
+
+  const empty = sources.length ? (
+    <View style={styles.noMatch}>
+      <Text style={[font.body, styles.center, { color: c.muted }]}>Không có site nào khớp bộ lọc.</Text>
+      {filtered && <Button title="Bỏ lọc" variant="ghost" small onPress={clearFilters} />}
+    </View>
+  ) : (
+    <EmptyState
+      icon={Puzzle}
+      title="Chưa có site nào"
+      message="Thêm domain của site dùng theme được hỗ trợ để đọc truyện bằng giao diện native."
+      action={{ label: 'Thêm site', icon: Plus, onPress: () => addSite() }}
+    />
+  );
+
+  const footer = (
+    <View style={[styles.footer, { borderTopColor: c.border }]}>
+      {hiddenNsfw > 0 && (
+        <Pressable
+          onPress={() => navigation.navigate('Settings')}
+          style={[styles.note, { backgroundColor: c.surfaceAlt }]}
+        >
+          <EyeOff size={16} color={c.muted} />
+          <Text style={[font.caption, styles.flex, { color: c.textSecondary }]}>
+            {hiddenNsfw} site 18+ đang ẩn — bật nội dung 18+ trong Cài đặt
+          </Text>
+        </Pressable>
+      )}
+      <Text style={[font.caption, styles.explain, { color: c.muted }]}>
+        Mỗi addon hiểu cấu trúc HTML của một loại theme: app tải trang của site rồi hiển thị danh sách, thông tin
+        truyện và ảnh chương bằng giao diện native, không quảng cáo. Bỏ chọn để tắt một site; nhấn giữ để mở cài
+        đặt nguồn.
+      </Text>
+      <Text style={[font.overline, { color: c.muted }]}>Thêm site theo theme</Text>
+      <View style={styles.engines}>
+        {CUSTOM_ENGINES.map(engine => (
+          <Chip key={engine.id} icon={Plus} label={engine.label} onPress={() => addSite(engine.id)} />
+        ))}
+      </View>
+    </View>
+  );
 
   return (
     <Screen>
-      <Header
-        title="Addon & nguồn truyện"
-        subtitle={`${sources.length} nguồn`}
-        right={<IconButton icon={Plus} onPress={() => addSite()} accessibilityLabel="Thêm site" />}
-      />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={[styles.intro, { backgroundColor: c.surface }]}>
-          <View style={[styles.introIcon, { backgroundColor: c.accentSoft }]}>
-            <Info size={20} color={c.accent} />
-          </View>
-          <View style={styles.flex}>
-            <Text style={[font.label, { color: c.text }]}>Addon hoạt động thế nào?</Text>
-            <Text style={[font.caption, styles.introText, { color: c.textSecondary }]}>
-              Mỗi addon hiểu cấu trúc HTML của một loại theme. App tải trang của site, trích danh sách, thông tin
-              truyện và ảnh chương rồi hiển thị bằng giao diện native — gọn và không quảng cáo. App không đóng gói
-              sẵn site: hãy thêm domain của site dùng theme được hỗ trợ.
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.filters}>
-          <Segmented options={CONTENT_FILTERS} value={content} onChange={setContent} />
-        </View>
-        {languages.length > 1 && (
-          <ChipRow style={styles.chips}>
-            <Chip label="Mọi ngôn ngữ" selected={!activeLang} onPress={() => setLang(null)} />
-            {languages.map(code => (
-              <Chip
-                key={code}
-                label={languageName(code)}
-                selected={activeLang === code}
-                onPress={() => setLang(code)}
-              />
-            ))}
-          </ChipRow>
-        )}
-
-        {hiddenNsfw > 0 && (
-          <Pressable
-            onPress={() => navigation.navigate('Settings')}
-            style={[styles.nsfwNote, { backgroundColor: c.surfaceAlt }]}
-          >
-            <EyeOff size={16} color={c.muted} />
-            <Text style={[font.caption, styles.flex, { color: c.textSecondary }]}>
-              Một số nguồn 18+ đang ẩn — bật trong Cài đặt
-            </Text>
-          </Pressable>
-        )}
-
-        {groups.map(group => (
-          <EngineSection
-            key={group.engine.id}
-            group={group}
-            onAdd={() => addSite(group.engine.id)}
-            onOpen={source => navigation.navigate('Catalog', { sourceId: source.id })}
-            onSettings={source => navigation.navigate('SourceSettings', { sourceId: source.id })}
-            onToggle={(source, enabled) => updateSource(source.id, { enabled })}
+      {searching ? (
+        <Header onBack={closeSearch}>
+          <SearchField
+            value={text}
+            onChangeText={setText}
+            onClear={() => setText('')}
+            autoFocus
+            placeholder="Tìm site theo tên hoặc domain"
+            style={[styles.headerSearch, { backgroundColor: c.appBarField }]}
+            inputStyle={{ color: c.onAppBar }}
           />
-        ))}
-      </ScrollView>
+        </Header>
+      ) : (
+        <Header
+          title="Site được hỗ trợ"
+          right={
+            <>
+              <IconButton
+                icon={Search}
+                color={c.onAppBar}
+                onPress={() => setSearching(true)}
+                accessibilityLabel="Tìm site"
+              />
+              <IconButton icon={Plus} color={c.onAppBar} onPress={() => addSite()} accessibilityLabel="Thêm site" />
+            </>
+          }
+        />
+      )}
+
+      <View style={[styles.chips, { borderBottomColor: c.border }]}>
+        <ChipRow style={styles.chipRow}>
+          <DropdownChip
+            label={activeLang ? languageName(activeLang) : 'Mọi ngôn ngữ'}
+            selected={!!activeLang}
+            onPress={() => setLangOpen(true)}
+          />
+          {CONTENT_FILTERS.map(option => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              selected={content === option.value}
+              onPress={() => setContent(current => (current === option.value ? null : option.value))}
+            />
+          ))}
+        </ChipRow>
+      </View>
+
+      <FlatList
+        data={shown}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <SourceRow source={item} onOpen={openSource} onSettings={openSettings} onToggle={toggleSource} />
+        )}
+        ItemSeparatorComponent={Divider}
+        ListEmptyComponent={empty}
+        ListFooterComponent={footer}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.list}
+      />
+
+      <LanguageSheet
+        visible={langOpen}
+        onClose={() => setLangOpen(false)}
+        value={activeLang ?? ''}
+        codes={languages}
+        allLabel="Mọi ngôn ngữ"
+        title="Ngôn ngữ của site"
+        onSelect={code => setLang(code || null)}
+      />
     </Screen>
   );
 }
 
-function EngineSection({
-  group,
-  onAdd,
-  onOpen,
-  onSettings,
-  onToggle,
-}: {
-  group: EngineGroup;
-  onAdd: () => void;
-  onOpen: (source: SourceConfig) => void;
-  onSettings: (source: SourceConfig) => void;
-  onToggle: (source: SourceConfig, enabled: boolean) => void;
-}) {
+/** Chip viền có mũi tên ▾ ("All Languages ▾"). */
+function DropdownChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const { c } = useTheme();
-  const { engine, total, visible } = group;
-  const showContent = engine.contents.length > 1;
-
+  const fg = selected ? c.onPrimaryContainer : c.textSecondary;
   return (
-    <Section>
-      <View style={styles.engineHead}>
-        <View style={[styles.engineIcon, { backgroundColor: c.accentSoft }]}>
-          <Puzzle size={20} color={c.accent} />
-        </View>
-        <View style={styles.flex}>
-          <Text style={[font.label, { color: c.text }]}>{engine.label}</Text>
-          <Text style={[font.caption, { color: c.muted }]}>
-            {engine.contents.map(t => CONTENT_LABEL[t]).join(' · ')} · {total} site
-          </Text>
-        </View>
-        {engine.allowCustomSites && total > 0 && (
-          <IconButton icon={Plus} size={20} onPress={onAdd} accessibilityLabel={`Thêm site ${engine.label}`} />
-        )}
-      </View>
-      <Text style={[font.caption, styles.engineDesc, { color: c.textSecondary }]}>{engine.description}</Text>
-
-      {visible.map(source => (
-        <View key={source.id}>
-          <Divider inset={space.lg} />
-          <SourceRow
-            source={source}
-            showContent={showContent}
-            onOpen={onOpen}
-            onSettings={onSettings}
-            onToggle={onToggle}
-          />
-        </View>
-      ))}
-
-      {total === 0 && engine.allowCustomSites && (
-        <>
-          <Divider inset={space.lg} />
-          <EmptyState
-            title="Chưa có site nào"
-            message={`Thêm domain của site dùng theme ${engine.label} để đọc bằng addon này.`}
-            action={{ label: 'Thêm site dùng theme này', icon: Plus, onPress: onAdd }}
-            style={styles.inlineEmpty}
-          />
-        </>
-      )}
-      {total > 0 && !visible.length && (
-        <Text style={[font.caption, styles.noMatch, { color: c.muted }]}>Không có site nào khớp bộ lọc.</Text>
-      )}
-    </Section>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Ngôn ngữ: ${label}`}
+      style={({ pressed }) => [
+        styles.dropdown,
+        selected ? { backgroundColor: c.primaryContainer, borderColor: c.primaryContainer } : { borderColor: c.border },
+        pressed && styles.pressed,
+      ]}
+    >
+      <Text style={[styles.dropdownLabel, { color: fg }]}>{label}</Text>
+      <ChevronDown size={16} color={fg} />
+    </Pressable>
   );
 }
 
 const SourceRow = memo(function SourceRowItem({
   source,
-  showContent,
   onOpen,
   onSettings,
   onToggle,
 }: {
   source: SourceConfig;
-  showContent: boolean;
   onOpen: (source: SourceConfig) => void;
   onSettings: (source: SourceConfig) => void;
   onToggle: (source: SourceConfig, enabled: boolean) => void;
 }) {
   const { c } = useTheme();
-  const meta = [getHost(source.baseUrl), languageName(source.lang)];
-  if (showContent) {
-    meta.push(CONTENT_LABEL[source.content]);
-  }
-  if (!source.enabled) {
-    meta.push('Đã tắt');
-  }
   return (
     <Pressable
       onPress={() => onOpen(source)}
+      onLongPress={() => onSettings(source)}
       android_ripple={{ color: c.border }}
-      style={styles.sourceRow}
+      style={styles.row}
     >
-      <View style={[styles.sourceInfo, !source.enabled && styles.disabled]}>
-        <Favicon url={source.baseUrl} label={source.name} size={36} tile />
-        <View style={styles.flex}>
-          <View style={styles.nameRow}>
-            <Text numberOfLines={1} style={[font.body, styles.name, { color: c.text }]}>
-              {source.name}
-            </Text>
-            {source.nsfw && <Badge text="18+" color={c.danger} />}
-          </View>
-          <Text numberOfLines={1} style={[font.caption, { color: c.muted }]}>
-            {meta.join(' · ')}
-          </Text>
+      <View>
+        <Favicon url={source.baseUrl} label={source.name} size={40} tile />
+        <View style={[styles.type, { backgroundColor: c.badgeType }]}>
+          <Text style={styles.typeText}>{source.content === 'novel' ? 'N' : 'M'}</Text>
         </View>
       </View>
-      <IconButton
-        icon={Settings}
-        size={20}
-        color={c.muted}
-        onPress={() => onSettings(source)}
-        accessibilityLabel={`Cài đặt ${source.name}`}
-      />
-      <Switch
-        value={source.enabled}
-        onValueChange={enabled => onToggle(source, enabled)}
-        trackColor={{ true: c.accent, false: c.border }}
-        thumbColor={Platform.OS === 'android' ? c.surface : undefined}
-      />
+      <View style={styles.flex}>
+        <View style={styles.nameRow}>
+          <Text numberOfLines={1} style={[font.body, styles.name, { color: c.text }]}>
+            {source.name}
+          </Text>
+          {source.nsfw && (
+            <View style={[styles.nsfw, { backgroundColor: c.dangerSoft }]}>
+              <Text style={[styles.nsfwText, { color: c.danger }]}>18+</Text>
+            </View>
+          )}
+        </View>
+        <Text numberOfLines={2} style={[font.caption, { color: c.muted }]}>
+          {getHost(source.baseUrl)} | {languageName(source.lang)}
+        </Text>
+      </View>
+      <Checkbox checked={source.enabled} onChange={enabled => onToggle(source, enabled)} />
     </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingVertical: space.md, gap: space.lg },
-  intro: {
+  center: { textAlign: 'center' },
+  pressed: { opacity: 0.8 },
+  headerSearch: { marginRight: space.sm },
+  chips: { borderBottomWidth: StyleSheet.hairlineWidth },
+  chipRow: { flexGrow: 1, justifyContent: 'center' },
+  dropdown: {
     flexDirection: 'row',
-    gap: space.md,
-    marginHorizontal: space.md,
-    padding: space.lg,
-    borderRadius: radius.lg,
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingLeft: 12,
+    paddingRight: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  introIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  introText: { marginTop: 4, lineHeight: 18 },
-  filters: { paddingHorizontal: space.md },
-  chips: { paddingVertical: 0 },
-  nsfwNote: {
+  dropdownLabel: { fontSize: 13, fontWeight: '500' },
+  list: { flexGrow: 1 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.lg,
+    minHeight: 68,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+  },
+  type: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { flexShrink: 1, fontWeight: '500' },
+  nsfw: { paddingHorizontal: 5, paddingVertical: 1, borderRadius: radius.sm },
+  nsfwText: { fontSize: 10, fontWeight: '800' },
+  noMatch: { alignItems: 'center', gap: space.md, padding: space.xl },
+  footer: {
+    gap: space.sm,
+    marginTop: space.sm,
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+    paddingBottom: space.xl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  note: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    marginHorizontal: space.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm + 2,
     borderRadius: radius.md,
   },
-  engineHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingLeft: space.lg,
-    paddingRight: space.xs,
-    paddingTop: space.md,
-  },
-  engineIcon: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  engineDesc: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.md, lineHeight: 18 },
-  sourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    minHeight: 60,
-    paddingLeft: space.lg,
-    paddingRight: space.md,
-    paddingVertical: space.sm,
-  },
-  sourceInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md },
-  disabled: { opacity: 0.55 },
-  nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { flexShrink: 1, fontWeight: '600' },
-  inlineEmpty: { flex: 0, paddingVertical: space.lg },
-  noMatch: { paddingHorizontal: space.lg, paddingBottom: space.md },
+  explain: { lineHeight: 18 },
+  engines: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
 });

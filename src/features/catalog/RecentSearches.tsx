@@ -1,7 +1,7 @@
-import { History, X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { History, X } from '../../components/icons';
 import { confirm, Divider, IconButton } from '../../components/ui';
 import { useHistory } from '../../store/useHistory';
 import { font, radius, space, useTheme } from '../../theme';
@@ -14,10 +14,16 @@ export function RecentSearches({
   filter = '',
   onPick,
   empty,
+  limit,
+  embedded,
 }: {
   filter?: string;
   onPick: (query: string) => void;
   empty?: ReactNode;
+  /** Số từ khoá tối đa hiện ra. */
+  limit?: number;
+  /** Nằm trong vùng cuộn khác (sheet lọc) nên không tự cuộn. */
+  embedded?: boolean;
 }) {
   const { c } = useTheme();
   const searches = useHistory(s => s.searches);
@@ -25,7 +31,7 @@ export function RecentSearches({
   const clearSearches = useHistory(s => s.clearSearches);
 
   const q = filter.trim().toLowerCase();
-  const shown = q ? searches.filter(s => s.toLowerCase().includes(q)) : searches;
+  const shown = (q ? searches.filter(s => s.toLowerCase().includes(q)) : searches).slice(0, limit);
 
   if (!searches.length) {
     return <>{empty}</>;
@@ -37,8 +43,8 @@ export function RecentSearches({
     }
   };
 
-  return (
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+  const content = (
+    <>
       <Text style={[font.overline, styles.title, { color: c.muted }]}>Tìm gần đây</Text>
       <View style={[styles.card, { backgroundColor: c.surface }]}>
         {shown.map((query, index) => (
@@ -70,6 +76,13 @@ export function RecentSearches({
       <Pressable onPress={clearAll} hitSlop={8} style={styles.clear}>
         <Text style={[font.label, { color: c.danger }]}>Xoá tìm kiếm gần đây</Text>
       </Pressable>
+    </>
+  );
+  return embedded ? (
+    <View style={styles.content}>{content}</View>
+  ) : (
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      {content}
     </ScrollView>
   );
 }

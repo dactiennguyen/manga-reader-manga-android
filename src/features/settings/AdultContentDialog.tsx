@@ -1,7 +1,7 @@
-import { ShieldAlert } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Dialog } from '../../components/Sheet';
+import { ShieldAlert } from '../../components/icons';
 import { useSettings } from '../../store/useSettings';
 import { font, useTheme } from '../../theme';
 

@@ -1,7 +1,7 @@
-import { Settings, ShieldCheck } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
+import { Settings, ShieldCheck } from '../../components/icons';
 import { Divider, ListItem, SwitchRow } from '../../components/ui';
 import { totalsLast30Days, useAdblock } from '../../store/useAdblock';
 import { font, radius, space, useTheme } from '../../theme';
@@ -39,11 +39,11 @@ export function AdblockSheet({
           <StatTile label="Quảng cáo" value={active ? stats.ads : 0} />
           <StatTile label="Tracker" value={active ? stats.trackers : 0} />
         </View>
-        <View style={[styles.total, { backgroundColor: c.accentSoft }]}>
-          <ShieldCheck size={20} color={c.accent} />
+        <View style={[styles.total, { backgroundColor: c.primaryContainer }]}>
+          <ShieldCheck size={22} color={c.onPrimaryContainer} />
           <View style={styles.flex}>
-            <Text style={[font.caption, { color: c.textSecondary }]}>Tổng đã chặn 30 ngày qua</Text>
-            <Text style={[font.label, { color: c.text }]}>
+            <Text style={[font.caption, { color: c.onPrimaryContainer }]}>Tổng đã chặn 30 ngày qua</Text>
+            <Text style={[font.label, { color: c.onPrimaryContainer }]}>
               {`${total.ads} quảng cáo · ${total.trackers} tracker`}
             </Text>
           </View>
@@ -69,7 +69,7 @@ function StatTile({ label, value }: { label: string; value: number }) {
   const { c } = useTheme();
   return (
     <View style={[styles.tile, { backgroundColor: c.surfaceAlt }]}>
-      <Text style={[styles.tileValue, { color: c.text }]}>{value}</Text>
+      <Text style={[styles.tileValue, { color: c.accent }]}>{value}</Text>
       <Text style={[font.caption, { color: c.muted }]}>{label}</Text>
     </View>
   );

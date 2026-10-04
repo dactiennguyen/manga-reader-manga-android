@@ -32,6 +32,9 @@ const dirOf = (src: SourceConfig) => src.options?.mangaDir || 'manga';
 
 const NSFW_GENRES = /adult|mature|smut|hentai|ecchi|18\+|erotic/i;
 
+/** Giá trị trống site hay điền vào ô tác giả. */
+const PLACEHOLDER = /^(-+|n\/?a|none|unknown|updating|đang cập nhật)$/i;
+
 function parseListing($: CheerioAPI, base: string, scope?: string): ListPage {
   const root = scope ? $(scope) : $.root();
   const items: MangaItem[] = [];
@@ -103,7 +106,7 @@ function authorsOf($: CheerioAPI): string[] {
     const text = cleanText($(el).text());
     if (/author|artist|autor|tác giả|yazar/i.test(text)) {
       const value = textOf($(el).find('i, span, td:last-child, a'));
-      if (value && value !== '-') {
+      if (value && !PLACEHOLDER.test(value)) {
         values.push(...value.split(/,\s*/));
       }
     }
@@ -159,13 +162,17 @@ export const themesia: Engine = {
   async detail(src, url) {
     const $ = parseHtml(await getText(url));
     const base = src.baseUrl;
-    const genres = $('.mgen a, .seriestugenre a, .wd-full .mgen a')
-      .toArray()
-      .map(el => {
-        const segments = pathSegments($(el).attr('href') ?? '');
-        return { id: segments[segments.length - 1] ?? '', name: cleanText($(el).text()) };
-      })
-      .filter(g => g.name);
+    // Trang có thể chứa cả .mgen lẫn .seriestugenre → khử trùng.
+    const genres = uniqBy(
+      $('.mgen a, .seriestugenre a, .wd-full .mgen a')
+        .toArray()
+        .map(el => {
+          const segments = pathSegments($(el).attr('href') ?? '');
+          return { id: segments[segments.length - 1] ?? '', name: cleanText($(el).text()) };
+        })
+        .filter(g => g.name),
+      g => g.id || g.name,
+    );
     const $desc = $('.entry-content[itemprop="description"], .synp .entry-content, .desc, .entry-content').first();
     $desc.find('script, style, .addtoany_share_save_container').remove();
     const paragraphs = $desc
@@ -208,7 +215,9 @@ export const themesia: Engine = {
       // Theme chấm thang 10, app dùng thang 5.
       rating: Number.isFinite(rating) ? Math.round(rating * 10) / 20 : undefined,
       chapters: uniqBy(chapters, ch => ch.url),
-      similar: parseListing($, base, '.bixbox').items.slice(0, 12),
+      similar: parseListing($, base, '.bixbox')
+        .items.filter(item => item.url !== url)
+        .slice(0, 12),
       nsfw: genres.some(g => NSFW_GENRES.test(g.name)),
     } satisfies MangaDetail;
   },

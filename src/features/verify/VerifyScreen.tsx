@@ -1,10 +1,10 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { Check, RotateCw } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../app/routes';
 import { useAppNavigation } from '../../app/routes';
+import { Check, RotateCw } from '../../components/icons';
 import { Header, IconButton, Screen } from '../../components/ui';
 import { WebView, type WebViewMessageEvent, type WebViewRef } from '../../components/WebView';
 import { getHost } from '../../lib/url';

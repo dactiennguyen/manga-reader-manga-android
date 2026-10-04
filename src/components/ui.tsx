@@ -1,6 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import type { LucideIcon } from 'lucide-react-native';
-import { ArrowLeft, Check, ChevronRight, Search, X } from 'lucide-react-native';
+import { ArrowLeft, Check, ChevronRight, Search, X } from './icons';
 import { useRef, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
@@ -23,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { font, radius, space, useTheme } from '../theme';
+import type { LucideIcon } from './icons';
 
 /** Thông báo ngắn. Android dùng Toast hệ thống. */
 export function toast(message: string): void {
@@ -74,11 +74,12 @@ export function Screen({
       style={[
         styles.flex,
         { backgroundColor: c.bg },
-        edges.includes('top') && { paddingTop: insets.top },
         edges.includes('bottom') && { paddingBottom: insets.bottom },
         style,
       ]}
     >
+      {/* Vùng thanh trạng thái cùng màu app bar như app gốc. */}
+      {edges.includes('top') && <View style={{ height: insets.top, backgroundColor: c.appBar }} />}
       {children}
     </View>
   );
@@ -104,22 +105,23 @@ export function Header({
   const { c } = useTheme();
   const navigation = useNavigation();
   return (
-    <View style={[styles.header, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
+    <View style={[styles.header, { backgroundColor: c.appBar }]}>
       {!hideBack && (
         <IconButton
           icon={ArrowLeft}
+          color={c.onAppBar}
           onPress={onBack ?? (() => navigation.goBack())}
           accessibilityLabel="Quay lại"
         />
       )}
-      <View style={[styles.flex, hideBack && { paddingLeft: space.sm }]}>
+      <View style={[styles.flex, styles.headerTitle, hideBack && { paddingLeft: space.md }]}>
         {children ?? (
           <>
-            <Text numberOfLines={1} style={[font.heading, { color: c.text }]}>
+            <Text numberOfLines={1} style={[font.appBarTitle, { color: c.onAppBar }]}>
               {title}
             </Text>
             {!!subtitle && (
-              <Text numberOfLines={1} style={[font.caption, { color: c.muted }]}>
+              <Text numberOfLines={1} style={[font.caption, styles.headerSubtitle, { color: c.onAppBar }]}>
                 {subtitle}
               </Text>
             )}
@@ -206,9 +208,10 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
+  // Filled / tonal / outlined theo Material 3.
   const palette = {
     primary: { bg: c.accent, fg: c.onAccent, border: c.accent },
-    secondary: { bg: c.surfaceAlt, fg: c.text, border: c.surfaceAlt },
+    secondary: { bg: c.primaryContainer, fg: c.onPrimaryContainer, border: c.primaryContainer },
     ghost: { bg: 'transparent', fg: c.accent, border: c.border },
     danger: { bg: c.dangerSoft, fg: c.danger, border: c.dangerSoft },
   }[variant];
@@ -260,12 +263,12 @@ export function Fab({
       accessibilityLabel={label}
       style={({ pressed }) => [
         styles.fab,
-        { backgroundColor: c.accent, bottom: insets.bottom + 20, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: c.primaryContainer, bottom: insets.bottom + 20, opacity: pressed ? 0.85 : 1 },
         style,
       ]}
     >
-      <Icon size={22} color={c.onAccent} />
-      {!!label && <Text style={[font.label, { color: c.onAccent }]}>{label}</Text>}
+      <Icon size={22} color={c.onPrimaryContainer} fill={c.onPrimaryContainer} stroke={c.primaryContainer} />
+      {!!label && <Text style={[font.label, { color: c.onPrimaryContainer }]}>{label}</Text>}
     </Pressable>
   );
 }
@@ -290,25 +293,23 @@ export function Chip({
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
-  const fg = selected ? c.onAccent : c.textSecondary;
+  const fg = selected ? c.onPrimaryContainer : c.textSecondary;
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [
         styles.chip,
-        {
-          backgroundColor: selected ? c.accent : c.surfaceAlt,
-          opacity: pressed ? 0.8 : 1,
-        },
+        selected
+          ? { backgroundColor: c.primaryContainer, borderColor: c.primaryContainer }
+          : { borderColor: c.border },
+        { opacity: pressed ? 0.8 : 1 },
         style,
       ]}
     >
-      {Icon && <Icon size={14} color={fg} />}
-      <Text style={[font.caption, styles.bold, { color: fg }]}>{label}</Text>
-      {count !== undefined && (
-        <Text style={[font.caption, { color: selected ? c.onAccent : c.muted }]}>{count}</Text>
-      )}
+      {selected && !Icon ? <Check size={14} color={fg} strokeWidth={3} /> : Icon && <Icon size={14} color={fg} />}
+      <Text style={[styles.chipLabel, { color: fg }]}>{label}</Text>
+      {count !== undefined && <Text style={[font.caption, { color: c.muted }]}>{count}</Text>}
     </Pressable>
   );
 }
@@ -339,19 +340,24 @@ export function Segmented<T extends string | number>({
 }) {
   const { c } = useTheme();
   return (
-    <View style={[styles.segmented, { backgroundColor: c.surfaceAlt }, disabled && styles.disabled]}>
-      {options.map(option => {
+    <View style={[styles.segmented, { borderColor: c.border }, disabled && styles.disabled]}>
+      {options.map((option, index) => {
         const active = option.value === value;
         return (
           <Pressable
             key={String(option.value)}
             disabled={disabled}
             onPress={() => onChange(option.value)}
-            style={[styles.segment, active && { backgroundColor: c.surface }]}
+            style={[
+              styles.segment,
+              index > 0 && [styles.segmentDivider, { borderLeftColor: c.border }],
+              active && { backgroundColor: c.primaryContainer },
+            ]}
           >
+            {active && <Check size={14} color={c.onPrimaryContainer} strokeWidth={3} />}
             <Text
               numberOfLines={1}
-              style={[font.caption, styles.bold, { color: active ? c.accent : c.muted }]}
+              style={[font.caption, styles.bold, { color: active ? c.onPrimaryContainer : c.textSecondary }]}
             >
               {option.label}
             </Text>
@@ -362,31 +368,54 @@ export function Segmented<T extends string | number>({
   );
 }
 
-/** Thanh tab gạch chân, dùng cho màn có nhiều trang con. */
+/**
+ * Thanh tab gạch chân kiểu app gốc ("Latest | Popular | Newest",
+ * "Descriptions | Chapters"): tab căn trái, vạch chỉ báo vàng dưới chữ,
+ * nút hành động ở bên phải.
+ */
 export function TabBar<T extends string>({
   tabs,
   value,
   onChange,
+  right,
+  stretch,
 }: {
   tabs: readonly { key: T; label: string; badge?: number }[];
   value: T;
   onChange: (key: T) => void;
+  /** Nút bên phải (bookmark, đổi lưới/danh sách, lọc…). */
+  right?: ReactNode;
+  /** Chia đều bề ngang cho các tab. */
+  stretch?: boolean;
 }) {
   const { c } = useTheme();
   return (
-    <View style={[styles.tabBar, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
-      {tabs.map(tab => {
-        const active = tab.key === value;
-        return (
-          <Pressable key={tab.key} onPress={() => onChange(tab.key)} style={styles.tab}>
-            <View style={styles.row}>
-              <Text style={[font.label, { color: active ? c.accent : c.muted }]}>{tab.label}</Text>
-              {!!tab.badge && <Badge text={String(tab.badge)} />}
-            </View>
-            <View style={[styles.tabIndicator, active && { backgroundColor: c.accent }]} />
-          </Pressable>
-        );
-      })}
+    <View style={[styles.tabBar, { backgroundColor: c.bg, borderBottomColor: c.border }]}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.flex}
+        contentContainerStyle={[styles.tabScroll, stretch && styles.flexGrow]}
+      >
+        {tabs.map(tab => {
+          const active = tab.key === value;
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={() => onChange(tab.key)}
+              android_ripple={{ color: c.border }}
+              style={[styles.tab, stretch && styles.flex]}
+            >
+              <View style={styles.row}>
+                <Text style={[styles.tabLabel, { color: active ? c.accent : c.textSecondary }]}>{tab.label}</Text>
+                {!!tab.badge && <Badge text={String(tab.badge)} />}
+              </View>
+              <View style={[styles.tabIndicator, active && { backgroundColor: c.accent }]} />
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      {right && <View style={styles.tabRight}>{right}</View>}
     </View>
   );
 }
@@ -700,7 +729,7 @@ export function Badge({ text, color, style }: { text: string; color?: string; st
   const { c } = useTheme();
   return (
     <View style={[styles.badge, { backgroundColor: color ?? c.accent }, style]}>
-      <Text style={styles.badgeText}>{text}</Text>
+      <Text style={[styles.badgeText, !color && { color: c.onAccent }]}>{text}</Text>
     </View>
   );
 }
@@ -800,14 +829,16 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   disabled: { opacity: 0.4 },
   dimmed: { opacity: 0.4 },
+  flexGrow: { flexGrow: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 56,
+    minHeight: 64,
     paddingHorizontal: space.xs,
     gap: space.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  headerTitle: { paddingLeft: space.sm },
+  headerSubtitle: { opacity: 0.7 },
   iconButton: {
     width: 44,
     height: 44,
@@ -832,19 +863,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    minHeight: 46,
-    paddingHorizontal: space.lg,
-    borderRadius: radius.md,
+    minHeight: 44,
+    paddingHorizontal: space.xl,
+    borderRadius: radius.pill,
     borderWidth: 1,
   },
-  buttonSmall: { minHeight: 34, paddingHorizontal: space.md, gap: 6 },
+  buttonSmall: { minHeight: 34, paddingHorizontal: space.lg, gap: 6 },
   fab: {
     position: 'absolute',
-    right: 20,
+    right: 16,
     minWidth: 56,
     height: 56,
-    borderRadius: 28,
-    paddingHorizontal: 18,
+    borderRadius: 16,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -861,21 +892,28 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 32,
     paddingHorizontal: 12,
-    borderRadius: radius.pill,
+    borderRadius: 8,
+    borderWidth: 1,
   },
+  chipLabel: { fontSize: 13, fontWeight: '500' },
   chipRow: { gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm },
-  segmented: { flexDirection: 'row', borderRadius: radius.md, padding: 3, gap: 3 },
+  segmented: { flexDirection: 'row', borderRadius: radius.pill, borderWidth: 1, overflow: 'hidden' },
   segment: {
     flex: 1,
-    minHeight: 34,
+    flexDirection: 'row',
+    gap: 4,
+    minHeight: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.sm + 1,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
   },
-  tabBar: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
-  tab: { flex: 1, alignItems: 'center', paddingTop: 12 },
-  tabIndicator: { height: 3, alignSelf: 'stretch', marginTop: 10, marginHorizontal: 18, borderRadius: 2 },
+  segmentDivider: { borderLeftWidth: 1 },
+  tabBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
+  tabScroll: { paddingHorizontal: space.xs },
+  tab: { alignItems: 'center', paddingTop: 14, paddingHorizontal: 14 },
+  tabLabel: { fontSize: 15, fontWeight: '500' },
+  tabIndicator: { height: 3, alignSelf: 'stretch', marginTop: 11, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  tabRight: { flexDirection: 'row', alignItems: 'center', paddingRight: space.xs },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 40 },
   checkbox: {
     width: 22,

@@ -1,9 +1,9 @@
-import { Ban, Clock, CloudDownload, EyeOff, Link, List, RotateCcw, ShieldBan } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Dialog } from '../../components/Sheet';
+import { Ban, Clock, CloudDownload, EyeOff, Link, List, RotateCcw, ShieldBan } from '../../components/icons';
 import {
   Button,
   Divider,

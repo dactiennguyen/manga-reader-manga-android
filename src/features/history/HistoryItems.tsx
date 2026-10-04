@@ -1,14 +1,14 @@
-import { X } from 'lucide-react-native';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Cover } from '../../components/MangaCard';
+import { X } from '../../components/icons';
 import { IconButton } from '../../components/ui';
 import { displayUrl } from '../../lib/url';
 import { formatTime } from '../../lib/time';
 import { useProgress } from '../../store/progress';
 import type { ReadingEntry, WebEntry } from '../../store/useHistory';
-import { font, space, useTheme } from '../../theme';
+import { font, radius, space, useTheme } from '../../theme';
 import { Favicon } from '../../components/Favicon';
 
 function ReadingHistoryItemBase({
@@ -46,7 +46,7 @@ function ReadingHistoryItemBase({
         <Cover uri={entry.cover} headers={headers} blur={blur} style={styles.cover} />
       </Pressable>
       <View style={styles.body}>
-        <Text numberOfLines={2} style={[font.label, { color: c.text }]}>
+        <Text numberOfLines={2} style={[styles.title, { color: c.text }]}>
           {entry.title}
         </Text>
         <Text numberOfLines={1} style={[font.caption, { color: c.textSecondary }]}>
@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
     paddingRight: space.xs,
     minHeight: 60,
   },
-  cover: { width: 52 },
+  cover: { width: 52, height: 72, borderRadius: radius.sm },
+  title: { fontSize: 15, fontWeight: '700' },
   body: { flex: 1, gap: 2 },
 });

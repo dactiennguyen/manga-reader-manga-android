@@ -1,7 +1,7 @@
-import { Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Check } from '../../components/icons';
 import { Divider, ListItem, Section, Slider, Stepper } from '../../components/ui';
 import { useSettings } from '../../store/useSettings';
 import { font, radius, space, useTheme } from '../../theme';
@@ -13,6 +13,8 @@ import {
   NOVEL_THEMES,
   novelFontFamily,
   round1,
+  setNovelTheme,
+  useNovelTheme,
   VOICE_RANGE,
 } from './novelThemes';
 
@@ -56,6 +58,7 @@ export function NovelSettingsForm() {
   const { c } = useTheme();
   const novel = useSettings(state => state.novel);
   const setNovel = useSettings(state => state.setNovel);
+  const theme = useNovelTheme();
 
   return (
     <View style={styles.root}>
@@ -121,11 +124,11 @@ export function NovelSettingsForm() {
         <View style={styles.themes}>
           {NOVEL_THEME_ORDER.map(id => {
             const palette = NOVEL_THEMES[id];
-            const selected = id === novel.theme;
+            const selected = id === theme.id;
             return (
               <Pressable
                 key={id}
-                onPress={() => setNovel({ theme: id })}
+                onPress={() => setNovelTheme(id)}
                 accessibilityRole="radio"
                 accessibilityLabel={palette.label}
                 accessibilityState={{ selected }}
@@ -139,12 +142,14 @@ export function NovelSettingsForm() {
                   ]}
                 >
                   {selected ? (
-                    <Check size={20} color={palette.accent} strokeWidth={3} />
+                    <Check size={18} color={palette.text} strokeWidth={3} />
                   ) : (
                     <Text style={[styles.swatchText, { color: palette.text }]}>Aa</Text>
                   )}
                 </View>
-                <Text style={[font.caption, { color: selected ? c.accent : c.muted }]}>{palette.label}</Text>
+                <Text numberOfLines={1} style={[font.caption, { color: selected ? c.accent : c.muted }]}>
+                  {palette.label}
+                </Text>
               </Pressable>
             );
           })}
@@ -177,16 +182,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   fontSample: { fontSize: 22 },
-  themes: { flexDirection: 'row', justifyContent: 'space-around', padding: space.md },
-  themeOption: { alignItems: 'center', gap: space.xs },
+  themes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', rowGap: space.md, padding: space.md },
+  themeOption: { width: 76, alignItems: 'center', gap: space.xs },
   swatch: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   swatchSelected: { borderWidth: 3 },
-  swatchText: { fontSize: 18, fontWeight: '600' },
+  swatchText: { fontSize: 16, fontWeight: '600' },
 });

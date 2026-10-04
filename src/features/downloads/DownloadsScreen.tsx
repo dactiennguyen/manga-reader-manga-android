@@ -1,103 +1,128 @@
 import { unlink } from '@dr.pogodin/react-native-fs';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
-import { Download, FileText, Pause, Play, Trash2 } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppNavigation, type RootStackParamList } from '../../app/routes';
-import { Dialog } from '../../components/Sheet';
-import { Checkbox, EmptyState, Header, IconButton, Screen, TabBar, confirm, toast } from '../../components/ui';
-import { displayUrl } from '../../lib/url';
+import { DropdownButton } from '../../components/Dropdown';
+import { Favicon } from '../../components/Favicon';
+import { Dialog, Sheet } from '../../components/Sheet';
+import { BookOpen, Download, FileText, Pause, Play, Trash2 } from '../../components/icons';
+import { Button, Checkbox, EmptyState, Header, IconButton, Screen, confirm, toast } from '../../components/ui';
+import { formatBytes } from '../../lib/format';
 import { formatDate } from '../../lib/time';
+import { displayUrl } from '../../lib/url';
 import { getEngine } from '../../sources';
+import type { ContentType } from '../../sources/types';
 import { useBrowser, type SavedPage } from '../../store/useBrowser';
 import { useDownloads, type DownloadTask } from '../../store/useDownloads';
 import { useAllowNsfw } from '../../store/useSettings';
 import { getSource, useSources } from '../../store/useSources';
-import { font, radius, space, useTheme } from '../../theme';
-import { Favicon } from '../../components/Favicon';
-import { ChapterRow, GroupRow, groupTasks, isActive, isResumable, type DownloadGroup } from './DownloadRows';
+import { font, space, useTheme } from '../../theme';
+import {
+  ChapterRow,
+  DownloadMangaRow,
+  groupSummary,
+  groupTasks,
+  isActive,
+  isResumable,
+  type DownloadGroup,
+} from './DownloadRows';
 import { removeDownloads } from './downloader';
-import { formatBytes } from '../../lib/format';
 
-type Tab = 'chapters' | 'pages';
+type DownloadView = ContentType | 'web';
 
-type Row =
-  | { type: 'group'; group: DownloadGroup; expanded: boolean }
-  | { type: 'chapter'; task: DownloadTask; last: boolean };
+const VIEW_OPTIONS = [
+  { value: 'manga', label: 'Truyện tranh' },
+  { value: 'novel', label: 'Tiểu thuyết' },
+  { value: 'web', label: 'Trang web' },
+] as const;
+
+const CONTENT_NAME: Record<ContentType, string> = { manga: 'truyện tranh', novel: 'tiểu thuyết' };
+
+type TabParam = NonNullable<RootStackParamList['Downloads']>['tab'];
+
+/** Tham số `tab` cũ → lựa chọn của nút thả xuống. */
+function viewFromParam(tab: TabParam): DownloadView {
+  if (tab === 'pages') {
+    return 'web';
+  }
+  // 'chapters': Truyện tranh, trừ khi chỉ có tiểu thuyết được tải.
+  const tasks = Object.values(useDownloads.getState().tasks);
+  return !tasks.some(t => t.content === 'manga') && tasks.some(t => t.content === 'novel') ? 'novel' : 'manga';
+}
 
 export function DownloadsScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Downloads'>>();
-  const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'chapters');
+  const { c } = useTheme();
+  const tabParam = route.params?.tab;
+  const [view, setView] = useState<DownloadView>(() => viewFromParam(tabParam));
   const tasks = useDownloads(s => s.tasks);
   const pause = useDownloads(s => s.pause);
   const resume = useDownloads(s => s.resume);
-  const pageCount = useBrowser(s => s.savedPages.length);
 
-  const taskList = useMemo(() => Object.values(tasks), [tasks]);
-  const activeCount = taskList.filter(isActive).length;
-  const resumable = taskList.filter(isResumable);
+  useEffect(() => {
+    if (tabParam) {
+      setView(viewFromParam(tabParam));
+    }
+  }, [tabParam]);
 
-  const tabs = useMemo(
-    () => [
-      { key: 'chapters' as const, label: 'Chương truyện', badge: activeCount },
-      { key: 'pages' as const, label: 'Trang đã lưu', badge: 0 },
-    ],
-    [activeCount],
+  const scoped = useMemo(
+    () => (view === 'web' ? [] : Object.values(tasks).filter(t => t.content === view)),
+    [tasks, view],
   );
+  const active = scoped.filter(isActive);
+  const resumable = scoped.filter(isResumable);
 
   return (
     <Screen>
       <Header
         title="Tải xuống"
-        subtitle={
-          tab === 'chapters'
-            ? taskList.length
-              ? `${taskList.length} chương · ${formatBytes(taskList.reduce((sum, t) => sum + t.bytes, 0))}`
-              : undefined
-            : pageCount
-              ? `${pageCount} trang`
-              : undefined
-        }
         right={
-          tab === 'chapters' && taskList.length > 0 ? (
-            <>
+          <>
+            <View style={styles.dropdown}>
+              <DropdownButton value={view} options={VIEW_OPTIONS} onChange={setView} />
+            </View>
+            {active.length > 0 && (
               <IconButton
                 icon={Pause}
-                disabled={!activeCount}
-                onPress={() => pause(taskList.filter(isActive).map(t => t.id))}
+                color={c.onAppBar}
+                onPress={() => pause(active.map(t => t.id))}
                 accessibilityLabel="Tạm dừng tất cả"
               />
+            )}
+            {resumable.length > 0 && (
               <IconButton
                 icon={Play}
-                disabled={!resumable.length}
+                color={c.onAppBar}
                 onPress={() => resume(resumable.map(t => t.id))}
                 accessibilityLabel="Tiếp tục tất cả"
               />
-            </>
-          ) : undefined
+            )}
+          </>
         }
       />
-      <TabBar tabs={tabs} value={tab} onChange={setTab} />
-      {tab === 'chapters' ? <ChapterDownloads tasks={tasks} /> : <SavedPages />}
+      {view === 'web' ? <SavedPages /> : <ChapterDownloads key={view} content={view} tasks={scoped} />}
     </Screen>
   );
 }
 
-// ─── Chương đã tải ──────────────────────────────────────────────────────────
+// ─── Truyện đã tải ──────────────────────────────────────────────────────────
 
-function ChapterDownloads({ tasks }: { tasks: Record<string, DownloadTask> }) {
+function ChapterDownloads({ content, tasks }: { content: ContentType; tasks: DownloadTask[] }) {
   const navigation = useAppNavigation();
   const pause = useDownloads(s => s.pause);
   const resume = useDownloads(s => s.resume);
   const sources = useSources(s => s.sources);
   const allowNsfw = useAllowNsfw();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const [removing, setRemoving] = useState<{ tasks: DownloadTask[]; title: string } | null>(null);
   const [deleteFiles, setDeleteFiles] = useState(true);
 
   const groups = useMemo(() => groupTasks(tasks), [tasks]);
+  // Xoá hết chương của truyện đang mở thì sheet tự đóng.
+  const openGroup = openKey ? groups.find(g => g.mangaKey === openKey) : undefined;
 
   const sourceInfo = useMemo(() => {
     const map: Record<string, { headers: Record<string, string>; nsfw: boolean }> = {};
@@ -107,31 +132,7 @@ function ChapterDownloads({ tasks }: { tasks: Record<string, DownloadTask> }) {
     return map;
   }, [sources]);
 
-  // Chỉ có một truyện thì mở sẵn danh sách chương.
-  const isExpanded = useCallback(
-    (key: string) => expanded[key] ?? groups.length === 1,
-    [expanded, groups.length],
-  );
-
-  const rows = useMemo(() => {
-    const out: Row[] = [];
-    for (const group of groups) {
-      const open = isExpanded(group.mangaKey);
-      out.push({ type: 'group', group, expanded: open });
-      if (open) {
-        group.tasks.forEach((task, i) =>
-          out.push({ type: 'chapter', task, last: i === group.tasks.length - 1 }),
-        );
-      }
-    }
-    return out;
-  }, [groups, isExpanded]);
-
-  const toggle = useCallback(
-    (group: DownloadGroup) =>
-      setExpanded(current => ({ ...current, [group.mangaKey]: !isExpanded(group.mangaKey) })),
-    [isExpanded],
-  );
+  const openSheet = useCallback((group: DownloadGroup) => setOpenKey(group.mangaKey), []);
   const pauseGroup = useCallback(
     (group: DownloadGroup) => pause(group.tasks.filter(isActive).map(t => t.id)),
     [pause],
@@ -141,6 +142,7 @@ function ChapterDownloads({ tasks }: { tasks: Record<string, DownloadTask> }) {
     [resume],
   );
   const askRemoveGroup = useCallback((group: DownloadGroup) => {
+    setOpenKey(null);
     setDeleteFiles(true);
     setRemoving({ tasks: group.tasks, title: group.title });
   }, []);
@@ -151,16 +153,15 @@ function ChapterDownloads({ tasks }: { tasks: Record<string, DownloadTask> }) {
   const pauseTask = useCallback((task: DownloadTask) => pause([task.id]), [pause]);
   const resumeTask = useCallback((task: DownloadTask) => resume([task.id]), [resume]);
 
-  const openManga = useCallback(
-    (group: DownloadGroup) =>
-      navigation.navigate('MangaDetail', {
-        sourceId: group.sourceId,
-        url: group.mangaUrl,
-        title: group.title,
-        cover: group.cover,
-      }),
-    [navigation],
-  );
+  const openManga = (group: DownloadGroup) => {
+    setOpenKey(null);
+    navigation.navigate('MangaDetail', {
+      sourceId: group.sourceId,
+      url: group.mangaUrl,
+      title: group.title,
+      cover: group.cover,
+    });
+  };
 
   const openChapter = useCallback(
     (task: DownloadTask) => {
@@ -172,6 +173,7 @@ function ChapterDownloads({ tasks }: { tasks: Record<string, DownloadTask> }) {
         toast('Nguồn của truyện này đã bị xoá. Thêm lại site trong Addon để đọc.');
         return;
       }
+      setOpenKey(null);
       const params = { sourceId: task.sourceId, mangaUrl: task.mangaUrl, chapterUrl: task.chapterUrl };
       if (task.content === 'novel') {
         navigation.navigate('NovelReader', params);
@@ -197,43 +199,93 @@ function ChapterDownloads({ tasks }: { tasks: Record<string, DownloadTask> }) {
       <EmptyState
         icon={Download}
         title="Chưa có chương nào"
-        message="Bạn có thể tải chương truyện để đọc offline tại đây. Hiện chưa có chương nào được tải."
+        message={`Bạn có thể tải chương ${CONTENT_NAME[content]} để đọc offline tại đây. Hiện chưa có chương nào được tải.`}
       />
     );
   }
 
+  const canPause = openGroup?.tasks.some(isActive);
+  const canResume = openGroup?.tasks.some(isResumable);
+
   return (
     <>
       <FlashList
-        data={rows}
-        keyExtractor={row => (row.type === 'group' ? `g:${row.group.mangaKey}` : `c:${row.task.id}`)}
-        getItemType={row => row.type}
-        renderItem={({ item: row }) =>
-          row.type === 'group' ? (
-            <GroupRow
-              group={row.group}
-              expanded={row.expanded}
-              headers={sourceInfo[row.group.sourceId]?.headers}
-              blur={!!sourceInfo[row.group.sourceId]?.nsfw && !allowNsfw}
-              onToggle={toggle}
-              onPauseAll={pauseGroup}
-              onResumeAll={resumeGroup}
-              onRemove={askRemoveGroup}
-              onOpenManga={openManga}
-            />
-          ) : (
-            <ChapterRow
-              task={row.task}
-              last={row.last}
-              onOpen={openChapter}
-              onPause={pauseTask}
-              onResume={resumeTask}
-              onRemove={askRemoveTask}
-            />
-          )
-        }
+        data={groups}
+        keyExtractor={group => group.mangaKey}
+        renderItem={({ item: group }) => (
+          <DownloadMangaRow
+            group={group}
+            headers={sourceInfo[group.sourceId]?.headers}
+            blur={!!sourceInfo[group.sourceId]?.nsfw && !allowNsfw}
+            onOpen={openSheet}
+            onLongPress={askRemoveGroup}
+            onPause={pauseGroup}
+            onResume={resumeGroup}
+          />
+        )}
         contentContainerStyle={styles.list}
       />
+
+      <Sheet
+        visible={!!openGroup}
+        onClose={() => setOpenKey(null)}
+        title={openGroup?.title}
+        subtitle={openGroup ? groupSummary(openGroup) : undefined}
+        scroll={false}
+      >
+        {openGroup && (
+          <>
+            <View style={styles.sheetActions}>
+              <Button
+                title="Mở truyện"
+                icon={BookOpen}
+                variant="secondary"
+                small
+                onPress={() => openManga(openGroup)}
+              />
+              {canPause && (
+                <Button
+                  title="Tạm dừng tất cả"
+                  icon={Pause}
+                  variant="ghost"
+                  small
+                  onPress={() => pauseGroup(openGroup)}
+                />
+              )}
+              {canResume && (
+                <Button
+                  title="Tiếp tục tất cả"
+                  icon={Play}
+                  variant="ghost"
+                  small
+                  onPress={() => resumeGroup(openGroup)}
+                />
+              )}
+              <Button
+                title="Xoá tất cả"
+                icon={Trash2}
+                variant="danger"
+                small
+                onPress={() => askRemoveGroup(openGroup)}
+              />
+            </View>
+            <FlatList
+              data={openGroup.tasks}
+              keyExtractor={task => task.id}
+              renderItem={({ item: task }) => (
+                <ChapterRow
+                  task={task}
+                  onOpen={openChapter}
+                  onPause={pauseTask}
+                  onResume={resumeTask}
+                  onRemove={askRemoveTask}
+                />
+              )}
+            />
+          </>
+        )}
+      </Sheet>
+
       <Dialog
         visible={removing !== null}
         onClose={() => setRemoving(null)}
@@ -292,15 +344,16 @@ function SavedPages() {
       renderItem={({ item: page }) => (
         <Pressable
           onPress={() => navigation.navigate('SavedPage', { id: page.id })}
+          onLongPress={() => remove(page)}
           android_ripple={{ color: c.border }}
-          style={[styles.page, { backgroundColor: c.surface }]}
+          style={styles.page}
         >
-          <Favicon url={page.url} size={38} tile />
-          <View style={styles.flex}>
-            <Text numberOfLines={2} style={[font.label, { color: c.text }]}>
+          <Favicon url={page.url} size={40} tile />
+          <View style={styles.pageBody}>
+            <Text numberOfLines={2} style={[styles.pageTitle, { color: c.text }]}>
               {page.title || displayUrl(page.url)}
             </Text>
-            <Text numberOfLines={1} style={[font.caption, { color: c.muted }]}>
+            <Text numberOfLines={1} style={[font.caption, { color: c.textSecondary }]}>
               {displayUrl(page.url)}
             </Text>
             <Text style={[font.caption, { color: c.muted }]}>
@@ -321,17 +374,23 @@ function SavedPages() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, gap: 2 },
-  list: { paddingBottom: space.xl },
+  dropdown: { marginRight: space.sm },
+  list: { paddingVertical: space.xs, paddingBottom: space.xl },
+  sheetActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.sm,
+  },
   page: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    marginHorizontal: space.md,
-    marginTop: space.sm,
-    paddingLeft: space.md,
+    paddingLeft: space.lg,
     paddingRight: space.xs,
-    paddingVertical: space.md,
-    borderRadius: radius.lg,
+    paddingVertical: space.sm,
   },
+  pageBody: { flex: 1, gap: 2 },
+  pageTitle: { fontSize: 15, fontWeight: '700' },
 });

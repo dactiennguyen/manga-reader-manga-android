@@ -27,29 +27,34 @@ import {
   type NavState,
   type PageMessage,
 } from './BrowserWebView';
-import { AppLinkDialog, BookmarkDialog, SavePageDialog, SearchEngineSheet } from './Dialogs';
+import { AppLinkDialog, BookmarkDialog, SavePageDialog } from './Dialogs';
 import { FindBar, type FindResult } from './FindBar';
 import { HomePage } from './HomePage';
 import { useEvent } from './hooks';
 import { LinkMenu, type LinkTarget } from './LinkMenu';
 import { clearSiteCookies, launchExternal, savePage } from './pageActions';
 import { JS_CLEAR_STORAGE, JS_FIND_CLEAR, jsFind, jsFindStep, jsRequestHtml, type HtmlPurpose } from './scripts';
-import { getSearchEngine, resolveInput } from './searchEngines';
+import { resolveInput } from './searchEngines';
 import { Snackbar, type SnackbarData } from './Snackbar';
 import { SuggestionsPanel } from './SuggestionsPanel';
-import { Toolbar } from './Toolbar';
 import { CoachMarks, useTourTargets, type TourStep } from './Tour';
 
 const ADDON_STEP: TourStep = {
   key: 'addon',
-  text: 'Bấm vào đây để chạy addon: addon đọc dữ liệu trang hiện tại và hiển thị bằng giao diện đọc truyện của app.',
+  text: 'Mảnh ghép chuyển xanh khi trang đang xem được addon hỗ trợ: bấm để đọc trang bằng giao diện đọc truyện của app. Khi mảnh ghép xám, bấm để xem các site được hỗ trợ.',
 };
 
 const TOUR_STEPS: TourStep[] = [
   ADDON_STEP,
-  { key: 'engine', text: 'Bấm vào đây để đổi công cụ tìm kiếm, bật tìm kiếm an toàn hoặc chuyển sang tìm truyện.' },
+  {
+    key: 'address',
+    text: 'Nhập địa chỉ web hoặc từ khoá. Trong lúc gõ, bạn có thể đổi công cụ tìm kiếm hoặc chuyển sang tìm truyện.',
+  },
   { key: 'tabs', text: 'Xem và quản lý các tab đang mở, kể cả tab ẩn danh. Nhấn giữ để mở tab mới.' },
-  { key: 'menu', text: 'Menu: bookmark, lịch sử, tải xuống, addon, cài đặt và các công cụ cho trang đang xem.' },
+  {
+    key: 'menu',
+    text: 'Menu: lùi, tiến, tải lại, trang chủ, bookmark trang này, cùng lịch sử, tải xuống, addon, cài đặt và các công cụ cho trang đang xem.',
+  },
   { key: 'mediaSites', text: 'Các site truyện bạn đã thêm nằm ở đây. Bấm vào một site để mở danh sách truyện.' },
 ];
 
@@ -104,7 +109,6 @@ export function BrowserScreen() {
   const pageUrl = showingHome ? '' : tab.url || tab.request.url;
   const pageHost = getHost(pageUrl);
   const adblockActive = settings.adblock && !tab.adblockOff;
-  const engine = getSearchEngine(settings.searchEngine);
 
   // Trạng thái của WebView đang mở; gắn tab id để bỏ qua dữ liệu của tab trước.
   const [nav, setNav] = useState(EMPTY_NAV);
@@ -118,7 +122,6 @@ export function BrowserScreen() {
   const [find, setFind] = useState<{ tabId: string; result: FindResult } | null>(null);
   const findOpen = !!find && find.tabId === tab.id && !showingHome;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [engineSheet, setEngineSheet] = useState(false);
   const [adblockSheet, setAdblockSheet] = useState(false);
   const [bookmarkDialog, setBookmarkDialog] = useState(false);
   const [saveDialog, setSaveDialog] = useState<{ saving: boolean } | null>(null);
@@ -152,7 +155,6 @@ export function BrowserScreen() {
   const bookmark = pageUrl ? webBookmarks.find(b => sameUrl(b.url, pageUrl)) : undefined;
   const overlayOpen =
     menuOpen ||
-    engineSheet ||
     adblockSheet ||
     bookmarkDialog ||
     !!saveDialog ||
@@ -275,6 +277,15 @@ export function BrowserScreen() {
       toast('Không đọc được nội dung trang, hãy thử tải lại trang');
     }, RUN_TIMEOUT);
     requestHtml('run');
+  };
+
+  // Mảnh ghép xám (trang không được hỗ trợ / trang chủ): mở danh sách site được hỗ trợ.
+  const onAddonPress = () => {
+    if (addonState) {
+      startRun();
+    } else {
+      navigation.navigate('Addons');
+    }
   };
 
   const handleHtml = (purpose: HtmlPurpose, url: string, html: string) => {
@@ -512,6 +523,9 @@ export function BrowserScreen() {
   );
 
   // ─── Menu ───────────────────────────────────────────────────────────────
+  // Menu là Modal nên sẽ nổi đè lên màn khác nếu có màn được đẩy lên (vd. addon tự chạy) → đóng khi rời màn.
+  useFocusEffect(useCallback(() => () => setMenuOpen(false), []));
+
   const clearSiteData = async () => {
     const url = pageUrl;
     const ok = await confirm('Xoá cookie và dữ liệu trang?', `Bạn có thể bị đăng xuất khỏi ${getHost(url)}.`, {
@@ -535,6 +549,18 @@ export function BrowserScreen() {
     setMenuOpen(false);
     const store = useBrowser.getState();
     switch (action) {
+      case 'back':
+        goBack();
+        return;
+      case 'forward':
+        goForward();
+        return;
+      case 'home':
+        goHome();
+        return;
+      case 'stop':
+        webRef.current?.stop();
+        return;
       case 'newTab':
         store.newTab();
         focusAddressSoon();
@@ -683,37 +709,42 @@ export function BrowserScreen() {
     }
   });
 
+  const newTabFromBar = () => {
+    useBrowser.getState().newTab('', { incognito: tab.incognito });
+    focusAddressSoon();
+  };
+
   // ─── Giao diện ──────────────────────────────────────────────────────────
-  const barBg = tab.incognito ? c.incognito : c.surface;
   const showProgress = !showingHome && navState.loading && navState.progress < 1;
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
-      <View style={{ paddingTop: insets.top, backgroundColor: barBg }}>
-        <AddressBar
-          ref={addressRef}
-          url={pageUrl}
-          incognito={tab.incognito}
-          engine={engine}
-          category={settings.searchCategory}
-          editing={editing}
-          query={query}
-          onChangeQuery={setQuery}
-          onFocus={() => {
-            setQuery(pageUrl);
-            setEditing(true);
-          }}
-          onBlur={() => setEditing(false)}
-          onSubmit={() => submitText(query)}
-          onEnginePress={() => setEngineSheet(true)}
-          addon={addonState}
-          addonBusy={addonBusy}
-          onRunAddon={startRun}
-          shield={pageUrl ? { active: adblockActive, count: pageStats.ads + pageStats.trackers } : null}
-          onShieldPress={() => setAdblockSheet(true)}
-          registerTour={tour.register}
-        />
-      </View>
+      <AddressBar
+        ref={addressRef}
+        url={pageUrl}
+        incognito={tab.incognito}
+        category={settings.searchCategory}
+        editing={editing}
+        query={query}
+        onChangeQuery={setQuery}
+        onFocus={() => {
+          setQuery(pageUrl);
+          setEditing(true);
+        }}
+        onBlur={() => setEditing(false)}
+        onSubmit={() => submitText(query)}
+        addon={addonState}
+        addonBusy={addonBusy}
+        onAddonPress={onAddonPress}
+        shield={pageUrl ? { active: adblockActive, count: pageStats.ads + pageStats.trackers } : null}
+        onShieldPress={() => setAdblockSheet(true)}
+        onQrPress={() => navigation.navigate('QRScanner')}
+        tabCount={tabCount}
+        onTabsPress={() => navigation.navigate('Tabs')}
+        onNewTab={newTabFromBar}
+        onMenuPress={() => setMenuOpen(true)}
+        registerTour={tour.register}
+      />
 
       <View style={styles.content}>
         {hasPage && (
@@ -766,42 +797,34 @@ export function BrowserScreen() {
         <Snackbar data={snack} onHide={hideSnack} />
       </View>
 
-      {!editing &&
-        (findOpen && find ? (
-          <FindBar result={find.result} onQuery={onFindQuery} onStep={d => webRef.current?.inject(jsFindStep(d))} onClose={closeFind} />
-        ) : (
-          <Toolbar
-            incognito={tab.incognito}
-            canBack={!showingHome}
-            canForward={(tab.showHome && hasPage) || (!showingHome && navState.canGoForward)}
-            onBack={goBack}
-            onForward={goForward}
-            onHome={goHome}
-            homeActive={showingHome}
-            tabCount={tabCount}
-            onTabs={() => navigation.navigate('Tabs')}
-            onNewTab={() => {
-              useBrowser.getState().newTab('', { incognito: tab.incognito });
-              focusAddressSoon();
-            }}
-            onMenu={() => setMenuOpen(true)}
-            registerTour={tour.register}
-          />
-        ))}
-      <View style={{ height: insets.bottom, backgroundColor: findOpen ? c.surface : barBg }} />
+      {!editing && findOpen && find && (
+        <FindBar
+          result={find.result}
+          onQuery={onFindQuery}
+          onStep={d => webRef.current?.inject(jsFindStep(d))}
+          onClose={closeFind}
+        />
+      )}
+      {/* Vùng thanh cử chỉ: cùng màu thanh tìm trong trang khi đang mở, còn lại theo nền trang. */}
+      <View style={{ height: insets.bottom, backgroundColor: !editing && findOpen ? c.surface : c.bg }} />
 
       <BrowserMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         page={pageUrl ? { url: pageUrl, title: tab.title } : null}
+        nav={{
+          canBack: !showingHome,
+          canForward: (tab.showHome && hasPage) || (!showingHome && navState.canGoForward),
+          loading: showProgress,
+          atHome: showingHome,
+        }}
         bookmarked={!!bookmark}
         desktop={tab.desktop}
         blocked={pageStats.ads + pageStats.trackers}
         adblockActive={adblockActive}
-        addonSupported={!!addonState}
+        addon={addonState}
         onAction={handleMenu}
       />
-      <SearchEngineSheet visible={engineSheet} onClose={() => setEngineSheet(false)} />
       <AdblockSheet
         visible={adblockSheet}
         onClose={() => setAdblockSheet(false)}

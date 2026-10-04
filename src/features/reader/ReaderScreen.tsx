@@ -19,11 +19,13 @@ import { sameUrl } from '../../lib/url';
 import { mangaKey } from '../../sources';
 import type { Chapter, Page } from '../../sources/types';
 import { getProgress } from '../../store/progress';
-import { resolveViewerPrefs, useReaderSettings } from '../../store/useReaderSettings';
+import { resolveViewerPrefs, useReaderSettings, type ViewMode } from '../../store/useReaderSettings';
+import { useActiveTab } from '../../store/useBrowser';
 import { useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
 import { useTheme } from '../../theme';
 import { ChapterPickerSheet } from './ChapterPickerSheet';
+import { BrightnessOverlay } from './chromeParts';
 import { prefetchChapter } from './chapterCache';
 import { DARK_TONE, EndOfChapter } from './EndOfChapter';
 import { preloadPages, retryFailedPages } from './pageImageCache';
@@ -31,6 +33,7 @@ import { PagedViewer } from './PagedViewer';
 import { ReaderChrome, type ReaderChromeActions } from './ReaderChrome';
 import { PageMenuSheet, ReaderMenuSheet } from './ReaderMenus';
 import { backToManga } from './readerNavigation';
+import { TapHelpDialog } from './TapHelpDialog';
 import { resolveTap } from './tapZones';
 import { useChapterNavigation } from './useChapterNavigation';
 import { useChapterSession, type SessionTarget } from './useChapterSession';
@@ -38,12 +41,13 @@ import { useKeepScreenOn } from './useKeepScreenOn';
 import { knownManga, useChapterContent, useMangaDetail } from './useReaderData';
 import { createValueStore } from './valueStore';
 import { VerticalViewer } from './VerticalViewer';
-import { nextViewMode, updateViewerPrefs, VIEW_MODE_NAMES } from './viewerPrefs';
+import { updateViewerPrefs, VIEW_MODE_NAMES } from './viewerPrefs';
 import { ViewerSettingsSheet } from './ViewerSettingsSheet';
 import type { ViewerHandle } from './viewerTypes';
+import { ViewModeMenu } from './ViewModeMenu';
 
 type ReaderNavigation = NativeStackNavigationProp<RootStackParamList, 'Reader'>;
-type SheetName = 'chapters' | 'settings' | 'menu';
+type SheetName = 'chapters' | 'settings' | 'menu' | 'modes' | 'help';
 
 const NO_PAGES: Page[] = [];
 const NO_CHAPTERS: Chapter[] = [];
@@ -58,7 +62,8 @@ export function ReaderScreen() {
   const { sourceId, mangaUrl, chapterUrl, page: pageParam } = route.params;
   const key = mangaKey(sourceId, mangaUrl);
   const src = useSource(sourceId);
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
+  const incognito = useActiveTab().incognito;
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const screen = useWindowDimensions();
@@ -290,24 +295,37 @@ export function ReaderScreen() {
     }, []),
   );
 
+  const openSettings = useCallback(() => setSheet('settings'), []);
   const openPageMenu = useCallback((index: number) => setPageMenu(index), []);
   const closePageMenu = useCallback(() => setPageMenu(null), []);
   const closeSheet = useCallback(() => setSheet(null), []);
   const stopAutoScroll = useCallback(() => setPlaying(false), []);
 
+  const pickViewMode = useCallback(
+    (mode: ViewMode) => {
+      setSheet(null);
+      if (mode !== resolveViewerPrefs(useReaderSettings.getState(), key).viewMode) {
+        updateViewerPrefs(key, { viewMode: mode });
+        toast(`Chế độ xem: ${VIEW_MODE_NAMES[mode]}`);
+      }
+    },
+    [key],
+  );
+
   const chromeActions = useMemo<ReaderChromeActions>(
     () => ({
-      onBack: () => navigation.goBack(),
       onPrev: goPrev,
       onNext: goNext,
       onSeek: page => viewerRef.current?.goToPage(page),
       onOpenChapters: () => setSheet('chapters'),
-      onOpenSettings: () => setSheet('settings'),
+      onOpenSettings: openSettings,
       onOpenMenu: () => setSheet('menu'),
-      onCycleMode: () => {
-        const mode = nextViewMode(resolveViewerPrefs(useReaderSettings.getState(), key).viewMode);
-        updateViewerPrefs(key, { viewMode: mode });
-        toast(`Chế độ xem: ${VIEW_MODE_NAMES[mode]}`);
+      onOpenModes: () => setSheet('modes'),
+      onOpenHelp: () => setSheet('help'),
+      onToggleTapToScroll: () => {
+        const { tapToScroll, set } = useReaderSettings.getState();
+        set({ tapToScroll: !tapToScroll });
+        toast(tapToScroll ? 'Đã tắt chạm để cuộn' : 'Đã bật chạm để cuộn');
       },
       onToggleDirection: () => {
         const rtl = resolveViewerPrefs(useReaderSettings.getState(), key).direction !== 'rtl';
@@ -331,7 +349,7 @@ export function ReaderScreen() {
         toast(immersive ? 'Đã tắt chế độ toàn màn hình' : 'Đã bật chế độ toàn màn hình');
       },
     }),
-    [navigation, goPrev, goNext, key],
+    [goPrev, goNext, openSettings, key],
   );
 
   const onAreaLayout = useCallback((event: LayoutChangeEvent) => {
@@ -416,11 +434,24 @@ export function ReaderScreen() {
     );
   }
 
+  const showChrome = chromeVisible || !ready;
+  const helpTips = useMemo(
+    () => [
+      'Chạm vùng giữa để hiện hoặc ẩn thanh điều khiển.',
+      'Chạm vùng Lùi/Tiến để cuộn hoặc lật trang; chạm Tiến ở cuối chương để sang chương sau.',
+      'Vuốt để cuộn hoặc lật trang tự do.',
+      ...(longPressDisabled ? [] : ['Nhấn giữ ảnh để sao chép, chia sẻ hoặc tải lại ảnh.']),
+      'Thanh bên phải: chế độ xem, khoảng cách trang (dọc) hoặc hướng đọc (lật ngang), tự cuộn hoặc toàn màn hình.',
+    ],
+    [longPressDisabled],
+  );
+
   return (
     <View style={styles.root}>
       {focused && (
         <StatusBar
-          barStyle="light-content"
+          // Thanh địa chỉ vàng của theme sáng nằm dưới thanh trạng thái → chữ tối.
+          barStyle={showChrome && !dark && !incognito ? 'dark-content' : 'light-content'}
           hidden={hideStatusBar || (settings.immersive && !chromeVisible)}
           showHideTransition="fade"
           animated
@@ -431,11 +462,12 @@ export function ReaderScreen() {
           {body}
         </View>
       </View>
+      <BrightnessOverlay />
 
       <ReaderChrome
-        visible={chromeVisible || !ready}
-        title={mangaTitle}
-        subtitle={chapterName}
+        visible={showChrome}
+        chapterUrl={chapterUrl}
+        chapterName={chapterName}
         pageStore={pageStore}
         total={ready ? pages.length : 0}
         viewMode={prefs.viewMode}
@@ -443,9 +475,25 @@ export function ReaderScreen() {
         pageGap={prefs.pageGap}
         autoPlaying={playing}
         immersive={settings.immersive}
+        tapToScroll={settings.tapToScroll}
         hasPrev={!!prev}
         hasNext={!!next}
         actions={chromeActions}
+      />
+      <ViewModeMenu
+        visible={sheet === 'modes'}
+        value={prefs.viewMode}
+        onPick={pickViewMode}
+        onClose={closeSheet}
+      />
+      <TapHelpDialog
+        visible={sheet === 'help'}
+        onClose={closeSheet}
+        tapToScroll={settings.tapToScroll}
+        zone={settings.tapZone}
+        rtl={rtlAxis}
+        tips={helpTips}
+        onOpenSettings={openSettings}
       />
 
       <ChapterPickerSheet
@@ -471,6 +519,7 @@ export function ReaderScreen() {
           }}
           chapter={current ?? { url: chapterUrl, name: chapterName }}
           onOpenManga={openManga}
+          settings={{ label: 'Cài đặt trình xem', onPress: openSettings }}
         />
       )}
       <PageMenuSheet

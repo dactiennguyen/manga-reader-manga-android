@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -39,17 +41,52 @@ export function Sheet({
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  // Nền tối mờ dần tại chỗ, chỉ phần sheet trượt lên (animationType="slide" làm trượt cả nền).
+  const [mounted, setMounted] = useState(visible);
+  const [height, setHeight] = useState(600);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(progress, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => finished && setMounted(false));
+    }
+  }, [visible, progress]);
+
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [height, 0] });
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView
         style={styles.fill}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Pressable style={[styles.fill, { backgroundColor: c.backdrop }]} onPress={onClose} />
-        <View
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.backdrop, opacity: progress }]}>
+          <Pressable style={styles.fill} onPress={onClose} />
+        </Animated.View>
+        <View style={styles.fill} pointerEvents="box-none" />
+        <Animated.View
+          onLayout={e => setHeight(e.nativeEvent.layout.height)}
           style={[
             styles.sheet,
-            { backgroundColor: c.elevated, paddingBottom: insets.bottom + space.md, maxHeight },
+            {
+              backgroundColor: c.elevated,
+              paddingBottom: insets.bottom + space.md,
+              maxHeight,
+              transform: [{ translateY }],
+            },
           ]}
         >
           <View style={[styles.handle, { backgroundColor: c.border }]} />
@@ -69,7 +106,7 @@ export function Sheet({
           ) : (
             children
           )}
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

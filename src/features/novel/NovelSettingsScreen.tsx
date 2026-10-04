@@ -1,12 +1,18 @@
 import Speech from '@mhpdev/react-native-speech';
-import { RotateCcw, Volume2 } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { RotateCcw, Volume2 } from '../../components/icons';
 import { Button, confirm, Header, Screen, toast } from '../../components/ui';
 import { DEFAULT_NOVEL_SETTINGS, useSettings } from '../../store/useSettings';
 import { font, radius, space } from '../../theme';
-import { NOVEL_THEMES, novelTextStyle, SAMPLE_PARAGRAPH } from './novelThemes';
+import {
+  novelTextStyle,
+  resolveNovelTheme,
+  SAMPLE_PARAGRAPH,
+  setNovelTheme,
+  useNovelTheme,
+} from './novelThemes';
 import { NovelSettingsForm } from './NovelSettingsForm';
 import { TTS_UNSUPPORTED } from './useTts';
 
@@ -14,7 +20,7 @@ import { TTS_UNSUPPORTED } from './useTts';
 export function NovelSettingsScreen() {
   const novel = useSettings(state => state.novel);
   const setNovel = useSettings(state => state.setNovel);
-  const palette = NOVEL_THEMES[novel.theme];
+  const { palette } = useNovelTheme();
 
   // Dừng giọng nghe thử khi rời màn.
   useEffect(
@@ -40,6 +46,7 @@ export function NovelSettingsScreen() {
     );
     if (ok) {
       setNovel(DEFAULT_NOVEL_SETTINGS);
+      setNovelTheme(resolveNovelTheme(DEFAULT_NOVEL_SETTINGS.theme));
       toast('Đã đặt lại cài đặt đọc');
     }
   };

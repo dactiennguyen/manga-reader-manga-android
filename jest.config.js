@@ -5,7 +5,6 @@ const ESM_PACKAGES = [
   '@react-navigation',
   'react-native-.*',
   '@shopify/flash-list',
-  'lucide-react-native',
   '@dr.pogodin',
   '@preeternal',
   '@mhpdev',
@@ -17,10 +16,6 @@ const ESM_PACKAGES = [
 module.exports = {
   preset: '@react-native/jest-preset',
   setupFiles: ['<rootDir>/jest.setup.js'],
-  // Bản ESM của lucide là .mjs (babel-jest không xử lý) — dùng bản CommonJS.
-  moduleNameMapper: {
-    '^lucide-react-native$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js',
-  },
   transformIgnorePatterns: [`node_modules/(?!(${ESM_PACKAGES.join('|')})/)`],
   testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/', '/cookie-manga-extracted/'],
   modulePathIgnorePatterns: ['<rootDir>/cookie-manga-extracted/'],

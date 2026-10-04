@@ -1,5 +1,4 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { ChevronRight, Puzzle, RotateCw, Search, ShieldAlert } from 'lucide-react-native';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
 
 import { useAppNavigation, type RootStackParamList } from '../../app/routes';
 import { MangaGridItem } from '../../components/MangaCard';
+import { ChevronRight, Puzzle, RotateCw, Search, ShieldAlert } from '../../components/icons';
 import { EmptyState, Header, IconButton, Screen, SearchField } from '../../components/ui';
 import { errorMessage, isChallengeError } from '../../lib/http';
 import { getEngine } from '../../sources';
@@ -228,6 +228,8 @@ export function MangaSearchScreen() {
           onBlur={() => setEditing(false)}
           autoFocus={!initialQuery}
           placeholder="Tìm truyện trên mọi nguồn"
+          style={[styles.headerSearch, { backgroundColor: c.appBarField }]}
+          inputStyle={{ color: c.onAppBar }}
         />
       </Header>
       <View style={styles.flex}>{body}</View>
@@ -352,6 +354,7 @@ const SearchBlock = memo(function SearchBlockItem({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  headerSearch: { marginRight: space.sm },
   results: { paddingVertical: space.md, gap: space.md },
   summary: { paddingHorizontal: space.lg },
   block: { marginHorizontal: space.md, borderRadius: radius.lg, paddingVertical: space.md },

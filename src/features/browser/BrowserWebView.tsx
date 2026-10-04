@@ -1,4 +1,3 @@
-import { Globe, RotateCw } from 'lucide-react-native';
 import { memo, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type {
@@ -9,6 +8,7 @@ import type {
   WebViewProgressEvent,
 } from 'react-native-webview/lib/WebViewTypes';
 
+import { Globe, RotateCw } from '../../components/icons';
 import { Button } from '../../components/ui';
 import {
   WebView,

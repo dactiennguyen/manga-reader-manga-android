@@ -50,9 +50,10 @@ export function RootNavigator() {
       <Stack.Screen name="Addons" component={AddonsScreen} />
       <Stack.Screen name="AddSite" component={AddSiteScreen} />
       <Stack.Screen name="SourceSettings" component={SourceSettingsScreen} />
-      <Stack.Screen name="Catalog" component={CatalogScreen} />
+      {/* Màn addon hiển thị như nội dung trong tab (giữ thanh địa chỉ) nên chuyển kiểu mờ dần. */}
+      <Stack.Screen name="Catalog" component={CatalogScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="MangaSearch" component={MangaSearchScreen} />
-      <Stack.Screen name="MangaDetail" component={MangaDetailScreen} />
+      <Stack.Screen name="MangaDetail" component={MangaDetailScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="Reader" component={ReaderScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="NovelReader" component={NovelReaderScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="ReadingStats" component={ReadingStatsScreen} />

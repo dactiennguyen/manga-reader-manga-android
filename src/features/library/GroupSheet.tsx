@@ -1,8 +1,8 @@
-import { FolderPlus, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Dialog, Sheet } from '../../components/Sheet';
+import { FolderPlus, Trash2 } from '../../components/icons';
 import { Button, Divider, Radio, TextField, confirm, toast } from '../../components/ui';
 import { useLibrary } from '../../store/useLibrary';
 import { space } from '../../theme';

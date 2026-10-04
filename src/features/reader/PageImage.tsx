@@ -1,5 +1,4 @@
 import { useRecyclingState } from '@shopify/flash-list';
-import { ImageOff, RotateCw, ShieldCheck } from 'lucide-react-native';
 import { memo, useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -12,6 +11,7 @@ import {
   type ImageLoadEvent,
 } from 'react-native';
 
+import { ImageOff, RotateCw, ShieldCheck } from '../../components/icons';
 import type { Page } from '../../sources/types';
 import { space } from '../../theme';
 import { getPageRatio, rememberPageRatio, usePageReload } from './pageImageCache';

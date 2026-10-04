@@ -1,9 +1,21 @@
 import Clipboard from '@react-native-clipboard/clipboard';
-import { BookOpen, Copy, Download, ExternalLink, Globe, RotateCw, Share2 } from 'lucide-react-native';
 import { Share } from 'react-native';
 
 import { openInBrowser, useAppNavigation } from '../../app/routes';
 import { Sheet } from '../../components/Sheet';
+import {
+  Bookmark,
+  BookOpen,
+  Copy,
+  Download,
+  ExternalLink,
+  Globe,
+  History,
+  RotateCw,
+  Settings,
+  Share2,
+  SlidersHorizontal,
+} from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
 import { displayUrl } from '../../lib/url';
 import type { Chapter, Page } from '../../sources/types';
@@ -21,6 +33,8 @@ type MenuProps = {
   manga: DownloadManga;
   chapter: Chapter;
   onOpenManga: () => void;
+  /** Mục cài đặt của reader ("Cài đặt trình xem" / "Cài đặt đọc"). */
+  settings?: { label: string; onPress: () => void };
 };
 
 const DOWNLOAD_STATUS: Record<DownloadStatus, string> = {
@@ -31,8 +45,11 @@ const DOWNLOAD_STATUS: Record<DownloadStatus, string> = {
   error: 'Lần tải trước bị lỗi — bấm để thử lại',
 };
 
-/** Menu "⋮" của reader (dùng chung manga và novel). */
-export function ReaderMenuSheet({ visible, onClose, manga, chapter, onOpenManga }: MenuProps) {
+/**
+ * Menu "⋮" trên thanh địa chỉ của reader (dùng chung manga và novel): thao tác
+ * với chương, rồi các mục của menu trình duyệt.
+ */
+export function ReaderMenuSheet({ visible, onClose, manga, chapter, onOpenManga, settings }: MenuProps) {
   const navigation = useAppNavigation();
   const task = useChapterDownload(manga.mangaKey, chapter.url);
   const status = task ? DOWNLOAD_STATUS[task.status] : undefined;
@@ -67,8 +84,13 @@ export function ReaderMenuSheet({ visible, onClose, manga, chapter, onOpenManga 
           Share.share({ message: chapter.url }).catch(() => {});
         })}
       />
-      <Divider inset={52} />
       <ListItem icon={BookOpen} title="Trang truyện" subtitle={manga.mangaTitle} onPress={run(onOpenManga)} />
+      {settings && <ListItem icon={SlidersHorizontal} title={settings.label} onPress={run(settings.onPress)} />}
+      <Divider inset={52} />
+      <ListItem icon={Bookmark} title="Bookmark" onPress={run(() => navigation.navigate('Bookmarks'))} />
+      <ListItem icon={History} title="Lịch sử" onPress={run(() => navigation.navigate('History'))} />
+      <ListItem icon={Download} title="Tải xuống" onPress={run(() => navigation.navigate('Downloads'))} />
+      <ListItem icon={Settings} title="Cài đặt" onPress={run(() => navigation.navigate('Settings'))} />
     </Sheet>
   );
 }

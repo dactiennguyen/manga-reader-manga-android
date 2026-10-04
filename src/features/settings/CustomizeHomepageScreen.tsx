@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
+
 import {
   BookOpen,
   Bookmark,
@@ -12,31 +16,14 @@ import {
   Trash2,
   Zap,
   type LucideIcon,
-} from 'lucide-react-native';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { useShallow } from 'zustand/react/shallow';
-
-import { Dialog } from '../../components/Sheet';
-import {
-  Button,
-  Divider,
-  FieldLabel,
-  Header,
-  IconButton,
-  ListItem,
-  Screen,
-  Section,
-  Stepper,
-  TextField,
-  confirm,
-  toast,
-} from '../../components/ui';
-import { displayUrl, ensureScheme, looksLikeUrl } from '../../lib/url';
+} from '../../components/icons';
+import { Button, Divider, Header, IconButton, ListItem, Screen, Section, Stepper, confirm, toast } from '../../components/ui';
+import { displayUrl } from '../../lib/url';
 import { useBrowser, type QuickAccessItem } from '../../store/useBrowser';
 import { useSettings, type HomeWidget, type HomeWidgetId } from '../../store/useSettings';
 import { font, space, useTheme } from '../../theme';
 import { Favicon } from '../../components/Favicon';
+import { ShortcutDialog } from './ShortcutDialog';
 
 const WIDGET_INFO: Record<HomeWidgetId, { title: string; icon: LucideIcon }> = {
   quickAccess: { title: 'Truy cập nhanh', icon: Zap },
@@ -60,19 +47,14 @@ export function CustomizeHomepageScreen() {
       resetHomeWidgets: s.resetHomeWidgets,
     })),
   );
-  const { quickAccess, addQuickAccess, updateQuickAccess, removeQuickAccess, resetQuickAccess } = useBrowser(
+  const { quickAccess, removeQuickAccess, resetQuickAccess } = useBrowser(
     useShallow(s => ({
       quickAccess: s.quickAccess,
-      addQuickAccess: s.addQuickAccess,
-      updateQuickAccess: s.updateQuickAccess,
       removeQuickAccess: s.removeQuickAccess,
       resetQuickAccess: s.resetQuickAccess,
     })),
   );
-  // null: đóng; { id: undefined }: thêm mới.
-  const [editing, setEditing] = useState<{ id?: string } | null>(null);
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
+  const [editing, setEditing] = useState<QuickAccessItem | 'new' | null>(null);
 
   const resetWidgets = async () => {
     const ok = await confirm('Khôi phục mặc định', 'Thứ tự, trạng thái bật/tắt và số mục của widget sẽ về mặc định.', {
@@ -93,32 +75,6 @@ export function CustomizeHomepageScreen() {
       resetQuickAccess();
       toast('Đã khôi phục lối tắt mặc định');
     }
-  };
-
-  const openEditor = (item?: QuickAccessItem) => {
-    setTitle(item?.title ?? '');
-    setUrl(item?.url ?? '');
-    setEditing({ id: item?.id });
-  };
-
-  const saveShortcut = () => {
-    const name = title.trim();
-    const target = url.trim();
-    if (!name) {
-      toast('Hãy nhập tên lối tắt');
-      return;
-    }
-    if (!looksLikeUrl(target)) {
-      toast('Địa chỉ trang web không hợp lệ');
-      return;
-    }
-    const value = { title: name, url: ensureScheme(target) };
-    if (editing?.id) {
-      updateQuickAccess(editing.id, value);
-    } else {
-      addQuickAccess(value);
-    }
-    setEditing(null);
   };
 
   const removeShortcut = async (item: QuickAccessItem) => {
@@ -172,14 +128,14 @@ export function CustomizeHomepageScreen() {
                 title={item.title}
                 subtitle={displayUrl(item.url)}
                 left={<Favicon url={item.url} size={34} tile />}
-                onPress={() => openEditor(item)}
+                onPress={() => setEditing(item)}
                 right={
                   <View style={styles.rowActions}>
                     <IconButton
                       icon={Pencil}
                       size={18}
                       color={c.muted}
-                      onPress={() => openEditor(item)}
+                      onPress={() => setEditing(item)}
                       accessibilityLabel={`Sửa ${item.title}`}
                     />
                     <IconButton
@@ -195,7 +151,7 @@ export function CustomizeHomepageScreen() {
             </View>
           ))}
           <Divider />
-          <ListItem title="Thêm lối tắt" icon={Plus} iconColor={c.accent} onPress={() => openEditor()} />
+          <ListItem title="Thêm lối tắt" icon={Plus} iconColor={c.accent} onPress={() => setEditing('new')} />
         </Section>
         <Button
           title="Khôi phục lối tắt mặc định"
@@ -206,30 +162,11 @@ export function CustomizeHomepageScreen() {
         />
       </ScrollView>
 
-      <Dialog
+      <ShortcutDialog
         visible={editing !== null}
+        item={editing === 'new' || editing === null ? undefined : editing}
         onClose={() => setEditing(null)}
-        title={editing?.id ? 'Sửa lối tắt' : 'Thêm lối tắt'}
-        actions={[
-          { label: 'Huỷ', onPress: () => setEditing(null) },
-          { label: 'Lưu', variant: 'primary', onPress: saveShortcut, disabled: !title.trim() || !url.trim() },
-        ]}
-      >
-        <View>
-          <FieldLabel>Tên</FieldLabel>
-          <TextField value={title} onChangeText={setTitle} placeholder="Ví dụ: MangaDex" autoFocus />
-          <FieldLabel>Địa chỉ</FieldLabel>
-          <TextField
-            value={url}
-            onChangeText={setUrl}
-            placeholder="https://…"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            onSubmitEditing={saveShortcut}
-          />
-        </View>
-      </Dialog>
+      />
     </Screen>
   );
 }
@@ -277,7 +214,7 @@ function WidgetRow({
           value={widget.enabled}
           onValueChange={onToggle}
           trackColor={{ true: c.accent, false: c.border }}
-          thumbColor={c.surface}
+          thumbColor={Platform.OS === 'android' ? c.surface : undefined}
           accessibilityLabel={`Hiện ${info.title}`}
         />
       </View>

@@ -1,11 +1,11 @@
 import { useIsFocused } from '@react-navigation/native';
-import { ArrowLeft, CameraOff, Flashlight, FlashlightOff } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, PermissionsAndroid, Platform, StyleSheet, Text, View } from 'react-native';
 import { Camera, CameraType } from 'react-native-camera-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { openInBrowser, useAppNavigation } from '../../app/routes';
+import { ArrowLeft, CameraOff, Flashlight, FlashlightOff } from '../../components/icons';
 import { EmptyState, Header, IconButton, LoadingView, Screen } from '../../components/ui';
 import { ensureScheme, looksLikeUrl } from '../../lib/url';
 import { useSettings } from '../../store/useSettings';

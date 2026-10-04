@@ -27,7 +27,8 @@ npm test
 ```
 src/
 ├── app/          # AppRoot (khởi động), navigation, routes
-├── components/   # UI dùng chung: ui.tsx, Sheet, MangaCard, ErrorView, Favicon, WebView
+├── components/   # UI dùng chung: ui.tsx (Material 3), AddressBarParts (thanh địa chỉ),
+│                 # Dropdown, Sheet, MangaCard, ErrorView, Favicon, WebView, icons
 ├── features/     # mỗi thư mục là một nhóm màn
 │   ├── browser/    # trình duyệt: tab, thanh địa chỉ, adblock, chạy addon, trang chủ, QR
 │   ├── addons/     # quản lý nguồn, thêm site, cài đặt nguồn
@@ -42,6 +43,12 @@ src/
 ├── store/        # Zustand store, lưu bền bằng MMKV
 └── theme/        # bảng màu sáng/tối, khoảng cách, cỡ chữ
 ```
+
+## Giao diện
+
+Bám theo ảnh chụp của app gốc trên Google Play: Material 3 tông hổ phách (app bar vàng ở theme sáng, gần đen ở theme tối), một thanh địa chỉ duy nhất `[mảnh ghép addon] [URL … QR] [số tab] [⋮]`, và các màn addon (catalog, chi tiết, reader) hiển thị ngay dưới thanh địa chỉ như nội dung của tab.
+
+Icon dùng font Material Icons, cùng bộ với app Flutter gốc. `src/components/icons.tsx` được sinh bởi `scripts/gen-icons.py`; thêm icon thì sửa bảng `MAP` trong script rồi chạy lại.
 
 ## Nguồn truyện
 
@@ -66,4 +73,4 @@ Trên Android, `fetch` dùng chung cookie với WebView. Khi site chặn bằng 
 - Sao lưu dùng một file JSON thay cho ZIP.
 - Chống chụp màn hình mới chỉ lưu cài đặt, cần thêm mã native (`FLAG_SECURE`).
 
-Font đọc novel (Bellota, Charm, Lato, Merriweather, Patrick Hand, Quicksand) dùng giấy phép SIL OFL. Xem `android/app/src/main/assets/fonts/FONT-LICENSES.txt`.
+Font đọc novel (Bellota, Charm, Lato, Merriweather, Patrick Hand, Quicksand) dùng giấy phép SIL OFL, font Material Icons dùng Apache 2.0. Xem `android/app/src/main/assets/fonts/FONT-LICENSES.txt`.

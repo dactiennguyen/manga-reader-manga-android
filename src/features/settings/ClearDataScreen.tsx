@@ -1,9 +1,9 @@
 import { CachesDirectoryPath, readDir, unlink, type ReadDirResItemT } from '@dr.pogodin/react-native-fs';
 import CookieManager from '@preeternal/react-native-cookie-manager';
-import { Eraser } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Eraser } from '../../components/icons';
 import { Button, Checkbox, Divider, Header, Screen, Section, confirm, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { clearDetailCache } from '../../sources/cache';

@@ -243,10 +243,13 @@ export const madara: Engine = {
     const $title = $('.post-title h1, .post-title h3, .post-title h2, #manga-title h1').first();
     $title.find('span').remove();
     const rows = infoRows($);
-    const genres = $('.genres-content a')
-      .toArray()
-      .map(el => ({ id: genreSlug($(el).attr('href')), name: cleanText($(el).text()) }))
-      .filter(g => g.name);
+    const genres = uniqBy(
+      $('.genres-content a')
+        .toArray()
+        .map(el => ({ id: genreSlug($(el).attr('href')), name: cleanText($(el).text()) }))
+        .filter(g => g.name),
+      g => g.id || g.name,
+    );
     const descriptionEl = $(
       '.description-summary .summary__content, .summary__content, .manga-excerpt, .manga-summary, .description-summary',
     ).first();
@@ -281,17 +284,20 @@ export const madara: Engine = {
       rating: Number.isFinite(rating) ? rating : undefined,
       views: findRow(rows, /rank|views|lượt xem/),
       chapters: await fetchChapters(src, url, $),
-      similar: $('.related-reading-wrap, .related-manga .related-reading-content')
-        .toArray()
-        .map(el => {
-          const $a = $(el).find('h5 a, .widget-title a, a').last();
-          return {
-            url: resolveUrl($a.attr('href'), base),
-            title: cleanText($a.text()),
-            cover: imageSrc($(el).find('img'), base),
-          };
-        })
-        .filter(item => item.url && item.title),
+      similar: uniqBy(
+        $('.related-reading-wrap, .related-manga .related-reading-content')
+          .toArray()
+          .map(el => {
+            const $a = $(el).find('h5 a, .widget-title a, a').last();
+            return {
+              url: resolveUrl($a.attr('href'), base),
+              title: cleanText($a.text()),
+              cover: imageSrc($(el).find('img'), base),
+            };
+          })
+          .filter(item => item.url && item.title && item.url !== url),
+        item => item.url,
+      ),
       nsfw:
         $('.manga-title-badges.adult').length > 0 ||
         genres.some(g => NSFW_GENRES.test(g.name)),

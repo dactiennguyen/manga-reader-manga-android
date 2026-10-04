@@ -1,10 +1,10 @@
 import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
-import type { LucideIcon } from 'lucide-react-native';
 import {
-  Globe,
+  Bookmark,
   LayoutGrid,
   List,
+  ListFilter,
   Lock,
   Power,
   PowerOff,
@@ -14,12 +14,12 @@ import {
   ShieldAlert,
   Tags,
   X,
-} from 'lucide-react-native';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+} from '../../components/icons';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
-  Keyboard,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -27,32 +27,52 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
+import { useAppNavigation, type RootStackParamList } from '../../app/routes';
+import { AddonBar } from '../../components/AddressBarParts';
 import { ErrorView } from '../../components/ErrorView';
-import { gridColumns, MangaGridItem, MangaListItem, type CardBadge } from '../../components/MangaCard';
+import { Cover, gridColumns, MangaGridItem, type CoverRibbon } from '../../components/MangaCard';
+import type { LucideIcon } from '../../components/icons';
 import {
   Button,
-  Chip,
   ChipRow,
   EmptyState,
   Header,
   IconButton,
   LoadingView,
   Screen,
-  SearchField,
+  TabBar,
 } from '../../components/ui';
 import { isChallengeError } from '../../lib/http';
 import { getEngine, mangaKey } from '../../sources';
 import type { Genre, ListSort, MangaItem, SourceConfig } from '../../sources/types';
 import { useHistory } from '../../store/useHistory';
-import { useLibrary } from '../../store/useLibrary';
+import { useLibrary, type Bookmark as LibraryBookmark } from '../../store/useLibrary';
 import { useAllowNsfw, useSettings } from '../../store/useSettings';
 import { useSource, useSources } from '../../store/useSources';
-import { font, space, useTheme } from '../../theme';
-import { GenreSheet } from './GenreSheet';
+import { font, radius, space, useTheme } from '../../theme';
+import { CatalogFilterSheet } from './CatalogFilterSheet';
 import { toggleQuickBookmark } from './quickBookmark';
-import { RecentSearches } from './RecentSearches';
 import { usePagedList } from './usePagedList';
+
+/** Nhãn tab ngắn như "Latest | Popular | Newest" của app gốc. */
+const SORT_LABEL: Record<ListSort, string> = {
+  latest: 'Mới nhất',
+  popular: 'Phổ biến',
+  new: 'Truyện mới',
+  rating: 'Đánh giá',
+  az: 'A-Z',
+};
+
+/** Đang xem kết quả tìm thì không tab sắp xếp nào được chọn. */
+type CatalogTab = ListSort | 'search';
+
+/** Truyện đã bookmark: góc "có chương mới" hoặc góc sách như bìa trong Bookmark. */
+function ribbonOf(bookmark: LibraryBookmark | undefined): CoverRibbon | undefined {
+  if (!bookmark) {
+    return undefined;
+  }
+  return bookmark.newChapters ? 'new' : 'unread';
+}
 
 /** Trang chủ catalog của một nguồn (widget cataloghome/cataloglist). */
 export function CatalogScreen() {
@@ -66,18 +86,17 @@ export function CatalogScreen() {
   if (!source) {
     return (
       <Gate
-        title="Catalog"
         icon={SearchX}
         heading="Không tìm thấy nguồn"
         message="Nguồn này đã bị xoá hoặc chưa được thêm."
-        action={{ label: 'Quản lý addon', onPress: () => navigation.navigate('Addons') }}
+        action={{ label: 'Site được hỗ trợ', onPress: () => navigation.navigate('Addons') }}
       />
     );
   }
   if (source.nsfw && !allowNsfw) {
     return (
       <Gate
-        title={source.name}
+        url={source.baseUrl}
         icon={Lock}
         heading="Nguồn 18+ đang bị khoá"
         message="Bật hiển thị nội dung 18+ và xác nhận đủ tuổi trong Cài đặt để xem nguồn này."
@@ -88,7 +107,7 @@ export function CatalogScreen() {
   if (!source.enabled) {
     return (
       <Gate
-        title={source.name}
+        url={source.baseUrl}
         icon={PowerOff}
         heading="Nguồn đang tắt"
         message="Bật lại nguồn để xem danh sách truyện, tìm kiếm và kiểm tra chương mới."
@@ -108,21 +127,22 @@ export function CatalogScreen() {
 }
 
 function Gate({
-  title,
+  url,
   icon,
   heading,
   message,
   action,
 }: {
-  title: string;
+  /** Có nguồn thì giữ thanh địa chỉ như các màn addon khác. */
+  url?: string;
   icon: LucideIcon;
   heading: string;
   message: string;
   action: { label: string; onPress: () => void; icon?: LucideIcon };
 }) {
   return (
-    <Screen>
-      <Header title={title} />
+    <Screen edges={url ? ['bottom'] : undefined}>
+      {url ? <AddonBar url={url} /> : <Header title="Catalog" />}
       <EmptyState icon={icon} title={heading} message={message} action={action} />
     </Screen>
   );
@@ -143,17 +163,15 @@ function CatalogBody({
   const engine = getEngine(source.engine);
   const layout = useSettings(s => s.catalogLayout);
   const setSettings = useSettings(s => s.set);
-  const newTab = useSettings(s => s.openNativeLinksInNewTab);
   const bookmarks = useLibrary(s => s.bookmarks);
   const addSearch = useHistory(s => s.addSearch);
 
   const [sort, setSort] = useState<ListSort>(engine.sorts[0]?.id ?? 'latest');
   const [genre, setGenre] = useState<Genre | undefined>(initialGenre);
-  const [searching, setSearching] = useState(!!initialQuery?.trim());
-  const [input, setInput] = useState(initialQuery?.trim() ?? '');
   const [query, setQuery] = useState(initialQuery?.trim() ?? '');
-  const [editing, setEditing] = useState(false);
-  const [genreOpen, setGenreOpen] = useState(false);
+  // seq dựng lại sheet mỗi lần mở để ô tìm bắt đầu từ từ khoá hiện tại.
+  const [filter, setFilter] = useState({ visible: false, seq: 0 });
+  const filtered = !!query || !!genre;
 
   // Khoá danh sách: đổi nguồn/sắp xếp/thể loại/từ khoá thì tải lại từ trang 1.
   const listKey = JSON.stringify([
@@ -177,56 +195,55 @@ function CatalogBody({
   );
   const list = usePagedList(listKey, fetchPage);
 
-  const submit = useCallback(
-    (raw: string) => {
-      const q = raw.trim();
-      if (!q) {
-        return;
-      }
+  const search = useCallback(
+    (q: string) => {
       addSearch(q, 'manga');
-      setInput(q);
       setQuery(q);
-      setEditing(false);
-      Keyboard.dismiss();
+      setGenre(undefined);
     },
     [addSearch],
   );
-
-  const closeSearch = useCallback(() => {
-    Keyboard.dismiss();
-    setSearching(false);
-    setEditing(false);
-    setInput('');
+  const pickGenre = useCallback((next: Genre) => {
+    setGenre(next);
+    setQuery('');
+  }, []);
+  const clearFilters = useCallback(() => {
+    setGenre(undefined);
     setQuery('');
   }, []);
 
-  // Phím back khi đang tìm thì thoát chế độ tìm trước (trừ khi mở sẵn với từ khoá).
+  // Phím back khi đang xem kết quả tìm thì bỏ tìm trước (trừ khi mở sẵn với từ khoá).
   useFocusEffect(
     useCallback(() => {
-      if (!searching || initialQuery) {
+      if (!query || initialQuery) {
         return;
       }
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        closeSearch();
+        setQuery('');
         return true;
       });
       return () => sub.remove();
-    }, [searching, initialQuery, closeSearch]),
+    }, [query, initialQuery]),
   );
 
-  // Ẩn bàn phím bằng nút back của Android không làm mất focus ô nhập — tự bỏ focus.
-  useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidHide', () => {
-      Keyboard.dismiss();
-      setEditing(false);
-    });
-    return () => sub.remove();
-  }, []);
+  const tabs = useMemo(
+    () => engine.sorts.map((s): { key: CatalogTab; label: string } => ({ key: s.id, label: SORT_LABEL[s.id] })),
+    [engine],
+  );
+  const changeTab = useCallback(
+    (key: CatalogTab) => {
+      if (key === 'search') {
+        return;
+      }
+      setSort(key);
+      setQuery('');
+    },
+    [],
+  );
 
   const grid = layout === 'grid';
   const columns = grid ? gridColumns(width) : 1;
   const headers = useMemo(() => engine.imageHeaders(source), [engine, source]);
-  const savedBadge = useMemo<CardBadge[]>(() => [{ text: 'Đã lưu', color: c.accent }], [c.accent]);
 
   const openItem = useCallback(
     (item: MangaItem) =>
@@ -246,17 +263,13 @@ function CatalogBody({
         item={item}
         grid={grid}
         headers={headers}
-        badges={bookmarks[mangaKey(source.id, item.url)] ? savedBadge : undefined}
+        ribbon={ribbonOf(bookmarks[mangaKey(source.id, item.url)])}
         onOpen={openItem}
         onToggle={toggleItem}
       />
     ),
-    [grid, headers, bookmarks, source.id, savedBadge, openItem, toggleItem],
+    [grid, headers, bookmarks, source.id, openItem, toggleItem],
   );
-
-  const showSuggestions = searching && (editing || !query);
-  const sortLabel = engine.sorts.find(s => s.id === sort)?.label;
-  const subtitle = genre ? `Thể loại: ${genre.name} · ${sortLabel}` : sortLabel;
 
   let footer = null;
   if (list.loadingMore) {
@@ -319,15 +332,7 @@ function CatalogBody({
         extraData={bookmarks}
         onEndReached={list.loadMore}
         onEndReachedThreshold={0.8}
-        keyboardShouldPersistTaps="handled"
         contentContainerStyle={grid ? styles.gridContent : styles.listContent}
-        ListHeaderComponent={
-          query ? (
-            <Text numberOfLines={1} style={[font.caption, styles.resultLabel, { color: c.muted }]}>
-              Kết quả tìm "{query}" trên {source.name}
-            </Text>
-          ) : null
-        }
         ListEmptyComponent={
           <EmptyState icon={SearchX} title="Không tìm thấy truyện phù hợp" message={emptyMessage} style={styles.empty} />
         }
@@ -346,87 +351,95 @@ function CatalogBody({
   }
 
   return (
-    <Screen>
-      {searching ? (
-        <Header right={<IconButton icon={X} onPress={closeSearch} accessibilityLabel="Đóng tìm kiếm" />}>
-          <SearchField
-            value={input}
-            onChangeText={setInput}
-            onClear={() => setInput('')}
-            onSubmitEditing={() => submit(input)}
-            onFocus={() => setEditing(true)}
-            onBlur={() => setEditing(false)}
-            autoFocus={!initialQuery}
-            placeholder="Tìm theo tên truyện"
-          />
-        </Header>
-      ) : (
-        <Header
-          title={source.name}
-          subtitle={subtitle}
-          right={
-            <>
-              <IconButton icon={Search} onPress={() => setSearching(true)} accessibilityLabel="Tìm truyện" />
-              <IconButton
-                icon={grid ? List : LayoutGrid}
-                onPress={() => setSettings({ catalogLayout: grid ? 'list' : 'grid' })}
-                accessibilityLabel={grid ? 'Xem dạng danh sách' : 'Xem dạng lưới'}
-              />
-              <IconButton
-                icon={Globe}
-                onPress={() => openInBrowser(navigation, source.baseUrl, { newTab })}
-                accessibilityLabel="Mở site trên trình duyệt"
-              />
-            </>
-          }
-        />
-      )}
+    <Screen edges={['bottom']}>
+      <AddonBar url={source.baseUrl} />
+      <TabBar
+        tabs={tabs}
+        value={query ? 'search' : sort}
+        onChange={changeTab}
+        right={
+          <>
+            <IconButton
+              icon={Bookmark}
+              onPress={() => navigation.navigate('Bookmarks', { tab: 'media' })}
+              accessibilityLabel="Bookmark"
+              style={styles.tool}
+            />
+            <IconButton
+              icon={grid ? List : LayoutGrid}
+              onPress={() => setSettings({ catalogLayout: grid ? 'list' : 'grid' })}
+              accessibilityLabel={grid ? 'Xem dạng danh sách' : 'Xem dạng lưới'}
+              style={styles.tool}
+            />
+            <IconButton
+              icon={ListFilter}
+              active={filtered}
+              onPress={() => setFilter(f => ({ visible: true, seq: f.seq + 1 }))}
+              accessibilityLabel="Tìm và lọc theo thể loại"
+              style={styles.tool}
+            />
+          </>
+        }
+      />
 
-      {!searching && (
-        <View style={[styles.toolbar, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
-          <ChipRow>
-            {genre && <Chip label={genre.name} icon={X} selected onPress={() => setGenre(undefined)} />}
-            <Chip label={genre ? 'Đổi thể loại' : 'Lọc thể loại'} icon={Tags} onPress={() => setGenreOpen(true)} />
-            <View style={[styles.separator, { backgroundColor: c.border }]} />
-            {engine.sorts.map(option => (
-              <Chip
-                key={option.id}
-                label={option.label}
-                selected={sort === option.id}
-                onPress={() => setSort(option.id)}
-              />
-            ))}
+      {filtered && (
+        <View style={[styles.filters, { borderBottomColor: c.border }]}>
+          <ChipRow style={styles.filterChips}>
+            {!!query && (
+              <FilterChip icon={Search} label={`"${query}"`} onRemove={() => setQuery('')} accessibilityLabel="Bỏ tìm kiếm" />
+            )}
+            {genre && (
+              <FilterChip icon={Tags} label={genre.name} onRemove={() => setGenre(undefined)} accessibilityLabel="Bỏ lọc thể loại" />
+            )}
           </ChipRow>
         </View>
       )}
 
-      <View style={styles.flex}>
-        {content}
-        {showSuggestions && (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]}>
-            <RecentSearches
-              filter={input}
-              onPick={submit}
-              empty={
-                <EmptyState
-                  icon={Search}
-                  title={`Tìm trong ${source.name}`}
-                  message="Nhập tên truyện rồi bấm tìm trên bàn phím."
-                />
-              }
-            />
-          </View>
-        )}
-      </View>
+      <View style={styles.flex}>{content}</View>
 
-      <GenreSheet
-        visible={genreOpen}
-        onClose={() => setGenreOpen(false)}
-        source={source}
-        selected={genre}
-        onSelect={setGenre}
-      />
+      {filter.seq > 0 && (
+        <CatalogFilterSheet
+          key={filter.seq}
+          visible={filter.visible}
+          onClose={() => setFilter(f => ({ ...f, visible: false }))}
+          source={source}
+          query={query}
+          genre={genre}
+          onSearch={search}
+          onGenre={pickGenre}
+          onClear={clearFilters}
+        />
+      )}
     </Screen>
+  );
+}
+
+/** Chip bộ lọc đang áp dụng; bấm để bỏ. */
+function FilterChip({
+  icon: Icon,
+  label,
+  onRemove,
+  accessibilityLabel,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onRemove: () => void;
+  accessibilityLabel: string;
+}) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      onPress={onRemove}
+      accessibilityRole="button"
+      accessibilityLabel={`${accessibilityLabel}: ${label}`}
+      style={({ pressed }) => [styles.filterChip, { backgroundColor: c.primaryContainer, opacity: pressed ? 0.8 : 1 }]}
+    >
+      <Icon size={14} color={c.onPrimaryContainer} />
+      <Text numberOfLines={1} style={[styles.filterLabel, { color: c.onPrimaryContainer }]}>
+        {label}
+      </Text>
+      <X size={14} color={c.onPrimaryContainer} strokeWidth={2.5} />
+    </Pressable>
   );
 }
 
@@ -434,39 +447,101 @@ const CatalogCell = memo(function CatalogCellItem({
   item,
   grid,
   headers,
-  badges,
+  ribbon,
   onOpen,
   onToggle,
 }: {
   item: MangaItem;
   grid: boolean;
   headers: Record<string, string>;
-  badges?: CardBadge[];
+  ribbon?: CoverRibbon;
   onOpen: (item: MangaItem) => void;
   onToggle: (item: MangaItem) => void;
 }) {
-  const Card = grid ? MangaGridItem : MangaListItem;
+  if (grid) {
+    return (
+      <MangaGridItem
+        title={item.title}
+        cover={item.cover}
+        headers={headers}
+        ribbon={ribbon}
+        onPress={() => onOpen(item)}
+        onLongPress={() => onToggle(item)}
+      />
+    );
+  }
   return (
-    <Card
-      title={item.title}
-      subtitle={item.subtitle}
-      cover={item.cover}
+    <CatalogRow
+      item={item}
       headers={headers}
-      badges={badges}
+      saved={!!ribbon}
       onPress={() => onOpen(item)}
       onLongPress={() => onToggle(item)}
     />
   );
 });
 
+/** Dòng chế độ danh sách như app gốc: bìa nhỏ, tên đậm, dòng phụ. */
+function CatalogRow({
+  item,
+  headers,
+  saved,
+  onPress,
+  onLongPress,
+}: {
+  item: MangaItem;
+  headers: Record<string, string>;
+  saved: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  const { c } = useTheme();
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress} android_ripple={{ color: c.border }} style={styles.row}>
+      <Cover uri={item.cover} headers={headers} style={styles.rowCover} />
+      <View style={styles.rowBody}>
+        <Text numberOfLines={2} style={[styles.rowTitle, { color: c.text }]}>
+          {item.title}
+        </Text>
+        {!!item.subtitle && (
+          <Text numberOfLines={1} style={[font.caption, { color: c.muted }]}>
+            {item.subtitle}
+          </Text>
+        )}
+      </View>
+      {saved && <Bookmark size={18} color={c.badgeUnread} fill={c.badgeUnread} accessibilityLabel="Đã bookmark" />}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
-  toolbar: { borderBottomWidth: StyleSheet.hairlineWidth },
-  separator: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginVertical: 6 },
-  gridContent: { paddingHorizontal: space.sm, paddingTop: space.sm },
-  listContent: { paddingTop: space.xs },
-  resultLabel: { paddingHorizontal: space.md, paddingBottom: space.sm },
+  tool: { width: 40 },
+  filters: { borderBottomWidth: StyleSheet.hairlineWidth },
+  filterChips: { paddingVertical: 6 },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 28,
+    maxWidth: 260,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm + 2,
+  },
+  filterLabel: { flexShrink: 1, fontSize: 13, fontWeight: '600' },
+  gridContent: { paddingHorizontal: space.xs, paddingTop: space.sm },
+  listContent: { paddingVertical: space.xs },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
+  },
+  rowCover: { width: 56, borderRadius: radius.sm },
+  rowBody: { flex: 1, gap: 4 },
+  rowTitle: { fontSize: 14, lineHeight: 19, fontWeight: '700' },
   empty: { paddingTop: space.xl * 2 },
   footer: { alignItems: 'center', gap: space.sm, paddingVertical: space.xl },
   footerActions: { flexDirection: 'row', gap: space.sm },

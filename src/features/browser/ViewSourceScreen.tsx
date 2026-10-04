@@ -1,12 +1,12 @@
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { ChevronDown, ChevronUp, Copy, ListFilter, TextWrap } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { RootStackParamList } from '../../app/routes';
 import { ErrorView } from '../../components/ErrorView';
+import { ChevronDown, ChevronUp, Copy, ListFilter, TextWrap } from '../../components/icons';
 import { Header, IconButton, LoadingView, Screen, SearchField, toast } from '../../components/ui';
 import { getText } from '../../lib/http';
 import { displayUrl } from '../../lib/url';

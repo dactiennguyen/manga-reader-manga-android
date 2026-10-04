@@ -1,9 +1,9 @@
-import { Download, ListOrdered } from 'lucide-react-native';
 import { memo, useCallback, useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View, type ListRenderItemInfo } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Sheet } from '../../components/Sheet';
+import { Download, ListOrdered } from '../../components/icons';
 import { EmptyState } from '../../components/ui';
 import type { Chapter } from '../../sources/types';
 import { useProgress } from '../../store/progress';

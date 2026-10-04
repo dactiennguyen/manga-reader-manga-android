@@ -1,12 +1,12 @@
 import { readFile, unlink } from '@dr.pogodin/react-native-fs';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { FileX, Globe, Share2, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Share, StyleSheet, View } from 'react-native';
 import type { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
 
 import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
 import { ErrorView } from '../../components/ErrorView';
+import { FileX, Globe, Share2, Trash2 } from '../../components/icons';
 import { EmptyState, Header, IconButton, LoadingView, Screen, confirm, toast } from '../../components/ui';
 import { WebView } from '../../components/WebView';
 import { formatDate, formatTime } from '../../lib/time';

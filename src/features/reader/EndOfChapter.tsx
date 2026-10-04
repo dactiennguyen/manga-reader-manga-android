@@ -1,10 +1,10 @@
-import { BookOpen, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { BookOpen, ChevronLeft, ChevronRight, X, type LucideIcon } from '../../components/icons';
 import { Button } from '../../components/ui';
 import type { Chapter } from '../../sources/types';
-import { font, space } from '../../theme';
+import { font, radius, space } from '../../theme';
 
 /** Màu chữ của khối, theo nền reader (đen với manga, theme đọc với novel). */
 export type EndTone = { text: string; muted: string };
@@ -24,6 +24,30 @@ type Props = {
   onPrev?: () => void;
   onOpenManga: () => void;
 };
+
+/** Nút viền theo màu nền đọc (nút ghost chung lấy màu nhấn của theme app, chìm trên nền đen). */
+function ToneButton({
+  title,
+  icon: Icon,
+  tone,
+  onPress,
+}: {
+  title: string;
+  icon: LucideIcon;
+  tone: EndTone;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.toneButton, { borderColor: tone.muted }, pressed && styles.pressed]}
+    >
+      <Icon size={16} color={tone.text} />
+      <Text style={[font.caption, styles.bold, { color: tone.text }]}>{title}</Text>
+    </Pressable>
+  );
+}
 
 /**
  * Khối "Hết chương" cuối danh sách trang/đoạn văn. Đặt `key` theo chương để
@@ -72,15 +96,13 @@ export function EndOfChapter({ chapterName, next, prev, delay, active, tone, onN
             </Text>
           </View>
           <View style={styles.actions}>
-            {prev && onPrev && (
-              <Button title="Chương trước" icon={ChevronLeft} variant="secondary" small onPress={onPrev} />
-            )}
-            <Button title="Chương sau" icon={ChevronRight} onPress={onNext} />
+            {prev && onPrev && <ToneButton title="Chương trước" icon={ChevronLeft} tone={tone} onPress={onPrev} />}
+            <Button title="Chương sau" icon={ChevronRight} variant="secondary" onPress={onNext} />
           </View>
           {counting && (
             <View style={styles.countdown}>
               <Text style={[font.caption, mutedColor]}>Tự chuyển sau {remaining} giây</Text>
-              <Button title="Huỷ" icon={X} variant="ghost" small onPress={() => setCancelled(true)} />
+              <ToneButton title="Huỷ" icon={X} tone={tone} onPress={() => setCancelled(true)} />
             </View>
           )}
         </>
@@ -88,9 +110,7 @@ export function EndOfChapter({ chapterName, next, prev, delay, active, tone, onN
         <>
           <Text style={[font.body, styles.center, mutedColor]}>Đã là chương mới nhất.</Text>
           <View style={styles.actions}>
-            {prev && onPrev && (
-              <Button title="Chương trước" icon={ChevronLeft} variant="secondary" small onPress={onPrev} />
-            )}
+            {prev && onPrev && <ToneButton title="Chương trước" icon={ChevronLeft} tone={tone} onPress={onPrev} />}
             <Button title="Về trang truyện" icon={BookOpen} variant="secondary" onPress={onOpenManga} />
           </View>
         </>
@@ -106,4 +126,14 @@ const styles = StyleSheet.create({
   nextInfo: { alignItems: 'center', gap: 2, marginTop: space.sm },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: space.sm },
   countdown: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  toneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 34,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  pressed: { opacity: 0.7 },
 });

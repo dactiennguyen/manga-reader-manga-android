@@ -1,6 +1,6 @@
-import { ArrowDownUp, Info } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ArrowDownUp, Info } from '../../components/icons';
 import { Chip, ChipRow } from '../../components/ui';
 import { font, radius, space, useTheme } from '../../theme';
 

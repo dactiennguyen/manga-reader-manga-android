@@ -1,7 +1,7 @@
-import { BookOpen, Globe, Lock, Puzzle, Scale, Type } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { BookOpen, Globe, Lock, Puzzle, Scale, Type } from '../../components/icons';
 import { Divider, Header, ListItem, Screen, Section } from '../../components/ui';
 import { font, radius, space, useTheme } from '../../theme';
 import packageJson from '../../../package.json';
@@ -31,8 +31,8 @@ export function AboutScreen() {
       <Header title="Giới thiệu" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <View style={[styles.logo, { backgroundColor: c.accent }]}>
-            <BookOpen size={36} color={c.onAccent} />
+          <View style={[styles.logo, { backgroundColor: c.primaryContainer }]}>
+            <BookOpen size={36} color={c.onPrimaryContainer} />
           </View>
           <Text style={[font.title, { color: c.text }]}>Manga Reader</Text>
           <Text style={[font.caption, { color: c.muted }]}>Phiên bản {packageJson.version}</Text>

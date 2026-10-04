@@ -1,8 +1,8 @@
-import { ArrowLeft, ChevronRight, Download } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
+import { ArrowLeft, ChevronRight, Download } from '../../components/icons';
 import { Button, IconButton, Radio, toast } from '../../components/ui';
 import type { Chapter } from '../../sources/types';
 import { useProgress } from '../../store/progress';

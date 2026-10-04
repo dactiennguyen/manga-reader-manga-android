@@ -1,7 +1,7 @@
-import { ChevronDown, ChevronUp, Search, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputInstance } from 'react-native';
 
+import { ChevronDown, ChevronUp, Search, X } from '../../components/icons';
 import { IconButton } from '../../components/ui';
 import { radius, space, useTheme } from '../../theme';
 

@@ -1,7 +1,7 @@
-import type { LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 
 import { Sheet } from '../../components/Sheet';
+import type { LucideIcon } from '../../components/icons';
 import { ListItem, Radio } from '../../components/ui';
 
 export type Option<T extends string | number> = { value: T; label: string; description?: string };

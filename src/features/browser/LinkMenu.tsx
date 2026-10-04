@@ -1,8 +1,8 @@
 import Clipboard from '@react-native-clipboard/clipboard';
-import { Copy, Download, ExternalLink, Image as ImageIcon, Layers, Share2, Type } from 'lucide-react-native';
 import { Share } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
+import { Copy, Download, ExternalLink, Image as ImageIcon, Layers, Share2, Type } from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { displayUrl } from '../../lib/url';

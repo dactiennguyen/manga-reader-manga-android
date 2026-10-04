@@ -1,11 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { CloudOff, Globe, RotateCw, ShieldAlert } from 'lucide-react-native';
 import { useCallback, useRef } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { openInBrowser, useAppNavigation } from '../app/routes';
 import { errorMessage, isChallengeError } from '../lib/http';
 import { font, space, useTheme } from '../theme';
+import { CloudOff, Globe, RotateCw, ShieldAlert } from './icons';
 import { Button } from './ui';
 
 /**

@@ -1,13 +1,14 @@
-import { BookOpen, ChevronDown, ChevronUp, Pause, Play, RotateCcw, Trash2 } from 'lucide-react-native';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
 import { Cover } from '../../components/MangaCard';
-import { Button, IconButton, ProgressBar } from '../../components/ui';
+import { CircleCheck, Pause, Play, RotateCcw, Trash2 } from '../../components/icons';
+import { IconButton, ProgressBar } from '../../components/ui';
+import { formatBytes } from '../../lib/format';
 import type { ContentType } from '../../sources/types';
 import type { DownloadStatus, DownloadTask } from '../../store/useDownloads';
 import { font, radius, space, useTheme, type Palette } from '../../theme';
-import { formatBytes } from '../../lib/format';
 
 export type DownloadGroup = {
   mangaKey: string;
@@ -27,9 +28,9 @@ export type DownloadGroup = {
 };
 
 /** Gom task theo truyện, nhóm mới thêm gần nhất lên đầu. */
-export function groupTasks(tasks: Record<string, DownloadTask>): DownloadGroup[] {
+export function groupTasks(tasks: DownloadTask[]): DownloadGroup[] {
   const map = new Map<string, DownloadTask[]>();
-  for (const task of Object.values(tasks)) {
+  for (const task of tasks) {
     const list = map.get(task.mangaKey);
     if (list) {
       list.push(task);
@@ -101,96 +102,141 @@ function statusColor(status: DownloadStatus, c: Palette): string {
   }
 }
 
-// ─── Thẻ nhóm ───────────────────────────────────────────────────────────────
-
-function GroupRowBase({
-  group,
-  expanded,
-  headers,
-  blur,
-  onToggle,
-  onPauseAll,
-  onResumeAll,
-  onRemove,
-  onOpenManga,
-}: {
-  group: DownloadGroup;
-  expanded: boolean;
-  headers?: Record<string, string>;
-  blur?: boolean;
-  onToggle: (group: DownloadGroup) => void;
-  onPauseAll: (group: DownloadGroup) => void;
-  onResumeAll: (group: DownloadGroup) => void;
-  onRemove: (group: DownloadGroup) => void;
-  onOpenManga: (group: DownloadGroup) => void;
-}) {
-  const { c } = useTheme();
+/** Dòng phụ dưới tên truyện ("Downloaded 1 chapters" của app gốc). */
+export function groupSummary(group: DownloadGroup): string {
   const total = group.tasks.length;
-  const canPause = group.tasks.some(isActive);
-  const canResume = group.tasks.some(isResumable);
-  const color = statusColor(group.status, c);
-  const statusText = {
-    downloading: 'Đang tải',
-    queued: 'Đang chờ',
-    error: `${group.errorCount} chương lỗi`,
-    paused: 'Tạm dừng',
-    done: 'Hoàn tất',
-  }[group.status];
+  switch (group.status) {
+    case 'done':
+      return `Đã tải ${total} chương · ${formatBytes(group.bytes)}`;
+    case 'downloading':
+    case 'queued':
+      return `Đang tải ${group.doneCount}/${total} chương…`;
+    case 'paused':
+      return `Tạm dừng · ${group.doneCount}/${total} chương`;
+    default:
+      return `Lỗi ${group.errorCount} chương · đã tải ${group.doneCount}/${total}`;
+  }
+}
 
+// ─── Vòng tiến độ ───────────────────────────────────────────────────────────
+
+const RING = 36;
+const RING_STROKE = 3;
+
+function ProgressRing({ value, color, track }: { value: number; color: string; track: string }) {
+  const r = (RING - RING_STROKE) / 2;
+  const circumference = 2 * Math.PI * r;
+  const center = RING / 2;
   return (
-    <View style={[styles.group, { backgroundColor: c.surface }, expanded && styles.groupExpanded]}>
-      <Pressable onPress={() => onToggle(group)} style={styles.groupHead}>
-        <Cover uri={group.cover} headers={headers} blur={blur} style={styles.groupCover} />
-        <View style={styles.flex}>
-          <Text numberOfLines={2} style={[font.label, { color: c.text }]}>
-            {group.title}
-          </Text>
-          <Text style={[font.caption, { color: c.muted }]}>
-            {group.doneCount}/{total} chương đã tải · {formatBytes(group.bytes)}
-          </Text>
-          <View style={styles.statusLine}>
-            <View style={[styles.statusDot, { backgroundColor: color }]} />
-            <Text style={[font.caption, styles.bold, { color: c.textSecondary }]}>{statusText}</Text>
-          </View>
-          {group.status !== 'done' && <ProgressBar value={group.progress} color={color} />}
-        </View>
-        {expanded ? <ChevronUp size={20} color={c.muted} /> : <ChevronDown size={20} color={c.muted} />}
-      </Pressable>
-      <View style={styles.groupActions}>
-        {canPause && (
-          <Button title="Tạm dừng tất cả" icon={Pause} variant="secondary" small onPress={() => onPauseAll(group)} />
-        )}
-        {canResume && (
-          <Button title="Tiếp tục tất cả" icon={Play} variant="secondary" small onPress={() => onResumeAll(group)} />
-        )}
-        <Button title="Xoá nhóm" icon={Trash2} variant="danger" small onPress={() => onRemove(group)} />
-        <View style={styles.flex} />
-        <IconButton
-          icon={BookOpen}
-          size={20}
-          color={c.muted}
-          onPress={() => onOpenManga(group)}
-          accessibilityLabel="Mở trang truyện"
-        />
-      </View>
-    </View>
+    <Svg width={RING} height={RING} style={styles.ring}>
+      <Circle cx={center} cy={center} r={r} stroke={track} strokeWidth={RING_STROKE} fill="none" />
+      <Circle
+        cx={center}
+        cy={center}
+        r={r}
+        stroke={color}
+        strokeWidth={RING_STROKE}
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={`${circumference} ${circumference}`}
+        strokeDashoffset={circumference * (1 - Math.min(1, Math.max(0, value)))}
+        transform={`rotate(-90 ${center} ${center})`}
+      />
+    </Svg>
   );
 }
 
-export const GroupRow = memo(GroupRowBase);
+// ─── Dòng truyện ────────────────────────────────────────────────────────────
 
-// ─── Dòng chương ────────────────────────────────────────────────────────────
+function DownloadMangaRowBase({
+  group,
+  headers,
+  blur,
+  onOpen,
+  onLongPress,
+  onPause,
+  onResume,
+}: {
+  group: DownloadGroup;
+  headers?: Record<string, string>;
+  blur?: boolean;
+  onOpen: (group: DownloadGroup) => void;
+  onLongPress: (group: DownloadGroup) => void;
+  onPause: (group: DownloadGroup) => void;
+  onResume: (group: DownloadGroup) => void;
+}) {
+  const { c } = useTheme();
+  const active = group.status === 'downloading' || group.status === 'queued';
+
+  let trailing;
+  if (group.status === 'done') {
+    trailing = (
+      <View style={styles.trailing}>
+        <CircleCheck size={24} color={c.textSecondary} />
+      </View>
+    );
+  } else if (active) {
+    trailing = (
+      <Pressable
+        onPress={() => onPause(group)}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`Tạm dừng, đã tải ${Math.round(group.progress * 100)}%`}
+        style={styles.trailing}
+      >
+        <ProgressRing value={group.progress} color={c.accent} track={c.surfaceAlt} />
+        <Pause size={14} color={c.text} fill={c.text} />
+      </Pressable>
+    );
+  } else {
+    const error = group.status === 'error';
+    trailing = (
+      <IconButton
+        icon={error ? RotateCcw : Play}
+        color={error ? c.danger : c.text}
+        onPress={() => onResume(group)}
+        accessibilityLabel={error ? 'Thử lại chương lỗi' : 'Tiếp tục tải'}
+      />
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={() => onOpen(group)}
+      onLongPress={() => onLongPress(group)}
+      android_ripple={{ color: c.border }}
+      accessibilityHint="Xem các chương đã tải"
+      style={styles.row}
+    >
+      <Cover uri={group.cover} headers={headers} blur={blur} style={styles.cover} />
+      <View style={styles.flex}>
+        <Text numberOfLines={2} style={[styles.title, { color: c.text }]}>
+          {group.title}
+        </Text>
+        <Text
+          numberOfLines={1}
+          style={[styles.summary, { color: group.status === 'error' ? c.danger : c.textSecondary }]}
+        >
+          {groupSummary(group)}
+        </Text>
+      </View>
+      {trailing}
+    </Pressable>
+  );
+}
+
+export const DownloadMangaRow = memo(DownloadMangaRowBase);
+
+// ─── Dòng chương (trong sheet của truyện) ───────────────────────────────────
 
 function ChapterRowBase({
   task,
-  last,
   onOpen,
   onPause,
   onResume,
   onRemove,
 }: {
   task: DownloadTask;
-  last: boolean;
   onOpen: (task: DownloadTask) => void;
   onPause: (task: DownloadTask) => void;
   onResume: (task: DownloadTask) => void;
@@ -201,48 +247,42 @@ function ChapterRowBase({
   const pages = task.total > 0 ? `${task.done}/${task.total}` : '';
   const status = {
     queued: 'Đang chờ',
-    downloading: pages ? `Đang tải ${pages}` : 'Đang lấy danh sách trang…',
+    downloading: pages ? `Đang tải ${pages} trang` : 'Đang lấy danh sách trang…',
     paused: pages ? `Tạm dừng · ${pages}` : 'Tạm dừng',
-    done: `Hoàn tất · ${formatBytes(task.bytes)}`,
+    done: `Đã tải · ${formatBytes(task.bytes)}`,
     error: 'Lỗi',
   }[task.status];
   const showBar = task.status !== 'done' && task.status !== 'error' && task.total > 0;
 
   return (
-    <Pressable
-      onPress={() => onOpen(task)}
-      android_ripple={{ color: c.border }}
-      style={[styles.chapter, { backgroundColor: c.surface }, last && styles.chapterLast]}
-    >
-      <View style={[styles.chapterDivider, { backgroundColor: c.border }]} />
-      <View style={styles.chapterBody}>
-        <View style={styles.flex}>
-          <Text numberOfLines={1} style={[font.body, { color: c.text }]}>
-            {task.chapterName}
-          </Text>
-          <Text numberOfLines={2} style={[font.caption, { color: task.status === 'error' ? c.danger : color }]}>
-            {status}
-            {task.status === 'error' && task.error ? `: ${task.error}` : ''}
-          </Text>
-          {showBar && <ProgressBar value={task.done / task.total} color={color} />}
-        </View>
-        {isActive(task) && (
-          <IconButton icon={Pause} size={18} onPress={() => onPause(task)} accessibilityLabel="Tạm dừng" />
-        )}
-        {task.status === 'paused' && (
-          <IconButton icon={Play} size={18} onPress={() => onResume(task)} accessibilityLabel="Tiếp tục" />
-        )}
-        {task.status === 'error' && (
-          <IconButton icon={RotateCcw} size={18} onPress={() => onResume(task)} accessibilityLabel="Thử lại" />
-        )}
-        <IconButton
-          icon={Trash2}
-          size={18}
-          color={c.muted}
-          onPress={() => onRemove(task)}
-          accessibilityLabel="Xoá chương"
-        />
+    <Pressable onPress={() => onOpen(task)} android_ripple={{ color: c.border }} style={styles.chapter}>
+      <View style={styles.flex}>
+        <Text numberOfLines={1} style={[font.body, { color: c.text }]}>
+          {task.chapterName}
+        </Text>
+        <Text numberOfLines={2} style={[font.caption, { color: task.status === 'done' ? c.muted : color }]}>
+          {status}
+          {task.status === 'error' && task.error ? `: ${task.error}` : ''}
+        </Text>
+        {showBar && <ProgressBar value={task.done / task.total} color={color} />}
       </View>
+      {task.status === 'done' && <CircleCheck size={18} color={c.muted} style={styles.chapterCheck} />}
+      {isActive(task) && (
+        <IconButton icon={Pause} size={18} onPress={() => onPause(task)} accessibilityLabel="Tạm dừng" />
+      )}
+      {task.status === 'paused' && (
+        <IconButton icon={Play} size={18} onPress={() => onResume(task)} accessibilityLabel="Tiếp tục" />
+      )}
+      {task.status === 'error' && (
+        <IconButton icon={RotateCcw} size={18} onPress={() => onResume(task)} accessibilityLabel="Thử lại" />
+      )}
+      <IconButton
+        icon={Trash2}
+        size={18}
+        color={c.muted}
+        onPress={() => onRemove(task)}
+        accessibilityLabel="Xoá chương"
+      />
     </Pressable>
   );
 }
@@ -250,31 +290,21 @@ function ChapterRowBase({
 export const ChapterRow = memo(ChapterRowBase);
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  bold: { fontWeight: '600' },
-  group: {
-    marginHorizontal: space.md,
-    marginTop: space.md,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  groupExpanded: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  groupHead: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md },
-  groupCover: { width: 56 },
-  statusLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  groupActions: {
+  flex: { flex: 1, gap: 3 },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingBottom: space.sm,
+    gap: space.md,
+    paddingLeft: space.lg,
+    paddingRight: space.sm,
+    paddingVertical: space.sm,
   },
-  chapter: { marginHorizontal: space.md },
-  chapterLast: { borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg, paddingBottom: space.xs },
-  chapterDivider: { height: StyleSheet.hairlineWidth, marginLeft: space.lg },
-  chapterBody: {
+  cover: { width: 56, height: 76, borderRadius: radius.sm },
+  title: { fontSize: 15, fontWeight: '700' },
+  summary: { fontSize: 14 },
+  trailing: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute', top: (44 - RING) / 2, left: (44 - RING) / 2 },
+  chapter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.xs,
@@ -283,4 +313,5 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     minHeight: 56,
   },
+  chapterCheck: { marginHorizontal: space.xs },
 });

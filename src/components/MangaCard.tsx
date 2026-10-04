@@ -1,8 +1,8 @@
-import { ImageOff } from 'lucide-react-native';
 import { memo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { font, radius, space, useTheme } from '../theme';
+import { BadgeAlert, BookOpen, ImageOff } from './icons';
 
 type CoverProps = {
   uri?: string;
@@ -38,12 +38,20 @@ export const Cover = memo(CoverView);
 
 export type CardBadge = { text: string; color: string };
 
+/** Góc tam giác trên bìa: có chương mới / còn chương chưa đọc (cover/newch, cover/unread). */
+export type CoverRibbon = 'new' | 'unread';
+
 type CardProps = {
   title: string;
   subtitle?: string;
   cover?: string;
   headers?: Record<string, string>;
   badges?: CardBadge[];
+  ribbon?: CoverRibbon;
+  /** Nhãn cam góc dưới trái: tên site của truyện. */
+  siteLabel?: string;
+  /** Ô chữ góc dưới phải: "M" truyện tranh, "N" tiểu thuyết. */
+  typeLabel?: string;
   onPress?: () => void;
   onLongPress?: () => void;
   selected?: boolean;
@@ -53,12 +61,59 @@ type CardProps = {
 };
 
 /** Ô truyện trong lưới (BookmarkGrid / catalog grid). */
+/** Lớp phủ trên bìa giống app gốc: góc tam giác, nhãn site, ô loại truyện. */
+export function CoverOverlays({
+  ribbon,
+  siteLabel,
+  typeLabel,
+  badges,
+}: Pick<CardProps, 'ribbon' | 'siteLabel' | 'typeLabel' | 'badges'>) {
+  const { c } = useTheme();
+  const RibbonIcon = ribbon === 'new' ? BadgeAlert : BookOpen;
+  return (
+    <>
+      {ribbon && (
+        <View pointerEvents="none" style={styles.ribbonWrap}>
+          <View
+            style={[styles.ribbon, { borderTopColor: ribbon === 'new' ? c.badgeNew : c.badgeUnread }]}
+          />
+          <RibbonIcon size={14} color="#fff" strokeWidth={2.5} style={styles.ribbonIcon} />
+        </View>
+      )}
+      {!!badges?.length && (
+        <View pointerEvents="none" style={[styles.badges, ribbon && styles.badgesShifted]}>
+          {badges.map(b => (
+            <View key={b.text} style={[styles.badge, { backgroundColor: b.color }]}>
+              <Text style={styles.badgeText}>{b.text}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {!!siteLabel && (
+        <View pointerEvents="none" style={[styles.site, { backgroundColor: c.badgeSite }]}>
+          <Text numberOfLines={1} style={styles.siteText}>
+            {siteLabel}
+          </Text>
+        </View>
+      )}
+      {!!typeLabel && (
+        <View pointerEvents="none" style={[styles.type, { backgroundColor: c.badgeType }]}>
+          <Text style={styles.typeText}>{typeLabel}</Text>
+        </View>
+      )}
+    </>
+  );
+}
+
 function GridItem({
   title,
   subtitle,
   cover,
   headers,
   badges,
+  ribbon,
+  siteLabel,
+  typeLabel,
   onPress,
   onLongPress,
   selected,
@@ -74,17 +129,9 @@ function GridItem({
     >
       <View>
         <Cover uri={cover} headers={headers} blur={blur} style={selected && [styles.selected, { borderColor: c.accent }]} />
-        {!!badges?.length && (
-          <View style={styles.badges}>
-            {badges.map(b => (
-              <View key={b.text} style={[styles.badge, { backgroundColor: b.color }]}>
-                <Text style={styles.badgeText}>{b.text}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <CoverOverlays ribbon={ribbon} siteLabel={siteLabel} typeLabel={typeLabel} badges={badges} />
       </View>
-      <Text numberOfLines={2} style={[font.caption, styles.gridTitle, { color: c.text }]}>
+      <Text numberOfLines={2} style={[styles.gridTitle, { color: c.text }]}>
         {title}
       </Text>
       {!!subtitle && (
@@ -105,6 +152,8 @@ function ListRow({
   cover,
   headers,
   badges,
+  ribbon,
+  typeLabel,
   onPress,
   onLongPress,
   selected,
@@ -124,7 +173,10 @@ function ListRow({
         { opacity: pressed ? 0.8 : dimmed ? 0.55 : 1 },
       ]}
     >
-      <Cover uri={cover} headers={headers} blur={blur} style={styles.listCover} />
+      <View style={styles.listCover}>
+        <Cover uri={cover} headers={headers} blur={blur} />
+        <CoverOverlays ribbon={ribbon} typeLabel={typeLabel} />
+      </View>
       <View style={styles.listBody}>
         <Text numberOfLines={2} style={[font.label, { color: c.text }]}>
           {title}
@@ -170,8 +222,40 @@ const styles = StyleSheet.create({
   },
   selected: { borderWidth: 3 },
   grid: { flex: 1, padding: space.xs + 2 },
-  gridTitle: { marginTop: 6, fontWeight: '600' },
-  gridSubtitle: { fontSize: 11, marginTop: 2 },
+  gridTitle: { marginTop: 6, fontSize: 13, lineHeight: 17, fontWeight: '700', textAlign: 'center' },
+  gridSubtitle: { fontSize: 11, marginTop: 2, textAlign: 'center' },
+  ribbonWrap: { position: 'absolute', top: 0, left: 0, width: 34, height: 34 },
+  ribbon: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 34,
+    borderRightWidth: 34,
+    borderRightColor: 'transparent',
+    borderTopLeftRadius: radius.md,
+  },
+  ribbonIcon: { position: 'absolute', top: 3, left: 3 },
+  badgesShifted: { left: 36 },
+  site: {
+    position: 'absolute',
+    left: 5,
+    bottom: 5,
+    maxWidth: '78%',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  siteText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  type: {
+    position: 'absolute',
+    right: 5,
+    bottom: 5,
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   badges: { position: 'absolute', top: 6, left: 6, right: 6, flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },

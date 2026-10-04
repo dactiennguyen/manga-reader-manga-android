@@ -1,4 +1,10 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
+import { ErrorView } from '../../components/ErrorView';
+import { Cover } from '../../components/MangaCard';
 import {
   BookOpen,
   CircleCheck,
@@ -9,13 +15,7 @@ import {
   Save,
   Settings,
   TriangleAlert,
-} from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
-
-import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
-import { ErrorView } from '../../components/ErrorView';
-import { Cover } from '../../components/MangaCard';
+} from '../../components/icons';
 import {
   Button,
   Checkbox,

@@ -29,28 +29,33 @@ import { sameUrl } from '../../lib/url';
 import { mangaKey } from '../../sources';
 import type { Chapter } from '../../sources/types';
 import { getProgress } from '../../store/progress';
+import { useActiveTab } from '../../store/useBrowser';
 import { useReaderSettings } from '../../store/useReaderSettings';
 import { useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
 import { font, space, useTheme } from '../../theme';
 import { ChapterPickerSheet } from '../reader/ChapterPickerSheet';
 import { prefetchChapter } from '../reader/chapterCache';
+import { BrightnessOverlay } from '../reader/chromeParts';
 import { EndOfChapter, type EndTone } from '../reader/EndOfChapter';
 import { ReaderMenuSheet } from '../reader/ReaderMenus';
 import { backToManga } from '../reader/readerNavigation';
+import { TapHelpDialog } from '../reader/TapHelpDialog';
 import { resolveTap } from '../reader/tapZones';
+import { useAutoScroll, type ScrollMetrics } from '../reader/useAutoScroll';
 import { useChapterNavigation } from '../reader/useChapterNavigation';
 import { useChapterSession, type SessionTarget } from '../reader/useChapterSession';
 import { useKeepScreenOn } from '../reader/useKeepScreenOn';
 import { knownManga, useChapterContent, useMangaDetail } from '../reader/useReaderData';
 import { createValueStore } from '../reader/valueStore';
 import { NovelChrome, type NovelChromeActions } from './NovelChrome';
-import { NOVEL_THEMES, novelTextStyle } from './novelThemes';
+import { NovelFontSheet } from './NovelFontSheet';
+import { novelTextStyle, useNovelTheme } from './novelThemes';
 import { NovelSettingsSheet } from './NovelSettingsSheet';
 import { useTts } from './useTts';
 
 type NovelNavigation = NativeStackNavigationProp<RootStackParamList, 'NovelReader'>;
-type SheetName = 'chapters' | 'settings' | 'menu';
+type SheetName = 'chapters' | 'settings' | 'menu' | 'fonts' | 'help';
 
 const NO_PARAGRAPHS: string[] = [];
 const NO_CHAPTERS: Chapter[] = [];
@@ -60,6 +65,16 @@ const MAX_SCROLL_RETRIES = 6;
 /** Còn chừng này đoạn là tải sẵn chương sau. */
 const PREFETCH_NEXT_WITHIN = 15;
 const VIEWABILITY = { itemVisiblePercentThreshold: 10 };
+/** Thả tay có quán tính mà không nhận được sự kiện kết thúc thì vẫn chạy lại tự cuộn. */
+const MOMENTUM_FALLBACK_MS = 1500;
+/** Chiều cao thanh địa chỉ + hàng tiêu đề, để tên chương không nằm dưới thanh khi mở. */
+const TOP_CHROME = 108;
+const HELP_TIPS = [
+  'Chạm vùng giữa để hiện hoặc ẩn thanh điều khiển.',
+  'Chạm phần trên/dưới để cuộn lên/xuống gần một màn (bật/tắt bằng biểu tượng bàn tay).',
+  'Thanh bên phải: danh sách chương, tự cuộn (↕) và đọc to.',
+  'Panel dưới: kéo tới đoạn, độ sáng, cỡ chữ, phông, giãn dòng và màu nền.',
+];
 
 const paragraphKey = (_: string, index: number) => String(index);
 
@@ -95,7 +110,8 @@ export function NovelReaderScreen() {
   const { sourceId, mangaUrl, chapterUrl, paragraph: paragraphParam } = route.params;
   const key = mangaKey(sourceId, mangaUrl);
   const src = useSource(sourceId);
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
+  const incognito = useActiveTab().incognito;
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const screen = useWindowDimensions();
@@ -108,10 +124,11 @@ export function NovelReaderScreen() {
       immersive: state.immersive,
       keepScreenOn: state.keepScreenOn,
       tapToScroll: state.tapToScroll,
+      autoScrollSpeed: state.autoScrollSpeed,
     })),
   );
   useKeepScreenOn(reader.keepScreenOn);
-  const palette = NOVEL_THEMES[novel.theme];
+  const { id: themeId, palette } = useNovelTheme();
   const textStyle = useMemo(() => novelTextStyle(novel, palette), [novel, palette]);
   const paragraphStyle = useMemo(
     () => [styles.paragraph, { paddingVertical: Math.round(novel.fontSize * 0.4) }],
@@ -161,10 +178,19 @@ export function NovelReaderScreen() {
   );
   const session = useChapterSession(target, startParagraph);
 
-  const [progressStore] = useState(() => createValueStore(0));
+  const [positionStore] = useState(() => createValueStore(0));
   const [chromeVisible, setChromeVisible] = useState(!reader.immersive);
   const [sheet, setSheet] = useState<SheetName | null>(null);
   const [endVisible, setEndVisible] = useState(false);
+  const [autoScrolling, setAutoScrolling] = useState(false);
+  const autoMetrics = useRef<ScrollMetrics>({
+    offset: 0,
+    contentHeight: 0,
+    viewport: 0,
+    userScrolling: false,
+    resync: false,
+  });
+  const momentumTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listRef = useRef<FlatList<string>>(null);
   const scroll = useRef({
     offset: 0,
@@ -182,8 +208,8 @@ export function NovelReaderScreen() {
   /** TTS đọc hết chương và đang chờ chương sau tải xong để đọc tiếp. */
   const ttsContinue = useRef(false);
 
-  const live = useRef({ paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll });
-  live.current = { paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll };
+  const live = useRef({ paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll, autoScrolling });
+  live.current = { paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll, autoScrolling };
 
   // ─── Đọc to ──────────────────────────────────────────────────────────────
 
@@ -271,11 +297,13 @@ export function NovelReaderScreen() {
 
   useEffect(() => {
     setEndVisible(false);
+    setAutoScrolling(false);
+    positionStore.set(0);
     const s = scroll.current;
     s.atEnd = false;
     s.firstVisible = 0;
     s.footer = 0;
-  }, [chapterUrl]);
+  }, [chapterUrl, positionStore]);
 
   // Mở lại đúng đoạn đang đọc dở.
   useEffect(() => {
@@ -306,17 +334,16 @@ export function NovelReaderScreen() {
     if (s.content <= 0 || s.viewport <= 0) {
       return;
     }
-    const textEnd = s.content - s.footer - s.viewport;
-    progressStore.set(textEnd > 0 ? Math.min(100, Math.max(0, Math.round((s.offset / textEnd) * 100))) : 100);
     const atEnd = s.offset + s.viewport >= s.content - s.footer / 2;
     if (atEnd !== s.atEnd) {
       s.atEnd = atEnd;
       setEndVisible(atEnd);
+      positionStore.set(atEnd ? Math.max(0, live.current.paragraphs.length - 1) : s.firstVisible);
       if (atEnd) {
         session.reportFinished();
       }
     }
-  }, [progressStore, session]);
+  }, [positionStore, session]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -325,6 +352,10 @@ export function NovelReaderScreen() {
       s.offset = contentOffset.y;
       s.content = contentSize.height;
       s.viewport = layoutMeasurement.height;
+      const m = autoMetrics.current;
+      m.offset = s.offset;
+      m.contentHeight = s.content;
+      m.viewport = s.viewport;
       evaluateEnd();
     },
     [evaluateEnd],
@@ -333,6 +364,7 @@ export function NovelReaderScreen() {
   const onContentSize = useCallback(
     (_width: number, height: number) => {
       scroll.current.content = height;
+      autoMetrics.current.contentHeight = height;
       evaluateEnd();
     },
     [evaluateEnd],
@@ -341,6 +373,7 @@ export function NovelReaderScreen() {
   const onListLayout = useCallback(
     (event: LayoutChangeEvent) => {
       scroll.current.viewport = event.nativeEvent.layout.height;
+      autoMetrics.current.viewport = event.nativeEvent.layout.height;
       evaluateEnd();
     },
     [evaluateEnd],
@@ -350,9 +383,54 @@ export function NovelReaderScreen() {
     scroll.current.footer = event.nativeEvent.layout.height;
   }, []);
 
-  const markPositioned = useCallback(() => {
-    scroll.current.positioned = true;
+  // Kéo tay thì tạm dừng tự cuộn, thả ra (hết quán tính) thì chạy tiếp từ vị trí mới.
+  const clearMomentumTimer = useCallback(() => {
+    if (momentumTimer.current) {
+      clearTimeout(momentumTimer.current);
+      momentumTimer.current = null;
+    }
   }, []);
+
+  const onBeginDrag = useCallback(() => {
+    scroll.current.positioned = true;
+    clearMomentumTimer();
+    autoMetrics.current.userScrolling = true;
+  }, [clearMomentumTimer]);
+
+  const onEndDrag = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (Math.abs(event.nativeEvent.velocity?.y ?? 0) < 0.05) {
+        autoMetrics.current.userScrolling = false;
+        return;
+      }
+      clearMomentumTimer();
+      momentumTimer.current = setTimeout(() => {
+        momentumTimer.current = null;
+        autoMetrics.current.userScrolling = false;
+      }, MOMENTUM_FALLBACK_MS);
+    },
+    [clearMomentumTimer],
+  );
+
+  const onMomentumEnd = useCallback(() => {
+    clearMomentumTimer();
+    autoMetrics.current.userScrolling = false;
+  }, [clearMomentumTimer]);
+
+  useEffect(() => clearMomentumTimer, [clearMomentumTimer]);
+
+  const scrollListTo = useCallback((offset: number) => {
+    listRef.current?.scrollToOffset({ offset, animated: false });
+  }, []);
+  const stopAutoScroll = useCallback(() => setAutoScrolling(false), []);
+
+  useAutoScroll({
+    active: autoScrolling && ready && focused && sheet === null,
+    speed: reader.autoScrollSpeed,
+    metrics: autoMetrics,
+    scrollTo: scrollListTo,
+    onEnd: stopAutoScroll,
+  });
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: ViewableInfo) => {
@@ -370,11 +448,12 @@ export function NovelReaderScreen() {
       }
       const s = scroll.current;
       s.firstVisible = first;
+      const l = live.current;
+      const total = l.paragraphs.length;
+      positionStore.set(s.atEnd ? Math.max(0, total - 1) : first);
       if (!s.positioned) {
         return;
       }
-      const l = live.current;
-      const total = l.paragraphs.length;
       session.reportPosition(first, total);
       if (last >= total - 1) {
         session.reportFinished();
@@ -383,7 +462,7 @@ export function NovelReaderScreen() {
         prefetchChapter(l.src, l.key, l.next.url);
       }
     },
-    [session],
+    [session, positionStore],
   );
 
   // ─── Điều hướng ──────────────────────────────────────────────────────────
@@ -434,21 +513,51 @@ export function NovelReaderScreen() {
     setChromeVisible(false);
     const s = scroll.current;
     const max = Math.max(0, s.content - s.viewport);
-    const offset = s.offset + (action === 'next' ? 1 : -1) * s.viewport * STEP_RATIO;
-    listRef.current?.scrollToOffset({ offset: Math.min(max, Math.max(0, offset)), animated: true });
+    const offset = Math.min(max, Math.max(0, s.offset + (action === 'next' ? 1 : -1) * s.viewport * STEP_RATIO));
+    if (l.autoScrolling) {
+      // Đang tự cuộn: nhảy thẳng để vòng tự cuộn chạy tiếp từ vị trí mới.
+      autoMetrics.current.offset = offset;
+      autoMetrics.current.resync = true;
+      listRef.current?.scrollToOffset({ offset, animated: false });
+    } else {
+      listRef.current?.scrollToOffset({ offset, animated: true });
+    }
   }, []);
 
   const closeSheet = useCallback(() => setSheet(null), []);
+
+  const openSettings = useCallback(() => setSheet('settings'), []);
 
   const chromeActions = useMemo<NovelChromeActions>(
     () => ({
       onBack: () => navigation.goBack(),
       onPrev: goPrev,
       onNext: goNext,
+      onSeek: paragraph => {
+        scroll.current.retries = 0;
+        autoMetrics.current.resync = true;
+        positionStore.set(paragraph);
+        scrollToParagraph(paragraph, false);
+      },
       onOpenChapters: () => setSheet('chapters'),
-      onOpenSettings: () => setSheet('settings'),
       onOpenMenu: () => setSheet('menu'),
+      onOpenHelp: () => setSheet('help'),
+      onOpenFonts: () => setSheet('fonts'),
+      onToggleTapToScroll: () => {
+        const { tapToScroll, set } = useReaderSettings.getState();
+        set({ tapToScroll: !tapToScroll });
+        toast(tapToScroll ? 'Đã tắt chạm để cuộn' : 'Đã bật chạm để cuộn');
+      },
+      onToggleAutoScroll: () => {
+        if (!live.current.autoScrolling) {
+          ttsContinue.current = false;
+          ttsStop();
+          setChromeVisible(false);
+        }
+        setAutoScrolling(value => !value);
+      },
       onReadAloud: () => {
+        setAutoScrolling(false);
         setChromeVisible(false);
         ttsStart(live.current.paragraphs, scroll.current.firstVisible);
       },
@@ -456,7 +565,7 @@ export function NovelReaderScreen() {
       onResumeTts: ttsResume,
       onStopTts: ttsStop,
     }),
-    [navigation, goPrev, goNext, ttsStart, ttsPause, ttsResume, ttsStop],
+    [navigation, goPrev, goNext, positionStore, scrollToParagraph, ttsStart, ttsPause, ttsResume, ttsStop],
   );
 
   // ─── Hiển thị ────────────────────────────────────────────────────────────
@@ -546,7 +655,7 @@ export function NovelReaderScreen() {
         keyExtractor={paragraphKey}
         ListHeaderComponent={header}
         ListFooterComponent={footer}
-        contentContainerStyle={{ paddingTop: insets.top + space.xl * 2, paddingBottom: insets.bottom + space.xl }}
+        contentContainerStyle={{ paddingTop: insets.top + TOP_CHROME + space.lg, paddingBottom: insets.bottom + space.xl }}
         onScroll={handleScroll}
         scrollEventThrottle={32}
         onLayout={onListLayout}
@@ -554,7 +663,9 @@ export function NovelReaderScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={VIEWABILITY}
         onScrollToIndexFailed={onScrollToIndexFailed}
-        onScrollBeginDrag={markPositioned}
+        onScrollBeginDrag={onBeginDrag}
+        onScrollEndDrag={onEndDrag}
+        onMomentumScrollEnd={onMomentumEnd}
         initialNumToRender={15}
         maxToRenderPerBatch={10}
         windowSize={11}
@@ -563,30 +674,37 @@ export function NovelReaderScreen() {
     );
   }
 
+  const showChrome = chromeVisible || !ready;
+
   return (
     <View style={[styles.fill, { backgroundColor: palette.bg }]}>
       {focused && (
         <StatusBar
-          barStyle={palette.statusBar}
+          // Khi hiện thanh, thanh trạng thái nằm trên thanh địa chỉ (vàng ở theme sáng).
+          barStyle={showChrome ? (dark || incognito ? 'light-content' : 'dark-content') : palette.statusBar}
           hidden={hideStatusBar || (reader.immersive && !chromeVisible)}
           showHideTransition="fade"
           animated
         />
       )}
       {body}
+      <BrightnessOverlay />
 
       <NovelChrome
-        visible={chromeVisible || !ready}
-        title={mangaTitle}
-        subtitle={chapterName}
+        visible={showChrome}
+        chapterUrl={chapterUrl}
+        chapterName={chapterName}
         palette={palette}
-        progressStore={progressStore}
+        themeId={themeId}
+        positionStore={positionStore}
+        paragraphCount={paragraphs.length}
         ready={ready}
         hasPrev={!!prev}
         hasNext={!!next}
+        tapToScroll={reader.tapToScroll}
+        autoScrolling={autoScrolling}
         ttsState={tts.state}
         ttsIndex={tts.index}
-        paragraphCount={paragraphs.length}
         actions={chromeActions}
       />
 
@@ -599,6 +717,15 @@ export function NovelReaderScreen() {
         onPick={openChapter}
       />
       <NovelSettingsSheet visible={sheet === 'settings'} onClose={closeSheet} />
+      <NovelFontSheet visible={sheet === 'fonts'} onClose={closeSheet} />
+      <TapHelpDialog
+        visible={sheet === 'help'}
+        onClose={closeSheet}
+        tapToScroll={reader.tapToScroll}
+        zone="topBottom"
+        rtl={false}
+        tips={HELP_TIPS}
+      />
       {src && (
         <ReaderMenuSheet
           visible={sheet === 'menu'}
@@ -613,6 +740,7 @@ export function NovelReaderScreen() {
           }}
           chapter={current ?? { url: chapterUrl, name: chapterName }}
           onOpenManga={openManga}
+          settings={{ label: 'Cài đặt đọc', onPress: openSettings }}
         />
       )}
     </View>

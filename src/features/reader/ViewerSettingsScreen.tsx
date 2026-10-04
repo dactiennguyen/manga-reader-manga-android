@@ -1,7 +1,7 @@
-import { Eraser, RotateCcw } from 'lucide-react-native';
 import { ScrollView, StyleSheet } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
+import { Eraser, RotateCcw } from '../../components/icons';
 import { Button, confirm, Header, ListItem, Screen, Section, toast } from '../../components/ui';
 import {
   DEFAULT_READER_SETTINGS,

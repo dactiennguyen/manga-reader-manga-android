@@ -1,11 +1,11 @@
 import Clipboard from '@react-native-clipboard/clipboard';
-import { Bookmark, Copy, EllipsisVertical, Pencil, SearchX, SquarePlus, Trash2 } from 'lucide-react-native';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { openInBrowser, useAppNavigation } from '../../app/routes';
 import { Dialog, Sheet } from '../../components/Sheet';
+import { Bookmark, Copy, EllipsisVertical, Pencil, SearchX, SquarePlus, Trash2 } from '../../components/icons';
 import {
   EmptyState,
   FieldLabel,

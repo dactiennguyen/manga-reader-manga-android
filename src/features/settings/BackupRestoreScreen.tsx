@@ -1,7 +1,7 @@
-import { CircleAlert, Download, FileUp, Upload } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { CircleAlert, Download, FileUp, Upload } from '../../components/icons';
 import { Button, Checkbox, Header, Screen, Section, confirm, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { formatDate, formatTime } from '../../lib/time';

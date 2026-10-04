@@ -1,3 +1,8 @@
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
+
+import { useAppNavigation } from '../../app/routes';
 import {
   AppWindow,
   BarChart3,
@@ -26,12 +31,7 @@ import {
   Type,
   DatabaseBackup,
   Zap,
-} from 'lucide-react-native';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { useShallow } from 'zustand/react/shallow';
-
-import { useAppNavigation } from '../../app/routes';
+} from '../../components/icons';
 import { Divider, Header, ListItem, Screen, Section, SwitchRow, toast } from '../../components/ui';
 import { useAllowNsfw, useSettings, type AppSettings, type SearchEngineId } from '../../store/useSettings';
 import { font, space, useTheme } from '../../theme';

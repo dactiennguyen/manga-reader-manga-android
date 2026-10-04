@@ -1,9 +1,9 @@
-import { BookOpen, EllipsisVertical, House, Layers, Plus, VenetianMask, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
 import { Sheet } from '../../components/Sheet';
+import { BookOpen, EllipsisVertical, House, Layers, Plus, VenetianMask, X } from '../../components/icons';
 import { EmptyState, Header, IconButton, ListItem, Screen, Segmented, confirm } from '../../components/ui';
 import { formatRelative } from '../../lib/time';
 import { displayUrl } from '../../lib/url';
@@ -15,6 +15,7 @@ type Mode = 'normal' | 'incognito';
 
 /** Danh sách tab (thường + ẩn danh). */
 export function TabsScreen() {
+  const { c } = useTheme();
   const navigation = useAppNavigation();
   const { width } = useWindowDimensions();
   const tabs = useBrowser(s => s.tabs);
@@ -62,8 +63,18 @@ export function TabsScreen() {
         title="Tab"
         right={
           <>
-            <IconButton icon={Plus} onPress={newTab} accessibilityLabel={incognito ? 'Tab ẩn danh mới' : 'Tab mới'} />
-            <IconButton icon={EllipsisVertical} onPress={() => setMenuOpen(true)} accessibilityLabel="Tuỳ chọn" />
+            <IconButton
+              icon={Plus}
+              color={c.onAppBar}
+              onPress={newTab}
+              accessibilityLabel={incognito ? 'Tab ẩn danh mới' : 'Tab mới'}
+            />
+            <IconButton
+              icon={EllipsisVertical}
+              color={c.onAppBar}
+              onPress={() => setMenuOpen(true)}
+              accessibilityLabel="Tuỳ chọn"
+            />
           </>
         }
       />
@@ -142,6 +153,7 @@ function TabCard({
   const { c } = useTheme();
   const home = tab.showHome || !tab.url;
   const title = home ? 'Trang chủ' : tab.title || displayUrl(tab.url);
+  const headerFg = active ? c.onPrimaryContainer : c.text;
   return (
     <Pressable
       onPress={onPress}
@@ -156,13 +168,13 @@ function TabCard({
         active && styles.cardActive,
       ]}
     >
-      <View style={styles.cardHeader}>
-        {home ? <House size={16} color={c.muted} /> : <Favicon url={tab.url} label={title} size={16} />}
-        <Text numberOfLines={1} style={[font.caption, styles.cardTitle, { color: c.text }]}>
+      <View style={[styles.cardHeader, active && { backgroundColor: c.primaryContainer }]}>
+        {home ? <House size={16} color={headerFg} /> : <Favicon url={tab.url} label={title} size={16} />}
+        <Text numberOfLines={1} style={[font.caption, styles.cardTitle, { color: headerFg }]}>
           {title}
         </Text>
-        <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Đóng tab">
-          <X size={16} color={c.muted} />
+        <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Đóng tab" style={styles.close}>
+          <X size={16} color={active ? c.onPrimaryContainer : c.muted} />
         </Pressable>
       </View>
       <View style={[styles.preview, { backgroundColor: tab.incognito ? c.incognito : c.surfaceAlt }]}>
@@ -186,10 +198,10 @@ function TabCard({
 }
 
 const styles = StyleSheet.create({
-  segment: { paddingHorizontal: space.lg, paddingVertical: space.md },
-  list: { paddingHorizontal: space.md, paddingBottom: space.xl, gap: space.md },
+  segment: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm },
+  list: { paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.xl, gap: space.md },
   column: { gap: space.md },
-  card: { borderRadius: radius.lg, borderWidth: 1, overflow: 'hidden' },
+  card: { borderRadius: radius.lg + 2, borderWidth: 1, overflow: 'hidden' },
   cardActive: { borderWidth: 2 },
   cardHeader: {
     flexDirection: 'row',
@@ -199,8 +211,9 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
   },
   cardTitle: { flex: 1, fontWeight: '600' },
+  close: { padding: 2 },
   preview: {
-    height: 128,
+    height: 150,
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,

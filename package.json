@@ -22,7 +22,6 @@
     "@sayem314/react-native-keep-awake": "^2.0.0",
     "@shopify/flash-list": "^2.3.3",
     "cheerio": "^1.2.0",
-    "lucide-react-native": "^1.52.0",
     "react": "19.2.3",
     "react-native": "0.87.1",
     "react-native-camera-kit": "^18.0.1",

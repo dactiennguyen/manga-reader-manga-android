@@ -1,97 +1,75 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { ArrowUpDown, LayoutGrid, List, RefreshCw } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import type { RootStackParamList } from '../../app/routes';
-import { Header, IconButton, Screen, TabBar } from '../../components/ui';
-import { useLibrary, type LibrarySort } from '../../store/useLibrary';
-import { useSettings } from '../../store/useSettings';
-import { useTheme } from '../../theme';
-import { OptionSheet, type Option } from '../settings/OptionSheet';
+import { DropdownButton } from '../../components/Dropdown';
+import { Header, Screen } from '../../components/ui';
+import { useLibrary } from '../../store/useLibrary';
+import { space } from '../../theme';
 import { MediaBookmarksTab } from './MediaBookmarksTab';
 import { MediaSitesTab } from './MediaSitesTab';
-import { runLibraryUpdateCheck } from './runUpdateCheck';
-import { useUpdateCheck } from './updates';
+import { QuickAccessTab } from './QuickAccessTab';
 import { WebBookmarksTab } from './WebBookmarksTab';
 
-type Tab = 'media' | 'web' | 'sites';
+type BookmarkView = 'manga' | 'novel' | 'web' | 'sites' | 'quick';
 
-const SORT_OPTIONS: Option<LibrarySort>[] = [
-  { value: 'updated', label: 'Mới cập nhật', description: 'Truyện có chương mới lên đầu' },
-  { value: 'added', label: 'Mới thêm' },
-  { value: 'title', label: 'Tên (A–Z)' },
-  { value: 'unread', label: 'Chưa đọc nhiều' },
-];
+const VIEW_OPTIONS = [
+  { value: 'manga', label: 'Truyện tranh' },
+  { value: 'novel', label: 'Tiểu thuyết' },
+  { value: 'web', label: 'Trang web' },
+  { value: 'sites', label: 'Site truyện' },
+  { value: 'quick', label: 'Truy cập nhanh' },
+] as const;
+
+type TabParam = NonNullable<RootStackParamList['Bookmarks']>['tab'];
+
+/** Tham số `tab` cũ → lựa chọn của nút thả xuống. */
+function viewFromParam(tab: TabParam): BookmarkView {
+  if (tab === 'web' || tab === 'sites') {
+    return tab;
+  }
+  // 'media': mở Truyện tranh, trừ khi thư viện chỉ có tiểu thuyết.
+  const list = Object.values(useLibrary.getState().bookmarks);
+  return !list.some(b => b.content === 'manga') && list.some(b => b.content === 'novel') ? 'novel' : 'manga';
+}
 
 export function BookmarksScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Bookmarks'>>();
-  const { c } = useTheme();
-  const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'media');
-  const [sortOpen, setSortOpen] = useState(false);
-  const sort = useLibrary(s => s.sort);
-  const setSort = useLibrary(s => s.setSort);
-  const newCount = useLibrary(s =>
-    Object.values(s.bookmarks).reduce((n, b) => n + (b.newChapters ? 1 : 0), 0),
-  );
-  const layout = useSettings(s => s.libraryLayout);
-  const setSettings = useSettings(s => s.set);
-  const running = useUpdateCheck(s => s.running);
+  const tabParam = route.params?.tab;
+  const [view, setView] = useState<BookmarkView>(() => viewFromParam(tabParam));
 
-  const tabs = useMemo(
-    () => [
-      { key: 'media' as const, label: 'Truyện', badge: newCount },
-      { key: 'web' as const, label: 'Trang web' },
-      { key: 'sites' as const, label: 'Site truyện' },
-    ],
-    [newCount],
+  // Màn đã mở sẵn trong stack mà được điều hướng tới với tab khác.
+  useEffect(() => {
+    if (tabParam) {
+      setView(viewFromParam(tabParam));
+    }
+  }, [tabParam]);
+
+  const dropdown = (
+    <View style={styles.dropdown}>
+      <DropdownButton value={view} options={VIEW_OPTIONS} onChange={setView} />
+    </View>
   );
 
   return (
     <Screen>
-      <Header
-        title="Bookmark"
-        right={
-          tab === 'media' ? (
-            <>
-              {running ? (
-                <View style={styles.spinner}>
-                  <ActivityIndicator size="small" color={c.accent} />
-                </View>
-              ) : (
-                <IconButton
-                  icon={RefreshCw}
-                  onPress={() => runLibraryUpdateCheck()}
-                  accessibilityLabel="Kiểm tra cập nhật"
-                />
-              )}
-              <IconButton icon={ArrowUpDown} onPress={() => setSortOpen(true)} accessibilityLabel="Sắp xếp" />
-              <IconButton
-                icon={layout === 'grid' ? List : LayoutGrid}
-                onPress={() => setSettings({ libraryLayout: layout === 'grid' ? 'list' : 'grid' })}
-                accessibilityLabel={layout === 'grid' ? 'Xem dạng danh sách' : 'Xem dạng lưới'}
-              />
-            </>
-          ) : undefined
-        }
-      />
-      <TabBar tabs={tabs} value={tab} onChange={setTab} />
-      {tab === 'media' && <MediaBookmarksTab />}
-      {tab === 'web' && <WebBookmarksTab />}
-      {tab === 'sites' && <MediaSitesTab />}
-
-      <OptionSheet
-        visible={sortOpen}
-        onClose={() => setSortOpen(false)}
-        title="Sắp xếp bookmark"
-        options={SORT_OPTIONS}
-        value={sort}
-        onSelect={setSort}
-      />
+      {view === 'manga' || view === 'novel' ? (
+        // key: đổi loại thì bỏ lựa chọn/tìm kiếm/lọc nhóm của loại trước.
+        <MediaBookmarksTab key={view} content={view} dropdown={dropdown} />
+      ) : (
+        <>
+          <Header title="Bookmark" right={dropdown} />
+          {view === 'web' && <WebBookmarksTab />}
+          {view === 'sites' && <MediaSitesTab />}
+          {view === 'quick' && <QuickAccessTab />}
+        </>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  spinner: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  // Cách mép phải/nút kế bên như app gốc.
+  dropdown: { marginRight: space.sm },
 });

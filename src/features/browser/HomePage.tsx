@@ -1,8 +1,9 @@
-import { BookOpen, Search, SlidersHorizontal, VenetianMask } from 'lucide-react-native';
 import { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
+import { BookOpen, Search, SlidersHorizontal, VenetianMask } from '../../components/icons';
+import { Button } from '../../components/ui';
 import { useSettings, type HomeWidget } from '../../store/useSettings';
 import { font, radius, space, useTheme } from '../../theme';
 import { ADDRESS_PLACEHOLDER } from './AddressBar';
@@ -15,7 +16,7 @@ import {
 } from './HomeWidgets';
 import type { TourRegister } from './Tour';
 
-/** Trang chủ của trình duyệt: ô tìm kiếm + các widget theo "Tuỳ chỉnh trang chủ". */
+/** Trang chủ của trình duyệt: logo, ô tìm kiếm + các widget theo "Tuỳ chỉnh trang chủ". */
 export const HomePage = memo(function BrowserHome({
   incognito,
   onOpenUrl,
@@ -32,6 +33,7 @@ export const HomePage = memo(function BrowserHome({
   const { c } = useTheme();
   const navigation = useAppNavigation();
   const widgets = useSettings(s => s.homeWidgets);
+  const category = useSettings(s => s.searchCategory);
 
   const renderWidget = (widget: HomeWidget) => {
     switch (widget.id) {
@@ -58,78 +60,73 @@ export const HomePage = memo(function BrowserHome({
     >
       <View style={styles.hero}>
         <View style={styles.brand}>
-          <View style={[styles.logo, { backgroundColor: incognito ? c.incognito : c.accent }]}>
+          <View style={[styles.logo, { backgroundColor: incognito ? c.incognito : c.primaryContainer }]}>
             {incognito ? (
-              <VenetianMask size={22} color={c.onIncognito} />
+              <VenetianMask size={26} color={c.onIncognito} />
             ) : (
-              <BookOpen size={22} color={c.onAccent} />
+              <BookOpen size={26} color={c.onPrimaryContainer} />
             )}
           </View>
           <Text style={[styles.appName, { color: c.text }]}>Manga Reader</Text>
         </View>
         {incognito && (
-          <Text style={[font.caption, styles.center, { color: c.muted }]}>
-            Bạn đang dùng tab ẩn danh — lịch sử duyệt web và từ khoá tìm kiếm sẽ không được lưu.
-          </Text>
+          <View style={[styles.notice, { backgroundColor: c.incognito }]}>
+            <VenetianMask size={18} color={c.onIncognito} />
+            <Text style={[font.caption, styles.flex, { color: c.onIncognito }]}>
+              Bạn đang dùng tab ẩn danh — lịch sử duyệt web và từ khoá tìm kiếm sẽ không được lưu.
+            </Text>
+          </View>
         )}
         <Pressable
           onPress={onFocusSearch}
           accessibilityRole="search"
-          style={({ pressed }) => [
-            styles.search,
-            { backgroundColor: c.surface, borderColor: c.border, opacity: pressed ? 0.8 : 1 },
-          ]}
+          android_ripple={{ color: c.border }}
+          style={({ pressed }) => [styles.search, { backgroundColor: c.surfaceAlt, opacity: pressed ? 0.85 : 1 }]}
         >
-          <Search size={20} color={c.muted} />
+          <Search size={20} color={c.textSecondary} />
           <Text numberOfLines={1} style={[font.body, styles.flex, { color: c.muted }]}>
-            {ADDRESS_PLACEHOLDER}
+            {category === 'manga' ? 'Tìm truyện trên các nguồn đã thêm' : ADDRESS_PLACEHOLDER}
           </Text>
         </Pressable>
       </View>
 
       {widgets.filter(w => w.enabled).map(renderWidget)}
 
-      <Pressable
+      <Button
+        title="Tuỳ chỉnh trang chủ"
+        icon={SlidersHorizontal}
+        variant="ghost"
+        small
         onPress={() => navigation.navigate('CustomizeHomepage')}
-        hitSlop={8}
-        style={({ pressed }) => [styles.customize, pressed && styles.pressed]}
-      >
-        <SlidersHorizontal size={16} color={c.accent} />
-        <Text style={[font.label, { color: c.accent }]}>Tuỳ chỉnh trang chủ</Text>
-      </Pressable>
+        style={styles.customize}
+      />
     </ScrollView>
   );
 });
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  center: { textAlign: 'center' },
-  pressed: { opacity: 0.6 },
   content: { paddingBottom: space.xl, gap: space.xl },
-  hero: { paddingHorizontal: space.lg, paddingTop: space.xl + space.sm, gap: space.lg },
+  hero: { paddingHorizontal: space.lg, paddingTop: space.xl + space.md, gap: space.lg },
   brand: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md },
-  logo: { width: 42, height: 42, borderRadius: radius.md + 2, alignItems: 'center', justifyContent: 'center' },
-  appName: { fontSize: 26, fontWeight: '800', letterSpacing: -0.4 },
+  logo: { width: 48, height: 48, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  appName: { fontSize: 28, fontWeight: '700', letterSpacing: -0.3 },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    height: 52,
+    height: 56,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    paddingHorizontal: space.lg,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    paddingHorizontal: space.lg + 2,
+    overflow: 'hidden',
   },
-  customize: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.sm,
-    alignSelf: 'center',
-    paddingVertical: space.sm,
-  },
+  customize: { alignSelf: 'center' },
 });

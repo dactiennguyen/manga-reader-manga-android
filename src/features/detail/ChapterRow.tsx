@@ -1,7 +1,7 @@
-import { CircleAlert, CircleCheck, CirclePause, Clock3, Download } from 'lucide-react-native';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CircleAlert, CircleCheck, CirclePause, Clock3, Download } from '../../components/icons';
 import type { Chapter } from '../../sources/types';
 import { useChapterDownload } from '../../store/useDownloads';
 import { font, space, useTheme } from '../../theme';
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 3 },
   read: { opacity: 0.45 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  title: { flex: 1 },
+  title: { flex: 1, fontWeight: '600' },
   bold: { fontWeight: '700' },
   dot: { width: 8, height: 8, borderRadius: 4 },
   progress: { flexDirection: 'row', alignItems: 'center', gap: 3 },

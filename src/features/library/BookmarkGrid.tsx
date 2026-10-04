@@ -2,9 +2,24 @@ import { FlashList } from '@shopify/flash-list';
 import { memo, useMemo } from 'react';
 import { RefreshControl, StyleSheet, useWindowDimensions } from 'react-native';
 
-import { gridColumns, MangaGridItem, MangaListItem, type CardBadge } from '../../components/MangaCard';
+import {
+  gridColumns,
+  MangaGridItem,
+  MangaListItem,
+  type CardBadge,
+  type CoverRibbon,
+} from '../../components/MangaCard';
+import { getHost } from '../../lib/url';
 import type { Bookmark } from '../../store/useLibrary';
 import { space, useTheme } from '../../theme';
+
+export type BookmarkSourceInfo = {
+  headers: Record<string, string>;
+  name: string;
+  nsfw: boolean;
+  /** Tên miền của site, hiện ở nhãn cam trên bìa. */
+  host: string;
+};
 
 type ItemProps = {
   bookmark: Bookmark;
@@ -13,9 +28,18 @@ type ItemProps = {
   headers?: Record<string, string>;
   blur: boolean;
   sourceName?: string;
+  host: string;
   onPress: (bookmark: Bookmark) => void;
   onLongPress: (bookmark: Bookmark) => void;
 };
+
+/** Góc bìa như app gốc: "có chương mới" ưu tiên hơn "còn chương chưa đọc". */
+function ribbonOf(bookmark: Bookmark): CoverRibbon | undefined {
+  if (bookmark.newChapters) {
+    return 'new';
+  }
+  return bookmark.unread ? 'unread' : undefined;
+}
 
 function BookmarkItemBase({
   bookmark,
@@ -24,43 +48,45 @@ function BookmarkItemBase({
   headers,
   blur,
   sourceName,
+  host,
   onPress,
   onLongPress,
 }: ItemProps) {
   const { c } = useTheme();
-  const badges = useMemo(() => {
-    const list: CardBadge[] = [];
-    if (bookmark.newChapters) {
-      list.push({ text: `MỚI ${bookmark.newChapters}`, color: c.badgeNew });
-    }
-    if (bookmark.unread) {
-      list.push({ text: String(bookmark.unread), color: c.badgeUnread });
-    }
-    return list;
-  }, [bookmark.newChapters, bookmark.unread, c.badgeNew, c.badgeUnread]);
-
   const common = {
     title: bookmark.title,
     cover: bookmark.cover,
     headers,
-    badges,
     blur,
     selected,
+    ribbon: ribbonOf(bookmark),
     onPress: () => onPress(bookmark),
     onLongPress: () => onLongPress(bookmark),
   };
 
+  // Dạng danh sách còn chỗ nên giữ số chương mới/chưa đọc dưới tên truyện.
+  const badges = useMemo(() => {
+    const list: CardBadge[] = [];
+    if (bookmark.newChapters) {
+      list.push({ text: `${bookmark.newChapters} chương mới`, color: c.badgeNew });
+    }
+    if (bookmark.unread) {
+      list.push({ text: `${bookmark.unread} chưa đọc`, color: c.badgeUnread });
+    }
+    return list;
+  }, [bookmark.newChapters, bookmark.unread, c.badgeNew, c.badgeUnread]);
+
   if (layout === 'list') {
     const meta = [
-      sourceName ?? bookmark.sourceId,
+      host || sourceName || bookmark.sourceId,
       bookmark.chapterCount ? `${bookmark.chapterCount} chương` : '',
       bookmark.group,
     ]
       .filter(Boolean)
       .join(' · ');
-    return <MangaListItem {...common} subtitle={bookmark.latestChapter} meta={meta} />;
+    return <MangaListItem {...common} badges={badges} subtitle={bookmark.latestChapter} meta={meta} />;
   }
-  return <MangaGridItem {...common} subtitle={bookmark.latestChapter} />;
+  return <MangaGridItem {...common} siteLabel={host || sourceName} />;
 }
 
 const BookmarkItem = memo(BookmarkItemBase);
@@ -80,7 +106,7 @@ export function BookmarkGrid({
   items: Bookmark[];
   layout: 'grid' | 'list';
   selected: ReadonlySet<string>;
-  sourceInfo: Record<string, { headers: Record<string, string>; name: string; nsfw: boolean }>;
+  sourceInfo: Record<string, BookmarkSourceInfo>;
   allowNsfw: boolean;
   refreshing: boolean;
   onRefresh: () => void;
@@ -112,6 +138,7 @@ export function BookmarkGrid({
             selected={selected.has(item.key)}
             headers={info?.headers}
             sourceName={info?.name}
+            host={info?.host || getHost(item.url)}
             blur={!!(item.nsfw || info?.nsfw) && !allowNsfw}
             onPress={onPress}
             onLongPress={onLongPress}
@@ -123,6 +150,6 @@ export function BookmarkGrid({
 }
 
 const styles = StyleSheet.create({
-  grid: { paddingHorizontal: space.sm, paddingBottom: 96 },
-  list: { paddingBottom: 96 },
+  grid: { paddingHorizontal: space.xs, paddingTop: space.xs, paddingBottom: 96 },
+  list: { paddingTop: space.xs, paddingBottom: 96 },
 });

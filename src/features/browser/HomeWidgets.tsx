@@ -1,10 +1,10 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useMemo, useState, type ReactNode, type Ref } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
-import { Cover, MangaGridItem, type CardBadge } from '../../components/MangaCard';
+import { MangaGridItem, type CoverRibbon } from '../../components/MangaCard';
 import { Dialog, Sheet } from '../../components/Sheet';
+import { Pencil, Plus, Trash2 } from '../../components/icons';
 import { Button, FieldLabel, ListItem, TextField, toast } from '../../components/ui';
 import { displayUrl, ensureScheme, getHost, looksLikeUrl } from '../../lib/url';
 import { getEngine, languageName, type ContentType, type SourceConfig } from '../../sources';
@@ -35,10 +35,15 @@ export function WidgetSection({
   return (
     <View ref={ref} collapsable={false} style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={[font.heading, styles.flex, { color: c.text }]}>{title}</Text>
+        <Text style={[styles.sectionTitle, styles.flex, { color: c.text }]}>{title}</Text>
         {action && (
-          <Pressable onPress={action.onPress} hitSlop={8}>
-            <Text style={[font.caption, styles.bold, { color: c.accent }]}>{action.label}</Text>
+          <Pressable
+            onPress={action.onPress}
+            hitSlop={8}
+            android_ripple={{ color: c.border, borderless: true }}
+            style={styles.textButton}
+          >
+            <Text style={[font.label, { color: c.accent }]}>{action.label}</Text>
           </Pressable>
         )}
       </View>
@@ -50,24 +55,38 @@ export function WidgetSection({
 function EmptyHint({ text, action }: { text: string; action?: { label: string; onPress: () => void } }) {
   const { c } = useTheme();
   return (
-    <View style={[styles.emptyCard, { backgroundColor: c.surface }]}>
-      <Text style={[font.body, { color: c.muted }]}>{text}</Text>
-      {action && <Button title={action.label} icon={Plus} small onPress={action.onPress} style={styles.emptyButton} />}
+    <View style={[styles.emptyCard, { backgroundColor: c.surfaceAlt }]}>
+      <Text style={[font.body, { color: c.textSecondary }]}>{text}</Text>
+      {action && (
+        <Button
+          title={action.label}
+          icon={Plus}
+          variant="secondary"
+          small
+          onPress={action.onPress}
+          style={styles.emptyButton}
+        />
+      )}
     </View>
   );
 }
 
-/** Header ảnh bìa theo nguồn (Referer chống hotlink). */
-function useSourceHeaders(): (sourceId: string) => Record<string, string> | undefined {
+type SourceInfo = { name: string; headers: Record<string, string> };
+
+/** Tên site (nhãn cam trên bìa) và header ảnh bìa theo nguồn (Referer chống hotlink). */
+function useSourceInfo(): (sourceId: string) => SourceInfo | undefined {
   const sources = useSources(s => s.sources);
   return useMemo(() => {
-    const map = new Map<string, Record<string, string>>();
+    const map = new Map<string, SourceInfo>();
     for (const src of sources) {
-      map.set(src.id, getEngine(src.engine).imageHeaders(src));
+      map.set(src.id, { name: src.name, headers: getEngine(src.engine).imageHeaders(src) });
     }
     return (sourceId: string) => map.get(sourceId);
   }, [sources]);
 }
+
+/** Ô chữ loại truyện ở góc bìa như app gốc. */
+const typeLabelOf = (content: ContentType) => (content === 'novel' ? 'N' : 'M');
 
 // ─── Truy cập nhanh ─────────────────────────────────────────────────────────
 
@@ -87,7 +106,7 @@ export function QuickAccessWidget({ limit, onOpenUrl }: { limit: number; onOpenU
             onLongPress={() => setSelected(item)}
             style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
           >
-            <View style={[styles.tileIcon, { backgroundColor: c.surface }]}>
+            <View style={[styles.tileIcon, { backgroundColor: c.surfaceAlt }]}>
               <Favicon url={item.url} label={item.title} size={28} />
             </View>
             <Text numberOfLines={1} style={[styles.tileLabel, { color: c.textSecondary }]}>
@@ -190,12 +209,11 @@ function QuickAccessDialog({ item, onClose }: { item?: QuickAccessItem; onClose:
 // ─── Đọc tiếp ───────────────────────────────────────────────────────────────
 
 export function ContinueReadingWidget({ limit }: { limit: number }) {
-  const { c } = useTheme();
   const navigation = useAppNavigation();
   const reading = useHistory(s => s.reading);
   const sources = useSources(s => s.sources);
   const allowNsfw = useAllowNsfw();
-  const headersOf = useSourceHeaders();
+  const sourceInfo = useSourceInfo();
 
   const items = useMemo(() => {
     const visible: { entry: ReadingEntry; source: SourceConfig }[] = [];
@@ -229,29 +247,30 @@ export function ContinueReadingWidget({ limit }: { limit: number }) {
   return (
     <WidgetSection title="Đọc tiếp" action={{ label: 'Lịch sử', onPress: () => navigation.navigate('History', { tab: 'reading' }) }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
-        {items.map(({ entry }) => (
-          <Pressable
-            key={entry.key}
-            onPress={() => open(entry)}
-            onLongPress={() =>
-              navigation.navigate('MangaDetail', {
-                sourceId: entry.sourceId,
-                url: entry.mangaUrl,
-                title: entry.title,
-                cover: entry.cover,
-              })
-            }
-            style={({ pressed }) => [styles.readingCard, pressed && styles.pressed]}
-          >
-            <Cover uri={entry.cover} headers={headersOf(entry.sourceId)} />
-            <Text numberOfLines={2} style={[font.caption, styles.bold, { color: c.text }]}>
-              {entry.title}
-            </Text>
-            <Text numberOfLines={1} style={[styles.small, { color: c.accent }]}>
-              {entry.chapterName}
-            </Text>
-          </Pressable>
-        ))}
+        {items.map(({ entry }) => {
+          const info = sourceInfo(entry.sourceId);
+          return (
+            <View key={entry.key} style={styles.coverCard}>
+              <MangaGridItem
+                title={entry.title}
+                subtitle={entry.chapterName}
+                cover={entry.cover}
+                headers={info?.headers}
+                siteLabel={info?.name}
+                typeLabel={typeLabelOf(entry.content)}
+                onPress={() => open(entry)}
+                onLongPress={() =>
+                  navigation.navigate('MangaDetail', {
+                    sourceId: entry.sourceId,
+                    url: entry.mangaUrl,
+                    title: entry.title,
+                    cover: entry.cover,
+                  })
+                }
+              />
+            </View>
+          );
+        })}
       </ScrollView>
     </WidgetSection>
   );
@@ -281,9 +300,14 @@ export function MediaSitesWidget({ limit, tourRef }: { limit: number; tourRef?: 
             <Pressable
               key={src.id}
               onPress={() => navigation.navigate('Catalog', { sourceId: src.id })}
-              style={({ pressed }) => [styles.site, { backgroundColor: c.surface }, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.site, { backgroundColor: c.surfaceAlt }, pressed && styles.pressed]}
             >
-              <Favicon url={src.baseUrl} label={src.name} size={28} />
+              <View>
+                <Favicon url={src.baseUrl} label={src.name} size={32} />
+                <View style={[styles.siteType, { backgroundColor: c.badgeType, borderColor: c.surfaceAlt }]}>
+                  <Text style={styles.siteTypeText}>{typeLabelOf(src.content)}</Text>
+                </View>
+              </View>
               <View style={styles.flex}>
                 <Text numberOfLines={1} style={[font.label, { color: c.text }]}>
                   {src.name}
@@ -308,12 +332,11 @@ export function MediaSitesWidget({ limit, tourRef }: { limit: number; tourRef?: 
 // ─── Truyện đã bookmark ─────────────────────────────────────────────────────
 
 export function BookmarksWidget({ content, limit }: { content: ContentType; limit: number }) {
-  const { c } = useTheme();
   const navigation = useAppNavigation();
   const bookmarks = useLibrary(s => s.bookmarks);
   const sort = useLibrary(s => s.sort);
   const allowNsfw = useAllowNsfw();
-  const headersOf = useSourceHeaders();
+  const sourceInfo = useSourceInfo();
   const list = useMemo(
     () =>
       sortBookmarks(
@@ -332,21 +355,19 @@ export function BookmarksWidget({ content, limit }: { content: ContentType; limi
       {list.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
           {list.map(b => {
-            const badges: CardBadge[] = [];
-            if (b.newChapters) {
-              badges.push({ text: 'MỚI', color: c.badgeNew });
-            }
-            if (b.unread) {
-              badges.push({ text: String(b.unread), color: c.badgeUnread });
-            }
+            const info = sourceInfo(b.sourceId);
+            // Góc tam giác như app gốc: xanh dương = có chương mới, xanh ngọc = còn chương chưa đọc.
+            const ribbon: CoverRibbon | undefined = b.newChapters ? 'new' : b.unread ? 'unread' : undefined;
             return (
-              <View key={b.key} style={styles.bookmarkCard}>
+              <View key={b.key} style={styles.coverCard}>
                 <MangaGridItem
                   title={b.title}
-                  subtitle={b.latestChapter}
+                  subtitle={b.unread ? `${b.unread} chương chưa đọc` : b.latestChapter}
                   cover={b.cover}
-                  headers={headersOf(b.sourceId)}
-                  badges={badges}
+                  headers={info?.headers}
+                  ribbon={ribbon}
+                  siteLabel={info?.name}
+                  typeLabel={typeLabelOf(b.content)}
                   blur={!!b.nsfw && !allowNsfw}
                   onPress={() =>
                     navigation.navigate('MangaDetail', { sourceId: b.sourceId, url: b.url, title: b.title, cover: b.cover })
@@ -383,7 +404,7 @@ export function WebBookmarksWidget({ limit, onOpenUrl }: { limit: number; onOpen
       action={shown.length ? { label: 'Xem tất cả', onPress: () => navigation.navigate('Bookmarks', { tab: 'web' }) } : undefined}
     >
       {shown.length ? (
-        <View style={[styles.card, { backgroundColor: c.surface }]}>
+        <View style={[styles.card, { backgroundColor: c.surfaceAlt }]}>
           {shown.map(b => (
             <ListItem
               key={b.id}
@@ -395,7 +416,7 @@ export function WebBookmarksWidget({ limit, onOpenUrl }: { limit: number; onOpen
           ))}
         </View>
       ) : (
-        <EmptyHint text="Chưa có trang nào được đánh dấu. Khi đang xem trang, mở menu và chọn “Thêm bookmark”." />
+        <EmptyHint text="Chưa có trang nào được đánh dấu. Khi đang xem trang, mở menu ⋮ và bấm biểu tượng ngôi sao." />
       )}
     </WidgetSection>
   );
@@ -403,11 +424,12 @@ export function WebBookmarksWidget({ limit, onOpenUrl }: { limit: number; onOpen
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  bold: { fontWeight: '700' },
   pressed: { opacity: 0.7 },
   small: { fontSize: 11 },
   section: { gap: space.sm },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, minHeight: 32 },
+  sectionTitle: { fontSize: 17, fontWeight: '600' },
+  textButton: { paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.pill },
   emptyCard: {
     marginHorizontal: space.md,
     borderRadius: radius.lg,
@@ -418,17 +440,16 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: space.sm },
   tile: { width: '25%', alignItems: 'center', gap: 6, paddingVertical: space.sm },
   tileIcon: {
-    width: 54,
-    height: 54,
+    width: 56,
+    height: 56,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addTile: { borderWidth: 1.5, borderStyle: 'dashed' },
   tileLabel: { fontSize: 12, maxWidth: 76, textAlign: 'center' },
-  hList: { paddingHorizontal: space.md, gap: space.sm },
-  readingCard: { width: 108, gap: 4 },
-  bookmarkCard: { width: 112 },
+  hList: { paddingHorizontal: space.sm + 2 },
+  coverCard: { width: 118 },
   siteGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: space.md, gap: space.sm },
   site: {
     flexDirection: 'row',
@@ -440,5 +461,17 @@ const styles = StyleSheet.create({
     padding: space.md,
     borderRadius: radius.lg,
   },
+  siteType: {
+    position: 'absolute',
+    right: -5,
+    bottom: -5,
+    width: 17,
+    height: 17,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  siteTypeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   card: { borderRadius: radius.lg, overflow: 'hidden', marginHorizontal: space.md },
 });

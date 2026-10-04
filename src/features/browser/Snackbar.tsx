@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text } from 'react-native';
 
-import { font, radius, space, useTheme } from '../../theme';
+import { darkPalette, font, lightPalette, radius, space, useTheme } from '../../theme';
 
 export type SnackbarData = {
   /** Đổi id để hiện lại snackbar dù cùng nội dung. */
@@ -12,9 +12,11 @@ export type SnackbarData = {
 
 const DURATION = 5000;
 
-/** Thông báo ngắn có nút hành động, nằm trên thanh công cụ (vd. "Đã chặn cửa sổ bật lên"). */
+/** Thông báo ngắn có nút hành động ở đáy trang (vd. "Đã chặn cửa sổ bật lên"). */
 export function Snackbar({ data, onHide }: { data: SnackbarData | null; onHide: () => void }) {
-  const { c } = useTheme();
+  const { c, dark } = useTheme();
+  // Nền snackbar đảo màu nên nút hành động dùng primary của theme ngược lại (M3 inversePrimary).
+  const actionColor = dark ? lightPalette.accent : darkPalette.accent;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export function Snackbar({ data, onHide }: { data: SnackbarData | null; onHide: 
             onHide();
           }}
         >
-          <Text style={[font.label, { color: c.accent }]}>{data.action.label}</Text>
+          <Text style={[font.label, { color: actionColor }]}>{data.action.label}</Text>
         </Pressable>
       )}
     </Animated.View>

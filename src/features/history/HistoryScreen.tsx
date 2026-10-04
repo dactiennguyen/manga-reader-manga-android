@@ -1,10 +1,11 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { BookOpen, Globe, SearchX, Trash2 } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
+import { DropdownButton } from '../../components/Dropdown';
 import { Dialog, Sheet } from '../../components/Sheet';
+import { BookOpen, Globe, SearchX, Trash2 } from '../../components/icons';
 import {
   Checkbox,
   EmptyState,
@@ -13,7 +14,6 @@ import {
   ListItem,
   Screen,
   SearchField,
-  TabBar,
   confirm,
   toast,
 } from '../../components/ui';
@@ -30,16 +30,18 @@ import { ReadingHistoryItem, WebHistoryItem } from './HistoryItems';
 
 type Tab = 'reading' | 'web';
 
-const TABS = [
-  { key: 'reading', label: 'Đọc truyện' },
-  { key: 'web', label: 'Duyệt web' },
+const VIEW_OPTIONS = [
+  { value: 'reading', label: 'Đọc truyện' },
+  { value: 'web', label: 'Duyệt web' },
 ] as const;
 
 const HOUR_MS = 60 * 60 * 1000;
 
 export function HistoryScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'History'>>();
-  const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'reading');
+  const { c } = useTheme();
+  const tabParam = route.params?.tab;
+  const [tab, setTab] = useState<Tab>(tabParam ?? 'reading');
   const [query, setQuery] = useState('');
   const [clearReadingOpen, setClearReadingOpen] = useState(false);
   const [clearWebOpen, setClearWebOpen] = useState(false);
@@ -47,26 +49,36 @@ export function HistoryScreen() {
   const webCount = useHistory(s => s.web.length);
   const hasItems = tab === 'reading' ? readingCount > 0 : webCount > 0;
 
+  const changeTab = useCallback((next: Tab) => {
+    setTab(next);
+    setQuery('');
+  }, []);
+
+  // Màn đã mở sẵn trong stack mà được điều hướng tới với tab khác.
+  useEffect(() => {
+    if (tabParam) {
+      changeTab(tabParam);
+    }
+  }, [tabParam, changeTab]);
+
   return (
     <Screen>
       <Header
         title="Lịch sử"
         right={
-          <IconButton
-            icon={Trash2}
-            disabled={!hasItems}
-            onPress={() => (tab === 'reading' ? setClearReadingOpen(true) : setClearWebOpen(true))}
-            accessibilityLabel={tab === 'reading' ? 'Xoá lịch sử đọc' : 'Xoá lịch sử duyệt web'}
-          />
+          <>
+            <View style={styles.dropdown}>
+              <DropdownButton value={tab} options={VIEW_OPTIONS} onChange={changeTab} />
+            </View>
+            <IconButton
+              icon={Trash2}
+              color={c.onAppBar}
+              disabled={!hasItems}
+              onPress={() => (tab === 'reading' ? setClearReadingOpen(true) : setClearWebOpen(true))}
+              accessibilityLabel={tab === 'reading' ? 'Xoá lịch sử đọc' : 'Xoá lịch sử duyệt web'}
+            />
+          </>
         }
-      />
-      <TabBar
-        tabs={TABS}
-        value={tab}
-        onChange={next => {
-          setTab(next);
-          setQuery('');
-        }}
       />
       {hasItems && (
         <View style={styles.search}>
@@ -90,7 +102,7 @@ function SectionHeader({ title }: { title: string }) {
   const { c } = useTheme();
   return (
     <View style={[styles.sectionHeader, { backgroundColor: c.bg }]}>
-      <Text style={[font.overline, { color: c.muted }]}>{title}</Text>
+      <Text style={[font.label, { color: c.accent }]}>{title}</Text>
     </View>
   );
 }
@@ -297,7 +309,8 @@ function ClearWebSheet({ visible, onClose }: { visible: boolean; onClose: () => 
 }
 
 const styles = StyleSheet.create({
+  dropdown: { marginRight: space.xs },
   search: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.xs },
-  sectionHeader: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.xs },
+  sectionHeader: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm },
   list: { paddingBottom: space.xl },
 });

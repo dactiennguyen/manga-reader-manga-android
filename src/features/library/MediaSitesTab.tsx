@@ -1,8 +1,8 @@
-import { Globe, Plus, Puzzle } from 'lucide-react-native';
 import { memo, useCallback, useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
+import { Globe, Plus, Puzzle } from '../../components/icons';
 import { Badge, Button, EmptyState } from '../../components/ui';
 import { getHost } from '../../lib/url';
 import { languageName } from '../../sources';

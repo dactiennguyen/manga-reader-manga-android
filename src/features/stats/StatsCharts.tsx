@@ -7,10 +7,8 @@ import { niceTicks } from './format';
 /**
  * Biểu đồ vẽ bằng View (không cần thư viện chart).
  *
- * Màu mark lấy từ token chart/chartAlt của theme: accent tối (#FF7A4D) quá
- * sáng để làm mark trên nền tối (OKLCH L 0.73, vượt dải 0.48–0.67), nên cả
- * hai chế độ dùng #E8572A. Cặp này đã chạy validator dataviz: CVD ΔE ≥ 29,
- * tương phản ≥ 3:1 trên nền sáng lẫn tối.
+ * Màu mark lấy từ token chart/chartAlt của theme (vàng sẫm + xanh dương)
+ * thay vì accent, để mark giữ cùng sắc độ ở cả theme sáng lẫn tối.
  */
 export function useChartColors(): { primary: string; onPrimary: string; secondary: string } {
   const { c } = useTheme();

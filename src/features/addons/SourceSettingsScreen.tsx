@@ -1,4 +1,8 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
 import {
   BookOpen,
   Eye,
@@ -8,11 +12,7 @@ import {
   Power,
   SearchX,
   Trash2,
-} from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-
-import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
+} from '../../components/icons';
 import {
   confirm,
   Divider,

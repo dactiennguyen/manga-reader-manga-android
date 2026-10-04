@@ -1,13 +1,14 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { FlashList } from '@shopify/flash-list';
-import { BookOpen, SearchX } from 'lucide-react-native';
-import { memo, useCallback, useMemo, useState } from 'react';
-import { RefreshControl, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { RefreshControl, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
+import { AddonBar } from '../../components/AddressBarParts';
 import { ErrorView } from '../../components/ErrorView';
 import { gridColumns, MangaGridItem } from '../../components/MangaCard';
-import { EmptyState, Header, LoadingView, Screen, TabBar, toast } from '../../components/ui';
+import { Bookmark, BookmarkPlus, BookOpen, Lock, Play, SearchX, X } from '../../components/icons';
+import { EmptyState, Fab, Header, IconButton, LoadingView, Screen, TabBar, toast } from '../../components/ui';
 import { getEngine, mangaKey } from '../../sources';
 import type { Chapter, Genre, MangaItem, SourceConfig } from '../../sources/types';
 import { getProgress, useProgress } from '../../store/progress';
@@ -15,12 +16,13 @@ import { useDownloads, type DownloadManga } from '../../store/useDownloads';
 import { useIsBookmarked } from '../../store/useLibrary';
 import { useAllowNsfw, useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
-import { font, space, useTheme } from '../../theme';
+import { space, useTheme } from '../../theme';
 import { BookmarkDialog, type BookmarkTarget } from './BookmarkDialog';
 import { ChapterRow } from './ChapterRow';
-import { readTarget, scanlatorGroups } from './chapters';
+import { READ_LABEL, readTarget, scanlatorGroups } from './chapters';
 import { ChapterToolbar } from './ChapterToolbar';
-import { DetailHero } from './DetailHero';
+import { DetailBottomBar, DetailMenu, ToolButton } from './DetailActions';
+import { DetailInfo } from './DetailInfo';
 import { DownloadChapterDialog } from './DownloadChapterDialog';
 import { MarkChapterDialog, type ChapterTarget } from './MarkChapterDialog';
 import { useMangaDetail } from './useMangaDetail';
@@ -31,7 +33,12 @@ type Row =
   | { type: 'chapter'; chapter: Chapter; index: number }
   | { type: 'similar'; key: string; items: MangaItem[] };
 
-type Tab = 'chapters' | 'similar';
+type Tab = 'info' | 'chapters';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'info', label: 'Mô tả' },
+  { key: 'chapters', label: 'Chương' },
+];
 
 const NO_CHAPTERS: Chapter[] = [];
 const NO_ITEMS: MangaItem[] = [];
@@ -67,7 +74,7 @@ export function MangaDetailScreen() {
           icon={SearchX}
           title="Không tìm thấy nguồn"
           message="Nguồn của truyện này đã bị xoá. Thêm lại site để tiếp tục đọc."
-          action={{ label: 'Quản lý addon', onPress: () => navigation.navigate('Addons') }}
+          action={{ label: 'Site được hỗ trợ', onPress: () => navigation.navigate('Addons') }}
         />
       </Screen>
     );
@@ -100,12 +107,15 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
   const cover = detail?.cover ?? params.cover;
   const chapters = detail?.chapters ?? NO_CHAPTERS;
   const similar = detail?.similar ?? NO_ITEMS;
+  const pageUrl = detail?.url ?? params.url;
 
-  const [tab, setTab] = useState<Tab>('chapters');
+  const listRef = useRef<FlashListRef<Row>>(null);
+  const [tab, setTab] = useState<Tab>('info');
   const [ascending, setAscending] = useState(false);
   const [scanlator, setScanlator] = useState<string | null>(null);
   const [markTarget, setMarkTarget] = useState<ChapterTarget>();
   const [markOpen, setMarkOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const bookmarkSheet = useSheetState();
   const downloadSheet = useSheetState();
 
@@ -128,12 +138,9 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     [similar, columns],
   );
 
-  const showSimilar = tab === 'similar' && similar.length > 0;
-  let data = chapterRows;
-  if (locked) {
-    data = NO_ROWS;
-  } else if (showSimilar) {
-    data = similarRows;
+  let data = NO_ROWS;
+  if (!locked) {
+    data = tab === 'chapters' ? chapterRows : similarRows;
   }
 
   const unread = useMemo(
@@ -179,6 +186,11 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     [navigation, newTab],
   );
 
+  const openCatalog = useCallback(
+    (genre?: Genre) => navigation.navigate('Catalog', genre ? { sourceId: source.id, genre } : { sourceId: source.id }),
+    [navigation, source.id],
+  );
+
   const openChapter = useCallback(
     (chapter: Chapter) => {
       // Chỉ mở lại đúng trang khi đây là chương đang đọc dở.
@@ -202,6 +214,8 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     },
     [key, navigation, source.content, source.id, params.url],
   );
+
+  const read = useCallback(() => target && openChapter(target.chapter), [target, openChapter]);
 
   const openMark = useCallback((chapter: Chapter, index: number) => {
     setMarkTarget({ chapter, index });
@@ -227,11 +241,28 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     Share.share({ title, message: `${title}\n${params.url}` }).catch(() => {});
   }, [title, params.url]);
 
+  // Đổi tab thay cả nội dung danh sách: về đầu để không đứng giữa chừng.
+  const switchTab = useCallback((next: Tab) => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    setTab(next);
+  }, []);
+
+  const toggleOrder = useCallback(() => {
+    setAscending(v => !v);
+    switchTab('chapters');
+  }, [switchTab]);
+
   const renderItem = useCallback(
     ({ item }: { item: Row }) => {
       if (item.type === 'similar') {
         return (
-          <SimilarRow items={item.items} columns={columns} headers={headers} blur={!allowNsfw && source.nsfw} onOpen={openSimilar} />
+          <SimilarRow
+            items={item.items}
+            columns={columns}
+            headers={headers}
+            blur={!allowNsfw && source.nsfw}
+            onOpen={openSimilar}
+          />
         );
       }
       const url = item.chapter.url;
@@ -250,106 +281,138 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     [columns, headers, allowNsfw, source.nsfw, openSimilar, key, progress.read, currentUrl, currentInfo, openChapter, openMark],
   );
 
-  const tabs = useMemo(
-    () => [
-      { key: 'chapters' as const, label: `Chương (${chapters.length})` },
-      { key: 'similar' as const, label: 'Truyện tương tự' },
-    ],
-    [chapters.length],
-  );
-
-  const listHeader = (
-    <View>
-      <DetailHero
+  let listHeader = null;
+  let empty = null;
+  if (tab === 'info') {
+    listHeader = (
+      <DetailInfo
         source={source}
+        url={params.url}
         title={title}
         cover={cover}
         headers={headers}
         detail={detail}
+        error={error}
         locked={locked}
-        loading={!detail && !error}
-        bookmarked={bookmarked}
-        target={target}
-        onRead={() => target && openChapter(target.chapter)}
-        onBookmark={bookmarkSheet.open}
-        onDownload={downloadSheet.open}
-        onOpenWeb={() => openWeb(params.url)}
-        onShare={share}
-        onGenre={(genre: Genre) => navigation.navigate('Catalog', { sourceId: source.id, genre })}
-        onSource={() => navigation.navigate('Catalog', { sourceId: source.id })}
+        hasSimilar={!locked && similar.length > 0}
+        onRetry={retry}
+        onGenre={openCatalog}
+        onSource={() => openCatalog()}
         onUnlock={() => navigation.navigate('Settings')}
       />
-      {!locked && !!detail && (
-        <>
-          {similar.length > 0 ? (
-            <TabBar tabs={tabs} value={showSimilar ? 'similar' : 'chapters'} onChange={setTab} />
-          ) : (
-            <View style={[styles.sectionHead, { borderTopColor: c.border }]}>
-              <Text style={[font.heading, { color: c.text }]}>Danh sách chương</Text>
-            </View>
-          )}
-          {!showSimilar && chapters.length > 0 && (
-            <ChapterToolbar
-              count={chapterRows.length}
-              unread={unread}
-              ascending={ascending}
-              onToggleOrder={() => setAscending(v => !v)}
-              groups={groups}
-              activeGroup={activeGroup}
-              onSelectGroup={setScanlator}
-            />
-          )}
-        </>
-      )}
-    </View>
-  );
-
-  let empty = null;
-  if (!locked) {
-    if (!detail && error) {
-      empty = <ErrorView error={error} onRetry={retry} url={params.url} style={styles.inline} />;
-    } else if (!detail) {
-      empty = loading ? <LoadingView label="Đang tải danh sách chương…" style={styles.inline} /> : null;
-    } else if (!chapters.length) {
-      empty = (
-        <EmptyState
-          icon={BookOpen}
-          title="Chưa có chương nào"
-          message="Site chưa đăng chương hoặc addon không đọc được danh sách chương của truyện này."
-          action={{ label: 'Mở trang gốc', onPress: () => openWeb(params.url) }}
-          style={styles.inline}
-        />
-      );
-    }
+    );
+  } else if (locked) {
+    empty = (
+      <EmptyState
+        icon={Lock}
+        title="Nội dung 18+"
+        message="Bật hiển thị nội dung 18+ và xác nhận đủ tuổi trong Cài đặt để xem danh sách chương."
+        action={{ label: 'Mở Cài đặt', onPress: () => navigation.navigate('Settings') }}
+        style={styles.inline}
+      />
+    );
+  } else if (!detail && error) {
+    empty = <ErrorView error={error} onRetry={retry} url={params.url} style={styles.inline} />;
+  } else if (!detail) {
+    empty = loading ? <LoadingView label="Đang tải danh sách chương…" style={styles.inline} /> : null;
+  } else if (!chapters.length) {
+    empty = (
+      <EmptyState
+        icon={BookOpen}
+        title="Chưa có chương nào"
+        message="Site chưa đăng chương hoặc addon không đọc được danh sách chương của truyện này."
+        action={{ label: 'Mở trang gốc', onPress: () => openWeb(params.url) }}
+        style={styles.inline}
+      />
+    );
+  } else {
+    listHeader = (
+      <ChapterToolbar
+        count={chapterRows.length}
+        unread={unread}
+        ascending={ascending}
+        onToggleOrder={() => setAscending(v => !v)}
+        groups={groups}
+        activeGroup={activeGroup}
+        onSelectGroup={setScanlator}
+      />
+    );
   }
 
   return (
-    <Screen>
-      <Header title={title} subtitle={source.name} />
-      <FlashList
-        data={data}
-        renderItem={renderItem}
-        keyExtractor={item => (item.type === 'chapter' ? item.chapter.url : item.key)}
-        getItemType={item => item.type}
-        extraData={progress}
-        // Đảo thứ tự/đổi tab thay cả danh sách: không neo theo dòng đang thấy kẻo nhảy tới cuối.
-        maintainVisibleContentPosition={{ disabled: true }}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={empty}
-        ListFooterComponent={<View style={styles.footer} />}
-        refreshControl={
-          sourceLocked ? undefined : (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={refresh}
-              colors={[c.accent]}
-              tintColor={c.accent}
-              progressBackgroundColor={c.surface}
+    <Screen edges={[]}>
+      <AddonBar url={pageUrl} onMenu={() => setMenuOpen(true)} />
+      <TabBar
+        tabs={TABS}
+        value={tab}
+        onChange={switchTab}
+        right={
+          <>
+            <ToolButton
+              icon={bookmarked ? Bookmark : BookmarkPlus}
+              filled={bookmarked}
+              color={bookmarked ? c.accent : undefined}
+              disabled={locked}
+              onPress={bookmarkSheet.open}
+              accessibilityLabel={bookmarked ? 'Đã lưu bookmark' : 'Thêm vào bookmark'}
             />
-          )
+            <IconButton icon={X} size={24} onPress={() => navigation.goBack()} accessibilityLabel="Đóng" />
+          </>
         }
       />
 
+      <View style={styles.flex}>
+        <FlashList
+          ref={listRef}
+          data={data}
+          renderItem={renderItem}
+          keyExtractor={item => (item.type === 'chapter' ? item.chapter.url : item.key)}
+          getItemType={item => item.type}
+          extraData={progress}
+          // Đảo thứ tự/đổi tab thay cả danh sách: không neo theo dòng đang thấy kẻo nhảy tới cuối.
+          maintainVisibleContentPosition={{ disabled: true }}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={empty}
+          ListFooterComponent={<View style={styles.footer} />}
+          refreshControl={
+            sourceLocked ? undefined : (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={refresh}
+                colors={[c.accent]}
+                tintColor={c.accent}
+                progressBackgroundColor={c.surface}
+              />
+            )
+          }
+        />
+        {!locked && target && (
+          <Fab icon={Play} label={READ_LABEL[target.kind]} onPress={read} style={styles.fab} />
+        )}
+      </View>
+
+      <DetailBottomBar
+        bookmarked={bookmarked}
+        ascending={ascending}
+        locked={locked}
+        hasChapters={chapters.length > 0}
+        canRead={!!target}
+        onBookmark={bookmarkSheet.open}
+        onDownload={downloadSheet.open}
+        onRead={read}
+        onToggleOrder={toggleOrder}
+      />
+
+      <DetailMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        url={pageUrl}
+        sourceName={source.name}
+        onOpenWeb={() => openWeb(pageUrl)}
+        onShare={share}
+        onCatalog={() => openCatalog()}
+        onSourceSettings={() => navigation.navigate('SourceSettings', { sourceId: source.id })}
+      />
       {bookmarkSheet.seq > 0 && (
         <BookmarkDialog
           key={bookmarkSheet.seq}
@@ -399,7 +462,6 @@ const SimilarRow = memo(function SimilarRowItem({
         <MangaGridItem
           key={item.url}
           title={item.title}
-          subtitle={item.subtitle}
           cover={item.cover}
           headers={headers}
           blur={blur}
@@ -414,13 +476,12 @@ const SimilarRow = memo(function SimilarRowItem({
 });
 
 const styles = StyleSheet.create({
-  sectionHead: {
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
+  flex: { flex: 1 },
   inline: { flex: 0, paddingVertical: space.xl },
-  footer: { height: space.xl },
-  similarRow: { flexDirection: 'row', paddingHorizontal: space.sm },
-  filler: { flex: 1 },
+  // Chừa chỗ cho nút nổi "Bắt đầu đọc".
+  footer: { height: 96 },
+  fab: { bottom: space.lg },
+  similarRow: { flexDirection: 'row', paddingHorizontal: space.lg - 6, paddingTop: space.sm },
+  // Cùng padding với ô MangaGridItem để ô trống chia đều bề ngang với ô có truyện.
+  filler: { flex: 1, paddingHorizontal: space.xs + 2 },
 });

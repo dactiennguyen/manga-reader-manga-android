@@ -1,9 +1,9 @@
 import Clipboard from '@react-native-clipboard/clipboard';
-import type { LucideIcon } from 'lucide-react-native';
-import { ArrowUpLeft, BookOpen, Bookmark, Copy, Globe, History, Search, Share2, X } from 'lucide-react-native';
+import { ArrowUpLeft, BookOpen, Bookmark, Copy, Globe, History, Search, Share2, X } from '../../components/icons';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
+import type { LucideIcon } from '../../components/icons';
 import { Chip, ChipRow, Divider, IconButton, Segmented, toast } from '../../components/ui';
 import { displayUrl, ensureScheme, looksLikeUrl } from '../../lib/url';
 import { useBrowser } from '../../store/useBrowser';
@@ -123,7 +123,7 @@ export function SuggestionsPanel({
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <View style={[styles.options, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
+        <View style={[styles.options, { backgroundColor: c.surfaceAlt, borderBottomColor: c.border }]}>
           <View style={styles.categoryRow}>
             <Text style={[font.caption, { color: c.muted }]}>Hạng mục tìm kiếm</Text>
             <View style={styles.segmented}>

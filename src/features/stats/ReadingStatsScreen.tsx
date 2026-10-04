@@ -1,3 +1,10 @@
+import { memo, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
+
+import { useAppNavigation } from '../../app/routes';
+import { Cover } from '../../components/MangaCard';
+import { Sheet } from '../../components/Sheet';
 import {
   BookOpen,
   Clock,
@@ -10,14 +17,7 @@ import {
   Timer,
   Trophy,
   type LucideIcon,
-} from 'lucide-react-native';
-import { memo, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useShallow } from 'zustand/react/shallow';
-
-import { useAppNavigation } from '../../app/routes';
-import { Cover } from '../../components/MangaCard';
-import { Sheet } from '../../components/Sheet';
+} from '../../components/icons';
 import {
   EmptyState,
   Header,
@@ -123,7 +123,12 @@ export function ReadingStatsScreen() {
       <Header
         title="Thống kê đọc"
         right={
-          <IconButton icon={EllipsisVertical} onPress={() => setMenuOpen(true)} accessibilityLabel="Tuỳ chọn" />
+          <IconButton
+            icon={EllipsisVertical}
+            color={c.onAppBar}
+            onPress={() => setMenuOpen(true)}
+            accessibilityLabel="Tuỳ chọn"
+          />
         }
       />
       {isEmpty ? (

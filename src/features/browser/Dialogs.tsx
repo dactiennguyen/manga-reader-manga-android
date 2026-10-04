@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { Dialog, Sheet } from '../../components/Sheet';
-import { Checkbox, Divider, FieldLabel, Radio, SwitchRow, TextField, toast } from '../../components/ui';
+import { Dialog } from '../../components/Sheet';
+import { Checkbox, FieldLabel, TextField, toast } from '../../components/ui';
 import { ensureScheme } from '../../lib/url';
 import { useBrowser, type WebBookmark } from '../../store/useBrowser';
-import { useSettings, type SearchCategory } from '../../store/useSettings';
-import { font, space, useTheme } from '../../theme';
-import { SEARCH_ENGINES } from './searchEngines';
+import { font, useTheme } from '../../theme';
 
 /** Thêm/sửa bookmark trang web (AddWebBookmarkDialog). */
 export function BookmarkDialog({
@@ -140,54 +138,3 @@ export function AppLinkDialog({
     </Dialog>
   );
 }
-
-const CATEGORIES: { value: SearchCategory; label: string; description: string }[] = [
-  { value: 'web', label: 'Web', description: 'Tìm trên web bằng công cụ tìm kiếm đã chọn' },
-  { value: 'manga', label: 'Truyện', description: 'Tìm truyện trên các site truyện đã thêm' },
-];
-
-/** "Select default search engine" + "Search category" + tìm kiếm an toàn. */
-export function SearchEngineSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { c } = useTheme();
-  const engine = useSettings(s => s.searchEngine);
-  const category = useSettings(s => s.searchCategory);
-  const safeSearch = useSettings(s => s.safeSearch);
-  const set = useSettings(s => s.set);
-
-  return (
-    <Sheet visible={visible} onClose={onClose} title="Công cụ tìm kiếm">
-      {SEARCH_ENGINES.map(e => (
-        <Radio
-          key={e.id}
-          label={e.name}
-          selected={e.id === engine}
-          onPress={() => {
-            set({ searchEngine: e.id });
-            onClose();
-          }}
-        />
-      ))}
-      <SwitchRow
-        title="Tìm kiếm an toàn"
-        subtitle="Lọc nội dung người lớn khỏi kết quả tìm kiếm web"
-        value={safeSearch}
-        onValueChange={value => set({ safeSearch: value })}
-      />
-      <Divider />
-      <Text style={[font.overline, styles.label, { color: c.muted }]}>Hạng mục tìm kiếm</Text>
-      {CATEGORIES.map(item => (
-        <Radio
-          key={item.value}
-          label={item.label}
-          description={item.description}
-          selected={item.value === category}
-          onPress={() => set({ searchCategory: item.value })}
-        />
-      ))}
-    </Sheet>
-  );
-}
-
-const styles = StyleSheet.create({
-  label: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.xs },
-});

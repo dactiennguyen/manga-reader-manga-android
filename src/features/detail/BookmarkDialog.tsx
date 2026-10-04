@@ -1,8 +1,8 @@
-import { BookmarkMinus, Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
+import { BookmarkMinus, Check } from '../../components/icons';
 import { Button, Divider, Radio, TextField, toast } from '../../components/ui';
 import type { Chapter, ContentType } from '../../sources/types';
 import { useLibrary } from '../../store/useLibrary';

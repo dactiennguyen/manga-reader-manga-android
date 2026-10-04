@@ -1,6 +1,6 @@
-import { CheckCheck, Download, Eye, EyeOff, Globe, Undo2 } from 'lucide-react-native';
 
 import { Sheet } from '../../components/Sheet';
+import { CheckCheck, Download, Eye, EyeOff, Globe, Undo2 } from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
 import type { Chapter } from '../../sources/types';
 import { markChaptersRead, useProgress } from '../../store/progress';

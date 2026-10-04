@@ -3,59 +3,87 @@
 ._*
 
 # --- Tài liệu phân tích: KHÔNG commit app của bên thứ ba ---
-# APK/XAPK và file giải nén là code & asset độc quyền của Kijang.
+# APK/XAPK và thư mục giải nén là code & asset độc quyền của Kijang.
 # Chỉ giữ local để tham khảo, không đưa vào repo.
 *.apk
 *.xapk
 *.apks
 *.apkm
 *.aab
-*.dex
-*.so
 apk/
 cookie-manga-extracted/
 
 # --- Claude Code ---
 .claude/settings.local.json
 
-# --- Node / React Native ---
+# --- Node ---
 node_modules/
-npm-debug.log*
-yarn-error.log*
+npm-debug.log
+yarn-error.log
 .pnpm-debug.log*
 *.tsbuildinfo
 .env
 .env.local
 
-# --- Expo ---
-.expo/
-dist/
-web-build/
-
 # --- Metro ---
 .metro-health-check*
-metro-cache/
 
-# --- Android ---
-android/app/build/
-android/build/
-android/.gradle/
-android/local.properties
-android/app/debug.keystore
-android/app/release.keystore
-*.jks
+# --- Bundle artifact ---
+*.jsbundle
+
+# --- Testing ---
+/coverage
+
+# --- Xcode ---
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+**/.xcode.env.local
+
+# --- Android / IntelliJ ---
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+.kotlin/
 *.keystore
-!android/app/debug.keystore.example
+*.jks
+!debug.keystore
 
-# --- iOS ---
-ios/Pods/
-ios/build/
-ios/*.xcworkspace/xcuserdata/
-ios/*.xcodeproj/xcuserdata/
-ios/.xcode.env.local
+# --- Ruby / CocoaPods ---
+**/Pods/
+/vendor/bundle/
+
+# --- fastlane ---
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# --- Yarn ---
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
 # --- Editor ---
-.idea/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json

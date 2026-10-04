@@ -1,0 +1,62 @@
+# --- macOS ---
+.DS_Store
+._*
+
+# --- Tài liệu phân tích: KHÔNG commit app của bên thứ ba ---
+# APK/XAPK và file giải nén là code & asset độc quyền của Kijang.
+# Chỉ giữ local để tham khảo, không đưa vào repo.
+*.apk
+*.xapk
+*.apks
+*.apkm
+*.aab
+*.dex
+*.so
+apk/
+cookie-manga-extracted/
+
+# --- Claude Code ---
+.claude/settings.local.json
+
+# --- Node / React Native ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+.env
+.env.local
+
+# --- Expo ---
+.expo/
+dist/
+web-build/
+
+# --- Metro ---
+.metro-health-check*
+metro-cache/
+
+# --- Android ---
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/debug.keystore
+android/app/release.keystore
+*.jks
+*.keystore
+!android/app/debug.keystore.example
+
+# --- iOS ---
+ios/Pods/
+ios/build/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/.xcode.env.local
+
+# --- Editor ---
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ArrowDownUp, Info } from '../../components/icons';
+import { ArrowDownUp, ChartPie, Info } from '../../components/icons';
 import { Chip, ChipRow } from '../../components/ui';
 import { font, radius, space, useTheme } from '../../theme';
 
@@ -13,6 +13,7 @@ export function ChapterToolbar({
   groups,
   activeGroup,
   onSelectGroup,
+  onSummary,
 }: {
   count: number;
   unread: number;
@@ -21,12 +22,23 @@ export function ChapterToolbar({
   groups: { name: string; count: number }[];
   activeGroup: string | null;
   onSelectGroup: (group: string | null) => void;
+  /** Mở hộp thoại tóm tắt chương. */
+  onSummary: () => void;
 }) {
   const { c } = useTheme();
   return (
     <View style={[styles.wrap, { borderBottomColor: c.border }]}>
       <View style={styles.row}>
-        <Text style={[font.label, { color: c.text }]}>{count} chương</Text>
+        <Pressable
+          onPress={onSummary}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Tóm tắt chương"
+          style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
+        >
+          <Text style={[font.label, { color: c.text }]}>{count} chương</Text>
+          <ChartPie size={16} color={c.muted} />
+        </Pressable>
         {unread > 0 && (
           <View style={[styles.unread, { backgroundColor: c.accentSoft }]}>
             <Text style={[font.caption, styles.bold, { color: c.accent }]}>{unread} chưa đọc</Text>
@@ -77,6 +89,7 @@ export function ChapterToolbar({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   bold: { fontWeight: '700' },
   wrap: { paddingTop: space.md, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg },

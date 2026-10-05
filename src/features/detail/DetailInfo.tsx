@@ -68,8 +68,8 @@ export function DetailInfo(props: Props) {
   } else {
     body = (
       <>
+        {/* Thứ tự như app gốc: Tên khác, Đánh giá, Cập nhật, Tác giả, Trạng thái. */}
         {altTitles.length > 0 && <Field label="Tên khác" value={altTitles.join(', ')} />}
-        {authors.length > 0 && <Field label="Tác giả" value={authors.join(', ')} />}
         {detail.rating !== undefined && detail.rating > 0 && (
           <Field label="Đánh giá">
             <View style={styles.rating}>
@@ -79,6 +79,7 @@ export function DetailInfo(props: Props) {
           </Field>
         )}
         {!!updated && <Field label="Cập nhật" value={updated} />}
+        {authors.length > 0 && <Field label="Tác giả" value={authors.join(', ')} />}
         {!!detail.status && <Field label="Trạng thái" value={detail.status} />}
         {!!detail.views && <Field label="Lượt xem" value={detail.views} />}
         <Field label="Mô tả">

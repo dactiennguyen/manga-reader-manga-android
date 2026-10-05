@@ -1,6 +1,8 @@
-import { madara } from '../src/sources/engines/madara';
 import type { SourceConfig } from '../src/sources/types';
+import { sourceEngine } from './helpers/addons';
 import { mockFetch, urlIs, urlStarts } from './helpers/mockFetch';
+
+const madara = sourceEngine('madara');
 
 const src: SourceConfig = {
   id: 'madara.test',

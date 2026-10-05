@@ -5,10 +5,13 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppNavigation } from '../../app/routes';
 import {
   AppWindow,
-  BarChart3,
-  BookOpen,
   Ban,
+  BarChart3,
+  Bell,
+  BookmarkPlus,
+  BookOpen,
   CircleHelp,
+  DatabaseBackup,
   Download,
   Eraser,
   EyeOff,
@@ -23,16 +26,17 @@ import {
   RefreshCw,
   Rocket,
   Search,
+  Settings2,
   ShieldAlert,
   ShieldBan,
   ShieldCheck,
   SquareArrowOutUpRight,
   Timer,
   Type,
-  DatabaseBackup,
   Zap,
 } from '../../components/icons';
 import { Divider, Header, ListItem, Screen, Section, SwitchRow, toast } from '../../components/ui';
+import { backgroundUpdatesSupported, ensureNotificationPermission } from '../library/backgroundUpdates';
 import { useAllowNsfw, useSettings, type AppSettings, type SearchEngineId } from '../../store/useSettings';
 import { font, space, useTheme } from '../../theme';
 import packageJson from '../../../package.json';
@@ -103,6 +107,8 @@ export function SettingsScreen() {
       preventCapture: state.preventCapture,
       libraryLayout: state.libraryLayout,
       checkUpdatesOnLaunch: state.checkUpdatesOnLaunch,
+      promptBookmark: state.promptBookmark,
+      notifyUpdates: state.notifyUpdates,
       ageConfirmed: state.ageConfirmed,
       set: state.set,
     })),
@@ -306,12 +312,35 @@ export function SettingsScreen() {
             value={s.checkUpdatesOnLaunch}
             onValueChange={checkUpdatesOnLaunch => set({ checkUpdatesOnLaunch })}
           />
+          {backgroundUpdatesSupported && (
+            <>
+              <Divider inset={52} />
+              <SwitchRow
+                title="Thông báo chương mới"
+                subtitle="Kiểm tra truyện đã bookmark ở nền khoảng 6 giờ một lần và báo khi có chương mới"
+                icon={Bell}
+                value={s.notifyUpdates}
+                onValueChange={async notifyUpdates => {
+                  if (notifyUpdates && !(await ensureNotificationPermission())) {
+                    toast('Cần cho phép thông báo trong cài đặt máy để nhận tin chương mới');
+                    return;
+                  }
+                  set({ notifyUpdates });
+                }}
+              />
+            </>
+          )}
+          <Divider inset={52} />
+          <SwitchRow
+            title="Gợi ý bookmark khi đọc"
+            subtitle="Đọc vài chương của truyện chưa bookmark thì hỏi có muốn bookmark không"
+            icon={BookmarkPlus}
+            value={s.promptBookmark}
+            onValueChange={promptBookmark => set({ promptBookmark })}
+          />
         </Section>
 
-        <Section
-          title="Nội dung người lớn"
-          footer="Khi tắt, nguồn 18+ bị ẩn và ảnh bìa truyện 18+ được làm mờ."
-        >
+        <Section title="Nội dung người lớn" footer="Khi tắt, nguồn 18+ bị ẩn và ảnh bìa truyện 18+ được làm mờ.">
           <SwitchRow
             title="Hiện nội dung 18+"
             subtitle={s.ageConfirmed ? 'Đã xác nhận đủ 18 tuổi' : 'Cần xác nhận đủ 18 tuổi'}
@@ -330,25 +359,18 @@ export function SettingsScreen() {
             onPress={() => navigation.navigate('BackupRestore')}
           />
           <Divider inset={52} />
-          <ListItem
-            title="Thống kê đọc"
-            icon={BarChart3}
-            chevron
-            onPress={() => navigation.navigate('ReadingStats')}
-          />
+          <ListItem title="Thống kê đọc" icon={BarChart3} chevron onPress={() => navigation.navigate('ReadingStats')} />
+          <Divider inset={52} />
+          <ListItem title="Tải xuống" icon={Download} chevron onPress={() => navigation.navigate('Downloads')} />
+          <Divider inset={52} />
+          <ListItem title="Site được hỗ trợ" icon={Puzzle} chevron onPress={() => navigation.navigate('Addons')} />
           <Divider inset={52} />
           <ListItem
-            title="Tải xuống"
-            icon={Download}
+            title="Quản lý addon"
+            subtitle="Phiên bản addon, cập nhật từ kho addon"
+            icon={Settings2}
             chevron
-            onPress={() => navigation.navigate('Downloads')}
-          />
-          <Divider inset={52} />
-          <ListItem
-            title="Addon & nguồn"
-            icon={Puzzle}
-            chevron
-            onPress={() => navigation.navigate('Addons')}
+            onPress={() => navigation.navigate('AddonManager')}
           />
         </Section>
 
@@ -365,9 +387,7 @@ export function SettingsScreen() {
           <ListItem title="Giới thiệu" icon={Info} chevron onPress={() => navigation.navigate('About')} />
         </Section>
 
-        <Text style={[font.caption, styles.version, { color: c.muted }]}>
-          Manga Reader {packageJson.version}
-        </Text>
+        <Text style={[font.caption, styles.version, { color: c.muted }]}>Manga Reader {packageJson.version}</Text>
       </ScrollView>
 
       <AdultContentDialog visible={ageDialog} onClose={() => setAgeDialog(false)} />

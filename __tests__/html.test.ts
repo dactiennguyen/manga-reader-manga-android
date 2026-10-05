@@ -33,6 +33,23 @@ describe('html helpers', () => {
     expect(parseDate('', now)).toBeUndefined();
   });
 
+  test('parseDate hiểu tên tháng và "trước" của nhiều ngôn ngữ', () => {
+    const now = new Date(2026, 9, 4, 12, 0, 0).getTime();
+    const day = (y: number, m: number, d: number) => new Date(y, m, d).getTime();
+    expect(parseDate('23 Ekim 2025', now)).toBe(day(2025, 9, 23));
+    expect(parseDate('3 de outubro de 2026', now)).toBe(day(2026, 9, 3));
+    expect(parseDate('septiembre 12, 2026', now)).toBe(day(2026, 8, 12));
+    expect(parseDate('5 juillet 2026', now)).toBe(day(2026, 6, 5));
+    expect(parseDate('5 juin 2026', now)).toBe(day(2026, 5, 5));
+    expect(parseDate('14 Agustus 2026', now)).toBe(day(2026, 7, 14));
+    expect(parseDate('3 ตุลาคม 2569', now)).toBe(day(2026, 9, 3));
+    expect(parseDate('2026年10月3日', now)).toBe(day(2026, 9, 3));
+    expect(parseDate('Mayıs 9, 2026', now)).toBe(day(2026, 4, 9));
+    expect(parseDate('2 gün önce', now)).toBe(now - 2 * 86_400_000);
+    expect(parseDate('il y a 3 heures', now)).toBe(now - 3 * 3_600_000);
+    expect(parseDate('5 วันที่แล้ว', now)).toBe(now - 5 * 86_400_000);
+  });
+
   test('paragraphsOf lấy đoạn văn, bỏ quảng cáo/script', () => {
     const $ = parseHtml(`
       <div class="text-left">

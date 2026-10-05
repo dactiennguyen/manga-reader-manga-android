@@ -10,6 +10,7 @@ import {
   Globe,
   Languages,
   Power,
+  RotateCcw,
   SearchX,
   Trash2,
 } from '../../components/icons';
@@ -31,7 +32,8 @@ import { displayUrl } from '../../lib/url';
 import { getEngine, languageName } from '../../sources';
 import type { ContentType, SourceConfig } from '../../sources/types';
 import { useSettings } from '../../store/useSettings';
-import { useSource, useSources } from '../../store/useSources';
+import { catalogSite } from '../../sources/catalog';
+import { getSource, useSource, useSources } from '../../store/useSources';
 import { font, radius, space, useTheme } from '../../theme';
 import { LanguageSheet } from './LanguageSheet';
 import { Favicon } from '../../components/Favicon';
@@ -114,7 +116,7 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
     () => () => {
       const { id, name: lastName, mangaDir: lastDir } = pending.current;
       const store = useSources.getState();
-      const latest = store.sources.find(s => s.id === id);
+      const latest = getSource(id);
       if (!latest) {
         return;
       }
@@ -133,19 +135,28 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
     [allowDir],
   );
 
+  // Site của danh mục: "xoá" chỉ bỏ ghim và bỏ chỉnh sửa, site vẫn trong danh sách hỗ trợ.
+  const inCatalog = !!catalogSite(source.id);
+  const customized = useSources(s => s.sources.some(src => src.id === source.id));
   const remove = async () => {
-    const ok = await confirm(
-      `Xoá nguồn ${source.name}?`,
-      'Truyện đã bookmark và chương đã tải của nguồn này vẫn được giữ, nhưng sẽ không cập nhật được nữa.',
-      { confirmText: 'Xoá', destructive: true },
-    );
+    const ok = inCatalog
+      ? await confirm(
+          `Khôi phục ${source.name}?`,
+          'Bỏ ghim và trả tên, thư mục danh sách… về mặc định. Site vẫn có trong danh sách hỗ trợ.',
+          { confirmText: 'Khôi phục' },
+        )
+      : await confirm(
+          `Xoá nguồn ${source.name}?`,
+          'Truyện đã bookmark và chương đã tải của nguồn này vẫn được giữ, nhưng sẽ không cập nhật được nữa.',
+          { confirmText: 'Xoá', destructive: true },
+        );
     if (!ok) {
       return;
     }
     // Rời màn trước để không nhấp nháy trạng thái "không tìm thấy nguồn".
     navigation.goBack();
     removeSource(source.id);
-    toast(`Đã xoá ${source.name}`);
+    toast(inCatalog ? `Đã khôi phục ${source.name}` : `Đã xoá ${source.name}`);
   };
 
   const chapterLang = source.options?.chapterLang ?? source.lang;
@@ -215,8 +226,8 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
         <Section>
           <SwitchRow
             icon={Power}
-            title="Bật nguồn"
-            subtitle="Nguồn tắt sẽ không có trong tìm kiếm và không kiểm tra chương mới."
+            title="Ghim site"
+            subtitle="Site đã ghim hiện ở trang chủ và Bookmark › Site truyện, được dùng khi tìm truyện trên mọi site."
             value={source.enabled}
             onValueChange={enabled => updateSource(source.id, { enabled })}
           />
@@ -267,11 +278,17 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
           />
           <Divider inset={52} />
           <ListItem
-            icon={Trash2}
-            title="Xoá nguồn"
-            subtitle={source.builtin ? 'Nguồn có sẵn, không thể xoá — hãy tắt nếu không dùng.' : undefined}
-            destructive
-            disabled={source.builtin}
+            icon={inCatalog ? RotateCcw : Trash2}
+            title={inCatalog ? 'Khôi phục mặc định' : 'Xoá nguồn'}
+            subtitle={
+              source.builtin
+                ? 'Nguồn có sẵn, không thể xoá — bỏ ghim nếu không dùng.'
+                : inCatalog
+                  ? 'Site có sẵn trong danh sách hỗ trợ: chỉ bỏ ghim và bỏ các chỉnh sửa.'
+                  : undefined
+            }
+            destructive={!inCatalog}
+            disabled={source.builtin || (inCatalog && !customized)}
             onPress={remove}
           />
         </Section>

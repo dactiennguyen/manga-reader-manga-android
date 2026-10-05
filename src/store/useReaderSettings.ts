@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import type { OrientationLock } from '../lib/screen';
 import { persistStorage } from '../lib/storage';
 
 /** Cách hiển thị trang truyện trong reader. */
@@ -34,6 +35,8 @@ export type ReaderSettings = ViewerPrefs & {
   /** Ẩn thanh trạng thái/thanh công cụ khi đọc. */
   immersive: boolean;
   keepScreenOn: boolean;
+  /** Khoá xoay khi đọc (manga lẫn novel); rời reader thì trả về tự xoay. */
+  orientationLock: OrientationLock;
   /** Ghi đè chế độ xem theo từng truyện (khi bỏ chọn "Áp dụng cho mọi truyện"). */
   overrides: Record<string, Partial<ViewerPrefs>>;
 };
@@ -66,6 +69,7 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   nextChapterDelay: 3,
   immersive: false,
   keepScreenOn: true,
+  orientationLock: 'auto',
   overrides: {},
 };
 

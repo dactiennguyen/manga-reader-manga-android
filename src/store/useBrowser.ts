@@ -41,9 +41,9 @@ export const DEFAULT_QUICK_ACCESS: QuickAccessItem[] = [
   { id: 'qa-tiktok', title: 'TikTok', url: 'https://www.tiktok.com/' },
   { id: 'qa-pinterest', title: 'Pinterest', url: 'https://www.pinterest.com/' },
   { id: 'qa-wikipedia', title: 'Wikipedia', url: 'https://www.wikipedia.org/' },
+  { id: 'qa-netflix', title: 'Netflix', url: 'https://www.netflix.com/' },
   { id: 'qa-x', title: 'X', url: 'https://x.com/' },
   { id: 'qa-gmail', title: 'Gmail', url: 'https://mail.google.com/' },
-  { id: 'qa-mangadex', title: 'MangaDex', url: 'https://mangadex.org/' },
 ];
 
 type OpenOptions = { incognito?: boolean; background?: boolean; desktop?: boolean };

@@ -43,7 +43,7 @@ export type NavState = {
   loading: boolean;
 };
 
-export type PageMessage = Extract<BridgeMessage, { type: 'html' | 'longpress' | 'find' }>;
+export type PageMessage = Extract<BridgeMessage, { type: 'html' | 'longpress' | 'find' | 'media' }>;
 
 export type BrowserWebViewHandle = {
   goBack: () => void;

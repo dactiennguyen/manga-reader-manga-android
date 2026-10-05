@@ -10,7 +10,7 @@ import {
 } from '@react-native-documents/picker';
 
 import { dayKey } from '../../lib/time';
-import { ENGINES } from '../../sources';
+import { hasEngine } from '../../sources';
 import type { SourceConfig } from '../../sources/types';
 import { clearAllProgress, exportProgress, getProgress, importProgress, type MangaProgress } from '../../store/progress';
 import { useBrowser, type QuickAccessItem, type WebBookmark } from '../../store/useBrowser';
@@ -232,7 +232,7 @@ function validSource(value: unknown): value is SourceConfig {
     isString(value.name) &&
     isString(value.baseUrl) &&
     isString(value.engine) &&
-    value.engine in ENGINES &&
+    hasEngine(value.engine) &&
     isContent(value.content)
   );
 }

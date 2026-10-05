@@ -43,7 +43,7 @@ import type { ContentType } from '../../sources/types';
 import { markChaptersRead } from '../../store/progress';
 import { sortBookmarks, useLibrary, type Bookmark, type LibrarySort } from '../../store/useLibrary';
 import { useAllowNsfw, useSettings } from '../../store/useSettings';
-import { useSources } from '../../store/useSources';
+import { useSources, withCatalog } from '../../store/useSources';
 import { font, space, useTheme } from '../../theme';
 import { OptionSheet, type Option } from '../settings/OptionSheet';
 import { BookmarkGrid, type BookmarkSourceInfo } from './BookmarkGrid';
@@ -126,7 +126,7 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
 
   const sourceInfo = useMemo(() => {
     const map: Record<string, BookmarkSourceInfo> = {};
-    for (const src of sources) {
+    for (const src of withCatalog(sources)) {
       map[src.id] = {
         headers: getEngine(src.engine).imageHeaders(src),
         name: src.name,

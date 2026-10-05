@@ -66,6 +66,14 @@ export type AppSettings = {
   libraryLayout: 'grid' | 'list';
   catalogLayout: 'grid' | 'list';
   checkUpdatesOnLaunch: boolean;
+  /** Đọc vài chương của truyện chưa bookmark thì gợi ý bookmark. */
+  promptBookmark: boolean;
+  /** Kiểm tra chương mới định kỳ ở nền và gửi thông báo. */
+  notifyUpdates: boolean;
+  /** URL manifest.json của kho addon (rỗng = không cập nhật addon). */
+  addonRepoUrl: string;
+  /** Tự kiểm tra cập nhật addon mỗi ngày khi mở app. */
+  autoUpdateAddons: boolean;
   hideStatusBar: boolean;
   /** Chống chụp màn hình — lưu lựa chọn, áp dụng phía native nếu có hỗ trợ. */
   preventCapture: boolean;
@@ -74,7 +82,7 @@ export type AppSettings = {
 };
 
 export const DEFAULT_HOME_WIDGETS: HomeWidget[] = [
-  { id: 'quickAccess', enabled: true, limit: 8 },
+  { id: 'quickAccess', enabled: true, limit: 10 },
   { id: 'continueReading', enabled: true, limit: 6 },
   { id: 'mediaSites', enabled: true, limit: 8 },
   { id: 'mangaBookmarks', enabled: true, limit: 9 },
@@ -83,7 +91,7 @@ export const DEFAULT_HOME_WIDGETS: HomeWidget[] = [
 ];
 
 export const DEFAULT_NOVEL_SETTINGS: NovelSettings = {
-  font: 'serif',
+  font: 'system',
   fontSize: 18,
   lineHeight: 1.6,
   theme: 'light',
@@ -111,6 +119,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryLayout: 'grid',
   catalogLayout: 'grid',
   checkUpdatesOnLaunch: true,
+  promptBookmark: true,
+  notifyUpdates: false,
+  addonRepoUrl: '',
+  autoUpdateAddons: true,
   hideStatusBar: false,
   preventCapture: false,
   tourDone: false,

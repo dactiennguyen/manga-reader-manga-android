@@ -7,6 +7,7 @@ import {
   Cookie,
   Download,
   ExternalLink,
+  Film,
   History,
   House,
   Monitor,
@@ -55,6 +56,7 @@ export type MenuAction =
   | 'share'
   | 'openExternal'
   | 'savePage'
+  | 'findMedia'
   | 'viewSource'
   | 'adblock'
   | 'clearSiteData';
@@ -168,6 +170,7 @@ export function BrowserMenu({
               <MenuItem icon={Share2} label="Chia sẻ link" onPress={() => onAction('share')} />
               <MenuItem icon={ExternalLink} label="Mở bằng ứng dụng khác" onPress={() => onAction('openExternal')} />
               <MenuItem icon={Save} label="Lưu trang" onPress={() => onAction('savePage')} />
+              <MenuItem icon={Film} label="Tải video trên trang" onPress={() => onAction('findMedia')} />
               <MenuItem icon={CodeXml} label="Xem mã nguồn" onPress={() => onAction('viewSource')} />
               <MenuItem
                 icon={adblockActive ? ShieldCheck : ShieldOff}

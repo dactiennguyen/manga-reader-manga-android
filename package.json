@@ -7,7 +7,9 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "node scripts/build-addons.js --check && jest",
+    "test:live": "jest -c jest.live.config.js",
+    "addons": "node scripts/build-addons.js"
   },
   "dependencies": {
     "@dr.pogodin/react-native-fs": "^2.40.3",
@@ -57,5 +59,13 @@
   },
   "engines": {
     "node": ">= 22.11.0"
+  },
+  "codegenConfig": {
+    "name": "AppSpecs",
+    "type": "modules",
+    "jsSrcsDir": "specs",
+    "android": {
+      "javaPackageName": "com.manga.reader.viewer.pro"
+    }
   }
 }

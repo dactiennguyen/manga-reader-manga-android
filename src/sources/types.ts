@@ -10,7 +10,8 @@
 
 export type ContentType = 'manga' | 'novel';
 
-export type EngineId = 'madara' | 'themesia' | 'mangadex';
+/** uid của addon (madara, themesia, mangadex…). Addon tải về có thể thêm uid mới. */
+export type EngineId = string;
 
 /** Một site người dùng đã thêm (tương đương DBAddOn + siteInfo). */
 export type SourceConfig = {
@@ -102,6 +103,8 @@ export interface Engine {
   id: EngineId;
   label: string;
   description: string;
+  /** Phiên bản addon đang chạy. */
+  version?: number;
   contents: ContentType[];
   /** Thứ tự sắp xếp danh sách mà engine hỗ trợ. */
   sorts: { id: ListSort; label: string }[];
@@ -117,6 +120,14 @@ export interface Engine {
     sort: ListSort,
     page: number,
   ): Promise<ListPage>;
+  /** URL thật trên site của một trang danh sách (getURL của addon) — để mở trong trình duyệt. */
+  listUrl?(
+    src: SourceConfig,
+    params:
+      | { method: 'list'; sort: ListSort; page: number }
+      | { method: 'search'; query: string; page: number }
+      | { method: 'genre'; genre: Genre; sort: ListSort; page: number },
+  ): string | Promise<string>;
   detail(src: SourceConfig, url: string): Promise<MangaDetail>;
   chapter(src: SourceConfig, url: string): Promise<ChapterContent>;
 
@@ -129,6 +140,11 @@ export interface Engine {
   resolveMangaUrl(src: SourceConfig, chapterUrl: string, html?: string): Promise<string | undefined>;
   /** Nhận diện theme từ HTML khi người dùng thêm site mới. */
   detect?(html: string): boolean;
+  /**
+   * Selector của link tới trang truyện trong danh sách — dùng để đoán thư mục
+   * truyện của site ("manga", "series", "seri"…) khi thêm site.
+   */
+  itemLinkSelector?: string;
   /** Header cần gửi khi tải ảnh (Referer chống hotlink). */
   imageHeaders(src: SourceConfig): Record<string, string>;
 }

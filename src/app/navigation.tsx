@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { AddonManagerScreen } from '../features/addons/AddonManagerScreen';
 import { AddonsScreen } from '../features/addons/AddonsScreen';
 import { AddSiteScreen } from '../features/addons/AddSiteScreen';
 import { SourceSettingsScreen } from '../features/addons/SourceSettingsScreen';
@@ -48,6 +49,7 @@ export function RootNavigator() {
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Downloads" component={DownloadsScreen} />
       <Stack.Screen name="Addons" component={AddonsScreen} />
+      <Stack.Screen name="AddonManager" component={AddonManagerScreen} />
       <Stack.Screen name="AddSite" component={AddSiteScreen} />
       <Stack.Screen name="SourceSettings" component={SourceSettingsScreen} />
       {/* Màn addon hiển thị như nội dung trong tab (giữ thanh địa chỉ) nên chuyển kiểu mờ dần. */}

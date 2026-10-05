@@ -16,7 +16,11 @@ export type BridgeMessage =
   | { type: 'html'; purpose: HtmlPurpose; url: string; html: string }
   | { type: 'longpress'; href: string; text: string; src: string }
   | { type: 'find'; count: number; index: number }
+  | { type: 'media'; url: string; items: MediaItem[] }
   | { type: 'pull' };
+
+/** Video/âm thanh tìm thấy trên trang (addon "videodownloader" của app gốc). */
+export type MediaItem = { url: string; kind: 'video' | 'audio'; label: string };
 
 const PURPOSES: HtmlPurpose[] = ['run', 'autorun', 'detect', 'save'];
 
@@ -51,6 +55,22 @@ export function parseBridgeMessage(data: string): BridgeMessage | null {
       return { type: 'longpress', href: str(msg.href), text: str(msg.text), src: str(msg.src) };
     case 'find':
       return { type: 'find', count: num(msg.count, 0), index: num(msg.index, -1) };
+    case 'media':
+      return Array.isArray(msg.items)
+        ? {
+            type: 'media',
+            url: str(msg.url),
+            items: msg.items
+              .map(item => (item && typeof item === 'object' ? (item as Record<string, unknown>) : {}))
+              .filter(item => /^https?:/i.test(str(item.url)))
+              .map(item => ({
+                url: str(item.url),
+                kind: item.kind === 'audio' ? ('audio' as const) : ('video' as const),
+                label: str(item.label).slice(0, 200),
+              }))
+              .slice(0, 50),
+          }
+        : null;
     case 'pull':
       return { type: 'pull' };
     default:
@@ -364,6 +384,51 @@ true;`;
 }
 
 export const jsNavigate = (url: string) => call(`window.location.assign(${JSON.stringify(url)});`);
+
+/**
+ * Tìm video/âm thanh tải được trên trang: thẻ <video>/<audio>/<source>, link
+ * trỏ thẳng tới file media, và iframe cùng origin. Bỏ blob:/MediaSource và
+ * playlist HLS/DASH (không phải một file để tải).
+ */
+export const JS_FIND_MEDIA = `(function () {
+  try {
+    var out = [];
+    var seen = {};
+    var MEDIA = /\\.(mp4|m4v|webm|mov|mkv|3gp|mp3|m4a|aac|ogg|oga|opus|wav|flac)(\\?|#|$)/i;
+    var AUDIO = /\\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)(\\?|#|$)/i;
+    var STREAM = /\\.(m3u8|mpd)(\\?|#|$)/i;
+    function add(url, kind, label) {
+      if (!url) return;
+      try { url = new URL(url, location.href).href; } catch (e) { return; }
+      if (!/^https?:/i.test(url) || STREAM.test(url) || seen[url]) return;
+      seen[url] = 1;
+      out.push({ url: url, kind: kind || (AUDIO.test(url) ? 'audio' : 'video'), label: (label || '').trim() });
+    }
+    function scan(doc) {
+      var els = doc.querySelectorAll('video, audio');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var kind = el.tagName === 'AUDIO' ? 'audio' : 'video';
+        var label = el.getAttribute('title') || el.getAttribute('aria-label') || doc.title;
+        add(el.currentSrc || el.getAttribute('src'), kind, label);
+        var sources = el.querySelectorAll('source');
+        for (var j = 0; j < sources.length; j++) add(sources[j].getAttribute('src'), kind, label);
+      }
+      var links = doc.querySelectorAll('a[href]');
+      for (var k = 0; k < links.length; k++) {
+        var href = links[k].getAttribute('href');
+        if (MEDIA.test(href || '')) add(href, null, links[k].textContent || doc.title);
+      }
+      var frames = doc.querySelectorAll('iframe');
+      for (var f = 0; f < frames.length; f++) {
+        try { if (frames[f].contentDocument) scan(frames[f].contentDocument); } catch (e) {}
+      }
+    }
+    scan(document);
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'media', url: location.href, items: out }));
+  } catch (e) {}
+})();
+true;`;
 
 /** Xoá localStorage/sessionStorage của site hiện tại ("Cookie & dữ liệu trang"). */
 export const JS_CLEAR_STORAGE = call('localStorage.clear(); sessionStorage.clear();');

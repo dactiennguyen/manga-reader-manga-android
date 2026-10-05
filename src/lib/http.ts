@@ -66,8 +66,8 @@ function looksLikeChallenge(status: number, body: string): boolean {
   if (status !== 403 && status !== 503 && status !== 429) {
     return false;
   }
-  const head = body.slice(0, 20000);
-  return CHALLENGE_MARKERS.some(marker => head.includes(marker));
+  const start = body.slice(0, 20000);
+  return CHALLENGE_MARKERS.some(marker => start.includes(marker));
 }
 
 export function formEncode(
@@ -90,7 +90,15 @@ const handedOff = new Map<string, { html: string; at: number }>();
 const HANDOFF_TTL = 2 * 60 * 1000;
 
 export function handOffHtml(url: string, html: string): void {
-  handedOff.set(url, { html, at: Date.now() });
+  const now = Date.now();
+  // Addon có thể tải URL khác với URL được giao (vd. trang tìm kiếm → API) nên
+  // dọn bản hết hạn ở đây, không chỉ khi lấy ra.
+  for (const [key, entry] of handedOff) {
+    if (now - entry.at >= HANDOFF_TTL) {
+      handedOff.delete(key);
+    }
+  }
+  handedOff.set(url, { html, at: now });
 }
 
 function takeHandedOff(url: string): string | undefined {
@@ -165,6 +173,30 @@ export async function request(
     );
   }
   return { status: response.status, url: response.url || url, text };
+}
+
+/**
+ * Request HEAD — kiểm tra một URL (ảnh, file) có phục vụ được không mà không
+ * tải nội dung. Lỗi mạng/hết giờ trả về null.
+ */
+export async function head(
+  url: string,
+  options: { headers?: Record<string, string>; timeoutMs?: number } = {},
+): Promise<{ ok: boolean; status: number; contentType: string } | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 8000);
+  try {
+    const res = await fetch(url, {
+      method: 'HEAD',
+      headers: { 'User-Agent': getUserAgent(), ...options.headers },
+      signal: controller.signal,
+    });
+    return { ok: res.ok, status: res.status, contentType: res.headers?.get?.('content-type') ?? '' };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function getText(url: string, options?: RequestOptions): Promise<string> {

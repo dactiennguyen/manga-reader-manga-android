@@ -88,3 +88,6 @@ local.properties
 !.vscode/settings.json
 !.vscode/extensions.json
 *.swp
+
+# Gói addon để đăng lên kho addon (npm run addons)
+/dist/

@@ -1,0 +1,30 @@
+{
+  "uid": "mangabox",
+  "label": "MangaBox",
+  "desc": "Site Mangakakalot, Manganelo, Manganato, MangaBat và các bản sao cùng giao diện (mangakakalove.com, manganelo.cc…).",
+  "version": 1,
+  "sdk": 1,
+  "type": "catalog",
+  "content": [
+    "manga"
+  ],
+  "allowCustomSites": true,
+  "sorts": [
+    {
+      "id": "latest",
+      "label": "Mới cập nhật"
+    },
+    {
+      "id": "popular",
+      "label": "Phổ biến"
+    },
+    {
+      "id": "new",
+      "label": "Truyện mới"
+    }
+  ],
+  "itemLinkSelector": ".itemupdate a.cover, .itemupdate h3 a, .list-truyen-item-wrap h3 a, .list-comic-item-wrap h3 a, .story_item .story_name a, .slide-caption h3 a, .xem-nhieu-item h3 a, .content-homepage-item a.item-img, .content-genres-item a.genres-item-img, .search-story-item a.item-img",
+  "siteInfo": {
+    "mangakakalove.com": {"title": "Manga Kakalot Love", "url": "https://www.mangakakalove.com", "lang": "en"}
+  }
+}

@@ -9,9 +9,17 @@ import { getSource } from '../../store/useSources';
 
 /**
  * Kiểm tra chương mới cho truyện đã bookmark ("Check for updates",
- * hasUpdatesBookmark). App gốc chạy bằng workmanager ở nền; ở đây chạy khi
- * mở app (nếu bật) và khi người dùng kéo để làm mới trong Bookmarks.
+ * hasUpdatesBookmark): khi mở app (nếu bật), khi kéo để làm mới trong
+ * Bookmarks, và định kỳ ở nền qua WorkManager (backgroundUpdates.ts).
  */
+
+export type UpdateCheckResult = {
+  updated: number;
+  failed: number;
+  newChapters: number;
+  /** Tên các truyện có chương mới, theo thứ tự kiểm tra. */
+  titles: string[];
+};
 
 type UpdateCheckState = {
   running: boolean;
@@ -69,9 +77,10 @@ export function refreshUnread(key: string): void {
 
 const CONCURRENCY = 3;
 
-export async function checkLibraryUpdates(keys?: string[]): Promise<void> {
+/** Trả undefined nếu đang có lượt kiểm tra khác chạy. */
+export async function checkLibraryUpdates(keys?: string[]): Promise<UpdateCheckResult | undefined> {
   if (useUpdateCheck.getState().running) {
-    return;
+    return undefined;
   }
   const bookmarks = Object.values(useLibrary.getState().bookmarks).filter(
     b => !keys || keys.includes(b.key),
@@ -80,14 +89,15 @@ export async function checkLibraryUpdates(keys?: string[]): Promise<void> {
   let updated = 0;
   let failed = 0;
   let newChapters = 0;
+  const titles: string[] = [];
   const queue = [...bookmarks];
 
   const worker = async () => {
     for (let bookmark = queue.shift(); bookmark; bookmark = queue.shift()) {
       const source = getSource(bookmark.sourceId);
       try {
-        if (!source?.enabled) {
-          throw new Error('Nguồn đã tắt hoặc bị xoá.');
+        if (!source) {
+          throw new Error('Nguồn đã bị xoá.');
         }
         const before = new Set(getCachedChapters(bookmark.key).map(ch => ch.url));
         const detail = await fetchDetail(source, bookmark.url);
@@ -97,6 +107,7 @@ export async function checkLibraryUpdates(keys?: string[]): Promise<void> {
         if (added) {
           updated++;
           newChapters += added;
+          titles.push(detail.title || bookmark.title);
         }
         syncBookmarkWithDetail(bookmark.key, detail, { newChapters: added });
       } catch (error) {
@@ -118,4 +129,5 @@ export async function checkLibraryUpdates(keys?: string[]): Promise<void> {
       lastResult: { updated, failed, newChapters },
     });
   }
+  return { updated, failed, newChapters, titles };
 }

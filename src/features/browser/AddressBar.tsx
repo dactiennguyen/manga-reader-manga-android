@@ -3,7 +3,18 @@ import { Pressable, StyleSheet, Text, TextInput, View, type TextInputInstance } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PuzzleButton, TabCountButton } from '../../components/AddressBarParts';
-import { ArrowLeft, EllipsisVertical, ScanQrCode, ShieldCheck, ShieldOff, X } from '../../components/icons';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookmarkCheck,
+  BookmarkPlus,
+  EllipsisVertical,
+  RotateCw,
+  ScanQrCode,
+  ShieldCheck,
+  ShieldOff,
+  X,
+} from '../../components/icons';
 import { IconButton } from '../../components/ui';
 import type { SearchCategory } from '../../store/useSettings';
 import { radius, space, useTheme } from '../../theme';
@@ -16,6 +27,20 @@ export type AddressBarHandle = { focus: () => void; blur: () => void };
 export type AddonState = 'source' | 'detected' | null;
 
 export const ADDRESS_PLACEHOLDER = 'Tìm kiếm hoặc nhập địa chỉ web';
+
+/** Nút thêm của màn rộng (tablet): ← → ⟳ trước mảnh ghép, bookmark sau ô URL. */
+export type WideControls = {
+  canBack: boolean;
+  canForward: boolean;
+  /** Đang tải thì nút ⟳ thành nút dừng. */
+  loading: boolean;
+  onBack: () => void;
+  onForward: () => void;
+  onReload: () => void;
+  /** null khi không xem trang web (trang chủ). */
+  bookmarked: boolean | null;
+  onBookmarkPress: () => void;
+};
 
 /** URL hiện trong ô khi không gõ: giữ cả scheme như app gốc, bỏ "/" thừa của trang gốc. */
 function shownUrl(url: string): string {
@@ -47,6 +72,7 @@ export function AddressBar({
   onNewTab,
   onMenuPress,
   registerTour,
+  wide,
   ref,
 }: {
   /** URL trang đang xem, rỗng khi ở trang chủ. */
@@ -71,6 +97,8 @@ export function AddressBar({
   onNewTab: () => void;
   onMenuPress: () => void;
   registerTour: TourRegister;
+  /** Có thì dùng bố cục màn rộng. */
+  wide?: WideControls;
   ref?: Ref<AddressBarHandle>;
 }) {
   const { c } = useTheme();
@@ -102,20 +130,50 @@ export function AddressBar({
             accessibilityLabel="Đóng thanh tìm kiếm"
           />
         ) : (
-          <View>
-            <PuzzleButton
-              ref={registerTour('addon')}
-              active={!!addon}
-              busy={addonBusy}
-              onPress={onAddonPress}
-              accessibilityLabel={
-                addon === 'source' ? 'Chạy addon' : addon === 'detected' ? 'Thêm site được hỗ trợ' : 'Site được hỗ trợ'
-              }
-            />
-            {/* Theme được hỗ trợ nhưng chưa thêm site: chấm báo bấm để thêm. */}
-            {addon === 'detected' && !addonBusy && (
-              <View pointerEvents="none" style={[styles.dot, { backgroundColor: c.accent, borderColor: bg }]} />
+          <View style={styles.leading}>
+            {wide && (
+              <>
+                <IconButton
+                  icon={ArrowLeft}
+                  color={wide.canBack ? fg : muted}
+                  disabled={!wide.canBack}
+                  onPress={wide.onBack}
+                  accessibilityLabel="Quay lại"
+                />
+                <IconButton
+                  icon={ArrowRight}
+                  color={wide.canForward ? fg : muted}
+                  disabled={!wide.canForward}
+                  onPress={wide.onForward}
+                  accessibilityLabel="Tiến"
+                />
+                <IconButton
+                  icon={wide.loading ? X : RotateCw}
+                  color={fg}
+                  onPress={wide.onReload}
+                  accessibilityLabel={wide.loading ? 'Dừng tải' : 'Tải lại'}
+                />
+              </>
             )}
+            <View>
+              <PuzzleButton
+                ref={registerTour('addon')}
+                active={!!addon}
+                busy={addonBusy}
+                onPress={onAddonPress}
+                accessibilityLabel={
+                  addon === 'source'
+                    ? 'Chạy addon'
+                    : addon === 'detected'
+                    ? 'Thêm site được hỗ trợ'
+                    : 'Site được hỗ trợ'
+                }
+              />
+              {/* Theme được hỗ trợ nhưng chưa thêm site: chấm báo bấm để thêm. */}
+              {addon === 'detected' && !addonBusy && (
+                <View pointerEvents="none" style={[styles.dot, { backgroundColor: c.accent, borderColor: bg }]} />
+              )}
+            </View>
           </View>
         )}
 
@@ -186,6 +244,14 @@ export function AddressBar({
 
         {!editing && (
           <>
+            {wide && wide.bookmarked !== null && (
+              <IconButton
+                icon={wide.bookmarked ? BookmarkCheck : BookmarkPlus}
+                color={wide.bookmarked && !incognito ? c.accent : fg}
+                onPress={wide.onBookmarkPress}
+                accessibilityLabel={wide.bookmarked ? 'Sửa bookmark' : 'Bookmark trang này'}
+              />
+            )}
             <TabCountButton
               ref={registerTour('tabs')}
               count={tabCount}
@@ -212,6 +278,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     height: 60,
   },
+  leading: { flexDirection: 'row', alignItems: 'center' },
   dot: {
     position: 'absolute',
     top: 3,
@@ -233,7 +300,14 @@ const styles = StyleSheet.create({
   inputWrap: { flex: 1, justifyContent: 'center' },
   input: { fontSize: 15, paddingVertical: 0, height: 40 },
   invisible: { opacity: 0 },
-  display: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center' },
+  display: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
   displayText: { fontSize: 15 },
   shield: { paddingLeft: space.sm },
   qr: { width: 40, height: 40 },

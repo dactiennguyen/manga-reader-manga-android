@@ -15,10 +15,14 @@ import {
   PanelBottom,
   Pause,
   Play,
+  ScreenLockLandscape,
+  ScreenLockPortrait,
+  ScreenRotation,
   SkipBack,
   SkipForward,
   Sun,
 } from '../../components/icons';
+import type { OrientationLock } from '../../lib/screen';
 import type { ViewMode } from '../../store/useReaderSettings';
 import { space } from '../../theme';
 import {
@@ -48,6 +52,7 @@ export type ReaderChromeActions = {
   onToggleGap: () => void;
   onToggleAutoScroll: () => void;
   onToggleImmersive: () => void;
+  onToggleOrientation: () => void;
 };
 
 type Props = {
@@ -63,6 +68,8 @@ type Props = {
   autoPlaying: boolean;
   immersive: boolean;
   tapToScroll: boolean;
+  /** undefined: máy không hỗ trợ khoá xoay, ẩn nút. */
+  orientationLock?: OrientationLock;
   hasPrev: boolean;
   hasNext: boolean;
   actions: ReaderChromeActions;
@@ -86,6 +93,7 @@ export const ReaderChrome = memo(function ReaderChromeView({
   autoPlaying,
   immersive,
   tapToScroll,
+  orientationLock,
   hasPrev,
   hasNext,
   actions,
@@ -156,6 +164,9 @@ export const ReaderChrome = memo(function ReaderChromeView({
                 accessibilityLabel={immersive ? 'Tắt toàn màn hình' : 'Toàn màn hình'}
               />
             )}
+            {orientationLock && (
+              <OrientationButton lock={orientationLock} color={CHROME_FG} onPress={actions.onToggleOrientation} />
+            )}
           </SideToolbar>
         </Animated.View>
       )}
@@ -199,6 +210,32 @@ export const ReaderChrome = memo(function ReaderChromeView({
     </>
   );
 });
+
+const ORIENTATION_ICONS = {
+  auto: ScreenRotation,
+  portrait: ScreenLockPortrait,
+  landscape: ScreenLockLandscape,
+} as const;
+
+/** Nút khoá xoay ở thanh công cụ dọc (dùng chung cho reader manga và novel). */
+export function OrientationButton({
+  lock,
+  color,
+  onPress,
+}: {
+  lock: OrientationLock;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <ChromeButton
+      icon={ORIENTATION_ICONS[lock]}
+      color={lock === 'auto' ? color : CHROME_ACCENT}
+      onPress={onPress}
+      accessibilityLabel={lock === 'auto' ? 'Khoá xoay màn hình' : 'Bỏ khoá xoay màn hình'}
+    />
+  );
+}
 
 const styles = StyleSheet.create({
   top: { position: 'absolute', top: 0, left: 0, right: 0 },

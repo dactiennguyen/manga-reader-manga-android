@@ -1,0 +1,19 @@
+{
+  "uid": "mangakatana",
+  "label": "MangaKatana",
+  "desc": "MangaKatana (mangakatana.com) — kho manga tiếng Anh lớn, đầy đủ chương.",
+  "version": 1,
+  "sdk": 1,
+  "type": "catalog",
+  "content": ["manga"],
+  "allowCustomSites": false,
+  "sorts": [
+    { "id": "latest", "label": "Mới cập nhật" },
+    { "id": "popular", "label": "Phổ biến" },
+    { "id": "new", "label": "Truyện mới" },
+    { "id": "az", "label": "A-Z" }
+  ],
+  "siteInfo": {
+    "mangakatana.com": { "title": "MangaKatana", "lang": "en", "builtin": true }
+  }
+}

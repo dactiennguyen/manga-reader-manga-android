@@ -1,0 +1,42 @@
+{
+  "uid": "madtheme",
+  "label": "MadTheme",
+  "desc": "Site dùng theme MadTheme của họ MangaBuddy (KaliScan, MgJinx, Toonily.me, MangaForest…).",
+  "version": 1,
+  "sdk": 1,
+  "type": "catalog",
+  "content": [
+    "manga"
+  ],
+  "allowCustomSites": true,
+  "sorts": [
+    {
+      "id": "latest",
+      "label": "Mới cập nhật"
+    },
+    {
+      "id": "popular",
+      "label": "Phổ biến"
+    },
+    {
+      "id": "new",
+      "label": "Truyện mới"
+    },
+    {
+      "id": "rating",
+      "label": "Đánh giá"
+    },
+    {
+      "id": "az",
+      "label": "A-Z"
+    }
+  ],
+  "itemLinkSelector": ".book-item .thumb a, .book-detailed-item .thumb a, .book-item h3 a, .book-detailed-item h3 a, .top-item a, .trending-item a",
+  "siteInfo": {
+    "kaliscan.com": {"title": "Kali Scan", "lang": "en", "note": "cloudflare"},
+    "kaliscan.io": {"title": "Kali Scan (Mirror)", "lang": "en", "note": "cloudflare"},
+    "kaliscan.me": {"title": "Kali Scan (Mirror)", "lang": "en", "note": "cloudflare"},
+    "manhuanow.com": {"title": "Manhua Now", "lang": "en", "note": "blocked"},
+    "mgjinx.com": {"title": "MG Jinx", "lang": "en", "note": "cloudflare"}
+  }
+}

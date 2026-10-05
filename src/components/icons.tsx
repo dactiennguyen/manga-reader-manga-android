@@ -135,6 +135,8 @@ const GLYPHS = {
   menu_book: 0xea19,
   more_horiz: 0xe5d3,
   more_vert: 0xe5d4,
+  movie: 0xe02c,
+  music_note: 0xe405,
   new_releases: 0xe031,
   newspaper: 0xeb81,
   no_photography: 0xf1a8,
@@ -150,6 +152,7 @@ const GLYPHS = {
   pause_circle_outline: 0xe036,
   person: 0xe7fd,
   person_outline: 0xe7ff,
+  pie_chart_outline: 0xf044,
   play_arrow: 0xe037,
   play_circle: 0xe1c4,
   play_circle_outline: 0xe039,
@@ -168,6 +171,8 @@ const GLYPHS = {
   rocket_launch: 0xeb9b,
   save: 0xe161,
   schedule: 0xe8b5,
+  screen_lock_landscape: 0xe1be,
+  screen_lock_portrait: 0xe1bf,
   screen_lock_rotation: 0xe1c0,
   screen_rotation: 0xe1c1,
   search: 0xe8b6,
@@ -278,6 +283,7 @@ export const Calendar = create('calendar_today');
 export const CalendarDays = create('date_range');
 export const CameraOff = create('no_photography');
 export const ChartColumn = create('bar_chart');
+export const ChartPie = create('pie_chart_outline');
 export const Check = create('check');
 export const CheckCheck = create('done_all');
 export const ChevronDown = create('expand_more');
@@ -312,9 +318,11 @@ export const Expand = create('open_in_full');
 export const ExternalLink = create('open_in_new');
 export const Eye = create('visibility');
 export const EyeOff = create('visibility_off');
+export const File = create('insert_drive_file');
 export const FileText = create('description');
 export const FileUp = create('upload_file');
 export const FileX = create('insert_drive_file');
+export const Film = create('movie');
 export const Filter = create('filter_alt');
 export const Flame = create('local_fire_department');
 export const Flashlight = create('flashlight_on');
@@ -361,6 +369,7 @@ export const Monitor = create('desktop_windows');
 export const MonitorSmartphone = create('devices');
 export const Moon = create('dark_mode');
 export const MousePointerClick = create('touch_app');
+export const Music = create('music_note');
 export const Newspaper = create('newspaper');
 export const Palette = create('palette');
 export const PanelBottom = create('call_to_action');
@@ -384,6 +393,9 @@ export const Rows3 = create('view_agenda');
 export const Save = create('save');
 export const Scale = create('balance');
 export const ScanQrCode = create('qr_code_scanner');
+export const ScreenLockLandscape = create('screen_lock_landscape');
+export const ScreenLockPortrait = create('screen_lock_portrait');
+export const ScreenRotation = create('screen_rotation');
 export const ScreenShare = create('screen_rotation');
 export const ScreenShareOff = create('screen_lock_rotation');
 export const ScrollText = create('article');

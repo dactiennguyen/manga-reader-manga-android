@@ -1,48 +1,89 @@
+import { addonEngineFor, addonInfos, useAddonRevision } from '../addons/registry';
 import { urlIdentity } from '../lib/url';
-import { madara } from './engines/madara';
-import { mangadex } from './engines/mangadex';
-import { themesia } from './engines/themesia';
-import type { Engine, EngineId, SourceConfig } from './types';
+import type { ContentType, Engine, EngineId } from './types';
 
 export * from './types';
 
-export const ENGINES: Record<EngineId, Engine> = { madara, themesia, mangadex };
+/** Thông tin addon để hiển thị, không cần nạp code. */
+export type EngineSummary = {
+  id: EngineId;
+  label: string;
+  description: string;
+  version?: number;
+  contents: ContentType[];
+  allowCustomSites: boolean;
+};
 
-export const ENGINE_LIST: Engine[] = [madara, themesia, mangadex];
+/** Theme chung (Madara, Themesia) dò sau cùng vì dấu hiệu của chúng rộng hơn. */
+const GENERIC_THEMES = new Set(['madara', 'themesia']);
+
+let summaries: { revision: number; list: EngineSummary[] } | null = null;
+
+export function engineSummaries(): EngineSummary[] {
+  const { revision } = useAddonRevision.getState();
+  if (summaries?.revision === revision) {
+    return summaries.list;
+  }
+  const list: EngineSummary[] = addonInfos().map(info => ({
+    id: info.uid,
+    label: info.label,
+    description: info.desc,
+    version: info.version,
+    contents: info.content,
+    allowCustomSites: info.allowCustomSites,
+  }));
+  list.sort((a, b) => Number(GENERIC_THEMES.has(a.id)) - Number(GENERIC_THEMES.has(b.id)));
+  summaries = { revision, list };
+  return list;
+}
+
+/** Như engineSummaries, dựng lại khi cài/gỡ bản cập nhật addon. */
+export function useEngineSummaries(): EngineSummary[] {
+  useAddonRevision(state => state.revision);
+  return engineSummaries();
+}
+
+/** Engine thay cho addon không còn (site đã lưu của addon bị gỡ). */
+function missingEngine(id: EngineId): Engine {
+  const fail = (): never => {
+    throw new Error(`Addon "${id}" chưa được cài.`);
+  };
+  return {
+    id,
+    label: id,
+    description: '',
+    contents: ['manga'],
+    allowCustomSites: false,
+    sorts: [{ id: 'latest', label: 'Mới cập nhật' }],
+    list: fail,
+    search: fail,
+    genres: fail,
+    byGenre: fail,
+    detail: fail,
+    chapter: fail,
+    classifyUrl: () => null,
+    resolveMangaUrl: fail,
+    imageHeaders: src => ({ Referer: `${src.baseUrl}/` }),
+  };
+}
 
 export function getEngine(id: EngineId): Engine {
-  return ENGINES[id];
+  return addonEngineFor(id) ?? missingEngine(id);
+}
+
+export function hasEngine(id: EngineId): boolean {
+  return addonInfos().some(info => info.uid === id);
 }
 
 /** Đoán theme từ HTML trang chủ khi người dùng thêm site. */
 export function detectEngine(html: string): EngineId | null {
-  for (const engine of ENGINE_LIST) {
-    if (engine.allowCustomSites && engine.detect?.(html)) {
-      return engine.id;
+  for (const summary of engineSummaries()) {
+    if (summary.allowCustomSites && getEngine(summary.id).detect?.(html)) {
+      return summary.id;
     }
   }
   return null;
 }
-
-/**
- * Nguồn có sẵn. Chỉ MangaDex vì có API công khai; site theme WordPress
- * thì người dùng tự thêm (bài học từ docs: danh sách cứng chết rất nhanh).
- */
-export const BUILTIN_SOURCES: SourceConfig[] = [
-  {
-    id: 'mangadex.org',
-    engine: 'mangadex',
-    name: 'MangaDex',
-    baseUrl: 'https://mangadex.org',
-    content: 'manga',
-    lang: 'en',
-    nsfw: false,
-    enabled: true,
-    builtin: true,
-    addedAt: 0,
-    options: { chapterLang: 'en' },
-  },
-];
 
 /** Khoá ổn định cho một truyện, dùng cho bookmark, tiến độ, lịch sử, tải xuống. */
 export function mangaKey(sourceId: string, url: string): string {

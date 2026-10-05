@@ -34,6 +34,7 @@ import { useReaderSettings } from '../../store/useReaderSettings';
 import { useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
 import { font, space, useTheme } from '../../theme';
+import { BookmarkPrompt, useBookmarkTarget } from '../reader/BookmarkPrompt';
 import { ChapterPickerSheet } from '../reader/ChapterPickerSheet';
 import { prefetchChapter } from '../reader/chapterCache';
 import { BrightnessOverlay } from '../reader/chromeParts';
@@ -46,6 +47,7 @@ import { useAutoScroll, type ScrollMetrics } from '../reader/useAutoScroll';
 import { useChapterNavigation } from '../reader/useChapterNavigation';
 import { useChapterSession, type SessionTarget } from '../reader/useChapterSession';
 import { useKeepScreenOn } from '../reader/useKeepScreenOn';
+import { useOrientationLock } from '../reader/useOrientationLock';
 import { knownManga, useChapterContent, useMangaDetail } from '../reader/useReaderData';
 import { createValueStore } from '../reader/valueStore';
 import { NovelChrome, type NovelChromeActions } from './NovelChrome';
@@ -147,6 +149,7 @@ export function NovelReaderScreen() {
   const known = useMemo(() => knownManga(key), [key]);
   const mangaTitle = detail?.title ?? known.title ?? '';
   const cover = detail?.cover ?? known.cover;
+  const bookmarkTarget = useBookmarkTarget(key, src, mangaUrl, detail, mangaTitle, cover);
   const chapterName = current?.name ?? content?.title ?? 'Chương đang đọc';
 
   // Chương dạng ảnh → chuyển sang reader manga.
@@ -528,6 +531,9 @@ export function NovelReaderScreen() {
 
   const openSettings = useCallback(() => setSheet('settings'), []);
 
+  const orientation = useOrientationLock();
+  const toggleOrientation = orientation.toggle;
+
   const chromeActions = useMemo<NovelChromeActions>(
     () => ({
       onBack: () => navigation.goBack(),
@@ -564,8 +570,20 @@ export function NovelReaderScreen() {
       onPauseTts: ttsPause,
       onResumeTts: ttsResume,
       onStopTts: ttsStop,
+      onToggleOrientation: toggleOrientation,
     }),
-    [navigation, goPrev, goNext, positionStore, scrollToParagraph, ttsStart, ttsPause, ttsResume, ttsStop],
+    [
+      navigation,
+      goPrev,
+      goNext,
+      positionStore,
+      scrollToParagraph,
+      ttsStart,
+      ttsPause,
+      ttsResume,
+      ttsStop,
+      toggleOrientation,
+    ],
   );
 
   // ─── Hiển thị ────────────────────────────────────────────────────────────
@@ -655,7 +673,10 @@ export function NovelReaderScreen() {
         keyExtractor={paragraphKey}
         ListHeaderComponent={header}
         ListFooterComponent={footer}
-        contentContainerStyle={{ paddingTop: insets.top + TOP_CHROME + space.lg, paddingBottom: insets.bottom + space.xl }}
+        contentContainerStyle={{
+          paddingTop: insets.top + TOP_CHROME + space.lg,
+          paddingBottom: insets.bottom + space.xl,
+        }}
         onScroll={handleScroll}
         scrollEventThrottle={32}
         onLayout={onListLayout}
@@ -705,6 +726,7 @@ export function NovelReaderScreen() {
         autoScrolling={autoScrolling}
         ttsState={tts.state}
         ttsIndex={tts.index}
+        orientationLock={orientation.supported ? orientation.lock : undefined}
         actions={chromeActions}
       />
 
@@ -743,6 +765,7 @@ export function NovelReaderScreen() {
           settings={{ label: 'Cài đặt đọc', onPress: openSettings }}
         />
       )}
+      <BookmarkPrompt target={bookmarkTarget} />
     </View>
   );
 }

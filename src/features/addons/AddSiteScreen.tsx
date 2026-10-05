@@ -30,7 +30,7 @@ import {
   toast,
 } from '../../components/ui';
 import { ensureScheme, getHost, getOrigin, looksLikeUrl } from '../../lib/url';
-import { ENGINE_LIST, getEngine, languageName } from '../../sources';
+import { getEngine, languageName, useEngineSummaries } from '../../sources';
 import type { ContentType, EngineId, MangaItem, SourceConfig } from '../../sources/types';
 import { getSource, useSources } from '../../store/useSources';
 import { font, radius, space, useTheme } from '../../theme';
@@ -39,8 +39,6 @@ import { LanguageSheet } from './LanguageSheet';
 import { probeSite, type SiteProbe } from './siteProbe';
 import { Favicon } from '../../components/Favicon';
 
-const CUSTOM_ENGINES = ENGINE_LIST.filter(e => e.allowCustomSites);
-const CUSTOM_ENGINE_LABELS = CUSTOM_ENGINES.map(e => e.label).join(' · ');
 
 const CONTENT_OPTIONS: { value: ContentType; label: string }[] = [
   { value: 'manga', label: 'Truyện tranh' },
@@ -91,6 +89,7 @@ export function AddSiteScreen() {
   const preferredEngine = route.params?.engine;
   const navigation = useAppNavigation();
   const { c } = useTheme();
+  const customEngines = useEngineSummaries().filter(e => e.allowCustomSites);
   const addSource = useSources(s => s.addSource);
 
   const [input, setInput] = useState(initialUrl ?? '');
@@ -252,7 +251,7 @@ export function AddSiteScreen() {
 
   return (
     <Screen>
-      <Header title="Thêm site được hỗ trợ" subtitle={CUSTOM_ENGINE_LABELS} />
+      <Header title="Thêm site được hỗ trợ" subtitle={customEngines.map(e => e.label).join(' · ')} />
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.block}>
           <FieldLabel>Địa chỉ site</FieldLabel>
@@ -355,7 +354,7 @@ export function AddSiteScreen() {
             </View>
 
             <Section title="Theme (addon)" footer={engine?.description}>
-              {CUSTOM_ENGINES.map(e => (
+              {customEngines.map(e => (
                 <Radio
                   key={e.id}
                   selected={form.engine === e.id}

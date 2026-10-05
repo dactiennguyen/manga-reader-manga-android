@@ -1,0 +1,31 @@
+package com.manga.reader.viewer.pro
+
+import com.facebook.react.BaseReactPackage
+import com.facebook.react.bridge.NativeModule
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.module.model.ReactModuleInfo
+import com.facebook.react.module.model.ReactModuleInfoProvider
+
+/** TurboModule của app (các spec trong thư mục specs). */
+class AppPackage : BaseReactPackage() {
+
+  override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? =
+      when (name) {
+        NativeScreenModule.NAME -> NativeScreenModule(reactContext)
+        NativeLibraryTasksModule.NAME -> NativeLibraryTasksModule(reactContext)
+        else -> null
+      }
+
+  override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
+    listOf(NativeScreenModule.NAME, NativeLibraryTasksModule.NAME).associateWith { name ->
+      ReactModuleInfo(
+          name = name,
+          className = name,
+          canOverrideExistingModule = false,
+          needsEagerInit = false,
+          isCxxModule = false,
+          isTurboModule = true,
+      )
+    }
+  }
+}

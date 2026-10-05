@@ -2,12 +2,12 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { Share } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
-import { Copy, Download, ExternalLink, Image as ImageIcon, Layers, Share2, Type } from '../../components/icons';
+import { Copy, Download, ExternalLink, File, Image as ImageIcon, Layers, Share2, Type } from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { displayUrl } from '../../lib/url';
 import { useBrowser } from '../../store/useBrowser';
-import { downloadImage } from './pageActions';
+import { startFileDownload } from '../downloads/fileDownloader';
 
 export type LinkTarget = { href: string; text: string; src: string };
 
@@ -48,13 +48,13 @@ export function LinkMenu({
     Share.share({ message: value }).catch(() => {});
   };
 
-  const saveImage = async () => {
-    toast('Đang tải ảnh…');
+  /** Tải vào thư mục Download, theo dõi ở Tải xuống › Tệp & media. */
+  const download = async (url: string, image: boolean) => {
     try {
-      await downloadImage(src, pageUrl);
-      toast('Đã lưu vào thư mục Download');
+      await startFileDownload(url, { pageUrl, kind: image ? 'image' : undefined });
+      toast(image ? 'Đang tải ảnh — xem trong Tải xuống › Tệp & media' : 'Đang tải — xem trong Tải xuống › Tệp & media');
     } catch (error) {
-      toast(`Không tải được ảnh: ${errorMessage(error)}`);
+      toast(`Không tải được: ${errorMessage(error)}`);
     }
   };
 
@@ -72,6 +72,9 @@ export function LinkMenu({
             <ListItem icon={Type} title="Sao chép chữ của link" onPress={run(() => copy(target.text, 'Đã sao chép chữ'))} />
           )}
           <ListItem icon={Share2} title="Chia sẻ link" onPress={run(() => share(href))} />
+          {/^https?:/i.test(href) && (
+            <ListItem icon={File} title="Tải tệp của link" onPress={run(() => download(href, false))} />
+          )}
         </>
       )}
       {!!href && !!src && <Divider />}
@@ -84,7 +87,7 @@ export function LinkMenu({
               <ListItem icon={Share2} title="Chia sẻ ảnh (link)" onPress={run(() => share(src))} />
             </>
           )}
-          <ListItem icon={Download} title="Tải ảnh" onPress={run(saveImage)} />
+          <ListItem icon={Download} title="Tải ảnh" onPress={run(() => download(src, true))} />
         </>
       )}
     </Sheet>

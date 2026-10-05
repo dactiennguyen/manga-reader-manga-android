@@ -1,0 +1,19 @@
+{
+  "uid": "weebcentral",
+  "label": "Weeb Central",
+  "desc": "Weeb Central (weebcentral.com) — kho manga tiếng Anh cập nhật nhanh, kế thừa MangaSee.",
+  "version": 1,
+  "sdk": 1,
+  "type": "catalog",
+  "content": ["manga"],
+  "allowCustomSites": false,
+  "sorts": [
+    { "id": "latest", "label": "Mới cập nhật" },
+    { "id": "popular", "label": "Phổ biến" },
+    { "id": "new", "label": "Truyện mới" },
+    { "id": "az", "label": "A-Z" }
+  ],
+  "siteInfo": {
+    "weebcentral.com": { "title": "Weeb Central", "lang": "en", "builtin": true }
+  }
+}

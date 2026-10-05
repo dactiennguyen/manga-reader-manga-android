@@ -1,6 +1,8 @@
-import { themesia } from '../src/sources/engines/themesia';
 import type { SourceConfig } from '../src/sources/types';
+import { sourceEngine } from './helpers/addons';
 import { mockFetch, urlIs, urlStarts } from './helpers/mockFetch';
+
+const themesia = sourceEngine('themesia');
 
 const src: SourceConfig = {
   id: 'ts.test',

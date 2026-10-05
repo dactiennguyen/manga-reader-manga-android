@@ -17,6 +17,6 @@ module.exports = {
   preset: '@react-native/jest-preset',
   setupFiles: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [`node_modules/(?!(${ESM_PACKAGES.join('|')})/)`],
-  testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/', '/cookie-manga-extracted/'],
+  testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/', '/__tests__/live/', '/cookie-manga-extracted/'],
   modulePathIgnorePatterns: ['<rootDir>/cookie-manga-extracted/'],
 };

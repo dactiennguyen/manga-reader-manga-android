@@ -6,8 +6,6 @@ import {
   List,
   ListFilter,
   Lock,
-  Power,
-  PowerOff,
   RotateCw,
   Search,
   SearchX,
@@ -48,7 +46,7 @@ import type { Genre, ListSort, MangaItem, SourceConfig } from '../../sources/typ
 import { useHistory } from '../../store/useHistory';
 import { useLibrary, type Bookmark as LibraryBookmark } from '../../store/useLibrary';
 import { useAllowNsfw, useSettings } from '../../store/useSettings';
-import { useSource, useSources } from '../../store/useSources';
+import { useSource } from '../../store/useSources';
 import { font, radius, space, useTheme } from '../../theme';
 import { CatalogFilterSheet } from './CatalogFilterSheet';
 import { toggleQuickBookmark } from './quickBookmark';
@@ -80,7 +78,6 @@ export function CatalogScreen() {
   const { sourceId, query, genre } = route.params;
   const source = useSource(sourceId);
   const allowNsfw = useAllowNsfw();
-  const updateSource = useSources(s => s.updateSource);
   const navigation = useAppNavigation();
 
   if (!source) {
@@ -101,17 +98,6 @@ export function CatalogScreen() {
         heading="Nguồn 18+ đang bị khoá"
         message="Bật hiển thị nội dung 18+ và xác nhận đủ tuổi trong Cài đặt để xem nguồn này."
         action={{ label: 'Mở Cài đặt', onPress: () => navigation.navigate('Settings') }}
-      />
-    );
-  }
-  if (!source.enabled) {
-    return (
-      <Gate
-        url={source.baseUrl}
-        icon={PowerOff}
-        heading="Nguồn đang tắt"
-        message="Bật lại nguồn để xem danh sách truyện, tìm kiếm và kiểm tra chương mới."
-        action={{ label: 'Bật nguồn', icon: Power, onPress: () => updateSource(source.id, { enabled: true }) }}
       />
     );
   }

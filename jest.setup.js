@@ -53,6 +53,7 @@ jest.mock('@dr.pogodin/react-native-fs', () => ({
   stat: jest.fn(async () => ({ size: 0 })),
   copyFile: jest.fn(async () => {}),
   stopDownload: jest.fn(),
+  scanFile: jest.fn(async () => []),
   downloadFile: jest.fn(() => ({
     jobId: 1,
     promise: Promise.resolve({ jobId: 1, statusCode: 200, bytesWritten: 0 }),

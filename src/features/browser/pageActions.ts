@@ -1,24 +1,11 @@
-import {
-  DocumentDirectoryPath,
-  DownloadDirectoryPath,
-  downloadFile,
-  exists,
-  mkdir,
-  scanFile,
-  stat,
-  writeFile,
-} from '@dr.pogodin/react-native-fs';
+import { DocumentDirectoryPath, exists, mkdir, stat, writeFile } from '@dr.pogodin/react-native-fs';
 import CookieManager from '@preeternal/react-native-cookie-manager';
 import { Linking } from 'react-native';
 
-import { getUserAgent } from '../../lib/http';
 import { uid } from '../../lib/id';
-import { getPath } from '../../lib/url';
 import { useBrowser } from '../../store/useBrowser';
 
 const SAVED_DIR = `${DocumentDirectoryPath}/saved`;
-
-const IMAGE_EXT = /\.(jpe?g|png|webp|gif|avif|bmp|svg)$/i;
 
 function safeDecode(value: string): string {
   try {
@@ -26,54 +13,6 @@ function safeDecode(value: string): string {
   } catch {
     return value;
   }
-}
-
-/** Tên file ảnh từ URL, bỏ ký tự không hợp lệ, luôn có đuôi. */
-function imageFileName(src: string, mime?: string): string {
-  const last = safeDecode(getPath(src).split('/').filter(Boolean).pop() ?? '');
-  let name = last.replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '').slice(-80) || `image_${Date.now()}`;
-  if (!IMAGE_EXT.test(name)) {
-    const ext = mime?.split('/')[1]?.replace('jpeg', 'jpg').replace(/\+.*$/, '') || 'jpg';
-    name = `${name}.${ext}`;
-  }
-  return name;
-}
-
-async function uniquePath(dir: string, name: string): Promise<string> {
-  const path = `${dir}/${name}`;
-  if (!(await exists(path))) {
-    return path;
-  }
-  const dot = name.lastIndexOf('.');
-  return `${dir}/${name.slice(0, dot)}_${Date.now()}${name.slice(dot)}`;
-}
-
-/** "Tải ảnh": lưu vào thư mục Download của máy. Trả về đường dẫn file. */
-export async function downloadImage(src: string, referer: string): Promise<string> {
-  const dataUri = /^data:(image\/[\w.+-]+);base64,(.*)$/i.exec(src);
-  if (dataUri) {
-    const path = await uniquePath(DownloadDirectoryPath, imageFileName(`image_${Date.now()}`, dataUri[1]));
-    await writeFile(path, dataUri[2], 'base64');
-    await scanFile(path).catch(() => null);
-    return path;
-  }
-  if (!/^https?:/i.test(src)) {
-    throw new Error('Không tải được ảnh này.');
-  }
-  const path = await uniquePath(DownloadDirectoryPath, imageFileName(src));
-  const { promise } = downloadFile({
-    fromUrl: src,
-    toFile: path,
-    headers: { 'User-Agent': getUserAgent(), Referer: referer },
-    connectionTimeout: 20000,
-    readTimeout: 30000,
-  });
-  const result = await promise;
-  if (result.statusCode < 200 || result.statusCode >= 300) {
-    throw new Error(`Máy chủ trả lỗi ${result.statusCode}.`);
-  }
-  await scanFile(path).catch(() => null);
-  return path;
 }
 
 /** "Lưu trang": ghi HTML vào thư mục app rồi thêm vào danh sách trang đã lưu. Trả id. */

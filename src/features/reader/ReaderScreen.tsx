@@ -24,6 +24,7 @@ import { useActiveTab } from '../../store/useBrowser';
 import { useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
 import { useTheme } from '../../theme';
+import { BookmarkPrompt, useBookmarkTarget } from './BookmarkPrompt';
 import { ChapterPickerSheet } from './ChapterPickerSheet';
 import { BrightnessOverlay } from './chromeParts';
 import { prefetchChapter } from './chapterCache';
@@ -38,6 +39,7 @@ import { resolveTap } from './tapZones';
 import { useChapterNavigation } from './useChapterNavigation';
 import { useChapterSession, type SessionTarget } from './useChapterSession';
 import { useKeepScreenOn } from './useKeepScreenOn';
+import { useOrientationLock } from './useOrientationLock';
 import { knownManga, useChapterContent, useMangaDetail } from './useReaderData';
 import { createValueStore } from './valueStore';
 import { VerticalViewer } from './VerticalViewer';
@@ -97,6 +99,7 @@ export function ReaderScreen() {
   const known = useMemo(() => knownManga(key), [key]);
   const mangaTitle = detail?.title ?? known.title ?? '';
   const cover = detail?.cover ?? known.cover;
+  const bookmarkTarget = useBookmarkTarget(key, src, mangaUrl, detail, mangaTitle, cover);
   const chapterName = current?.name ?? content?.title ?? 'Chương đang đọc';
   const vertical = prefs.viewMode === 'vertical';
   const rtlAxis = prefs.direction === 'rtl' && (prefs.viewMode === 'horizontal' || prefs.viewMode === 'double');
@@ -312,6 +315,9 @@ export function ReaderScreen() {
     [key],
   );
 
+  const orientation = useOrientationLock();
+  const toggleOrientation = orientation.toggle;
+
   const chromeActions = useMemo<ReaderChromeActions>(
     () => ({
       onPrev: goPrev,
@@ -348,8 +354,9 @@ export function ReaderScreen() {
         set({ immersive: !immersive });
         toast(immersive ? 'Đã tắt chế độ toàn màn hình' : 'Đã bật chế độ toàn màn hình');
       },
+      onToggleOrientation: toggleOrientation,
     }),
-    [goPrev, goNext, openSettings, key],
+    [goPrev, goNext, openSettings, key, toggleOrientation],
   );
 
   const onAreaLayout = useCallback((event: LayoutChangeEvent) => {
@@ -476,16 +483,12 @@ export function ReaderScreen() {
         autoPlaying={playing}
         immersive={settings.immersive}
         tapToScroll={settings.tapToScroll}
+        orientationLock={orientation.supported ? orientation.lock : undefined}
         hasPrev={!!prev}
         hasNext={!!next}
         actions={chromeActions}
       />
-      <ViewModeMenu
-        visible={sheet === 'modes'}
-        value={prefs.viewMode}
-        onPick={pickViewMode}
-        onClose={closeSheet}
-      />
+      <ViewModeMenu visible={sheet === 'modes'} value={prefs.viewMode} onPick={pickViewMode} onClose={closeSheet} />
       <TapHelpDialog
         visible={sheet === 'help'}
         onClose={closeSheet}
@@ -522,11 +525,8 @@ export function ReaderScreen() {
           settings={{ label: 'Cài đặt trình xem', onPress: openSettings }}
         />
       )}
-      <PageMenuSheet
-        page={pageMenu !== null ? pages[pageMenu] : undefined}
-        index={pageMenu}
-        onClose={closePageMenu}
-      />
+      <PageMenuSheet page={pageMenu !== null ? pages[pageMenu] : undefined} index={pageMenu} onClose={closePageMenu} />
+      <BookmarkPrompt target={bookmarkTarget} />
     </View>
   );
 }

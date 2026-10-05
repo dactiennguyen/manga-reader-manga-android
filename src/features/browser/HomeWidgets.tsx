@@ -13,7 +13,7 @@ import { useBrowser, type QuickAccessItem } from '../../store/useBrowser';
 import { useHistory, type ReadingEntry } from '../../store/useHistory';
 import { sortBookmarks, useLibrary } from '../../store/useLibrary';
 import { useAllowNsfw } from '../../store/useSettings';
-import { useSources } from '../../store/useSources';
+import { sourceIn, useSources, withCatalog } from '../../store/useSources';
 import { font, radius, space, useTheme } from '../../theme';
 import { Favicon } from '../../components/Favicon';
 import type { ViewRef } from './Tour';
@@ -78,7 +78,7 @@ function useSourceInfo(): (sourceId: string) => SourceInfo | undefined {
   const sources = useSources(s => s.sources);
   return useMemo(() => {
     const map = new Map<string, SourceInfo>();
-    for (const src of sources) {
+    for (const src of withCatalog(sources)) {
       map.set(src.id, { name: src.name, headers: getEngine(src.engine).imageHeaders(src) });
     }
     return (sourceId: string) => map.get(sourceId);
@@ -218,7 +218,7 @@ export function ContinueReadingWidget({ limit }: { limit: number }) {
   const items = useMemo(() => {
     const visible: { entry: ReadingEntry; source: SourceConfig }[] = [];
     for (const entry of reading) {
-      const source = sources.find(s => s.id === entry.sourceId);
+      const source = sourceIn(sources, entry.sourceId);
       if (source && (!source.nsfw || allowNsfw)) {
         visible.push({ entry, source });
       }
@@ -321,8 +321,8 @@ export function MediaSitesWidget({ limit, tourRef }: { limit: number; tourRef?: 
         </View>
       ) : (
         <EmptyHint
-          text="Bạn chưa có site truyện nào. Thêm site để addon đọc truyện bằng giao diện của app."
-          action={{ label: 'Thêm site', onPress: () => navigation.navigate('Addons') }}
+          text="Chưa ghim site truyện nào. Chọn site trong danh sách site được hỗ trợ để ghim vào đây."
+          action={{ label: 'Chọn site', onPress: () => navigation.navigate('Addons') }}
         />
       )}
     </WidgetSection>

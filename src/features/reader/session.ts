@@ -8,6 +8,7 @@ import { useHistory } from '../../store/useHistory';
 import { useLibrary } from '../../store/useLibrary';
 import { useStats } from '../../store/useStats';
 import { refreshUnread } from '../library/updates';
+import { noteChapterFinished } from './BookmarkPrompt';
 
 /**
  * Ghi nhận việc đọc dùng chung cho reader manga và novel: lịch sử, vị trí
@@ -67,6 +68,7 @@ export function recordChapterFinished(manga: ReadingManga, chapter: ReadingChapt
   markChaptersRead(key, [chapter.url]);
   useStats.getState().addChapterRead();
   refreshUnread(key);
+  noteChapterFinished(key);
 }
 
 /**

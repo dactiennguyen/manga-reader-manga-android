@@ -21,6 +21,7 @@ import {
   Square,
   type LucideIcon,
 } from '../../components/icons';
+import type { OrientationLock } from '../../lib/screen';
 import { useReaderSettings } from '../../store/useReaderSettings';
 import { useSettings } from '../../store/useSettings';
 import { font, radius, space } from '../../theme';
@@ -32,6 +33,7 @@ import {
   SideToolbar,
   useChromeAnimation,
 } from '../reader/chromeParts';
+import { OrientationButton } from '../reader/ReaderChrome';
 import type { ValueStore } from '../reader/valueStore';
 import {
   FONT_SIZE_RANGE,
@@ -60,6 +62,7 @@ export type NovelChromeActions = {
   onPauseTts: () => void;
   onResumeTts: () => void;
   onStopTts: () => void;
+  onToggleOrientation: () => void;
 };
 
 type Props = {
@@ -79,6 +82,8 @@ type Props = {
   autoScrolling: boolean;
   ttsState: TtsState;
   ttsIndex: number | null;
+  /** undefined: máy không hỗ trợ khoá xoay, ẩn nút. */
+  orientationLock?: OrientationLock;
   actions: NovelChromeActions;
 };
 
@@ -339,6 +344,7 @@ export const NovelChrome = memo(function NovelChromeView({
   autoScrolling,
   ttsState,
   ttsIndex,
+  orientationLock,
   actions,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -398,6 +404,9 @@ export const NovelChrome = memo(function NovelChromeView({
                 ttsState === 'playing' ? 'Tạm dừng đọc to' : ttsState === 'paused' ? 'Đọc tiếp' : 'Đọc to'
               }
             />
+            {orientationLock && (
+              <OrientationButton lock={orientationLock} color={palette.text} onPress={actions.onToggleOrientation} />
+            )}
           </SideToolbar>
         </Animated.View>
       )}

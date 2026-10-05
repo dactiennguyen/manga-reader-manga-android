@@ -1,0 +1,42 @@
+{
+  "uid": "mangadex",
+  "label": "MangaDex",
+  "desc": "Dùng API chính thức của MangaDex. Chọn ngôn ngữ chương trong phần cài đặt nguồn.",
+  "version": 1,
+  "sdk": 1,
+  "type": "catalog",
+  "content": [
+    "manga"
+  ],
+  "allowCustomSites": false,
+  "sorts": [
+    {
+      "id": "latest",
+      "label": "Mới cập nhật"
+    },
+    {
+      "id": "popular",
+      "label": "Theo dõi nhiều"
+    },
+    {
+      "id": "new",
+      "label": "Truyện mới"
+    },
+    {
+      "id": "rating",
+      "label": "Đánh giá"
+    },
+    {
+      "id": "az",
+      "label": "A-Z"
+    }
+  ],
+  "siteInfo": {
+    "mangadex.org": {
+      "title": "MangaDex",
+      "lang": "en",
+      "chapterLang": "en",
+      "builtin": true
+    }
+  }
+}

@@ -1,12 +1,12 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { RefreshControl, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { RefreshControl, ScrollView, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
 import { AddonBar } from '../../components/AddressBarParts';
 import { ErrorView } from '../../components/ErrorView';
-import { gridColumns, MangaGridItem } from '../../components/MangaCard';
+import { MangaGridItem } from '../../components/MangaCard';
 import { Bookmark, BookmarkPlus, BookOpen, Lock, Play, SearchX, X } from '../../components/icons';
 import { EmptyState, Fab, Header, IconButton, LoadingView, Screen, TabBar, toast } from '../../components/ui';
 import { getEngine, mangaKey } from '../../sources';
@@ -20,6 +20,7 @@ import { space, useTheme } from '../../theme';
 import { BookmarkDialog, type BookmarkTarget } from './BookmarkDialog';
 import { ChapterRow } from './ChapterRow';
 import { READ_LABEL, readTarget, scanlatorGroups } from './chapters';
+import { ChapterSummaryDialog } from './ChapterSummaryDialog';
 import { ChapterToolbar } from './ChapterToolbar';
 import { DetailBottomBar, DetailMenu, ToolButton } from './DetailActions';
 import { DetailInfo } from './DetailInfo';
@@ -31,7 +32,7 @@ type DetailParams = RootStackParamList['MangaDetail'];
 
 type Row =
   | { type: 'chapter'; chapter: Chapter; index: number }
-  | { type: 'similar'; key: string; items: MangaItem[] };
+  | { type: 'similar'; items: MangaItem[] };
 
 type Tab = 'info' | 'chapters';
 
@@ -50,14 +51,6 @@ function useSheetState() {
   const open = useCallback(() => setState(s => ({ visible: true, seq: s.seq + 1 })), []);
   const close = useCallback(() => setState(s => ({ ...s, visible: false })), []);
   return { ...state, open, close };
-}
-
-function chunk<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    out.push(items.slice(i, i + size));
-  }
-  return out;
 }
 
 /** "Manga Detail" (widget catalogdetail). */
@@ -113,6 +106,7 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
   const [tab, setTab] = useState<Tab>('info');
   const [ascending, setAscending] = useState(false);
   const [scanlator, setScanlator] = useState<string | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [markTarget, setMarkTarget] = useState<ChapterTarget>();
   const [markOpen, setMarkOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -132,11 +126,9 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     return ascending ? rows.reverse() : rows;
   }, [chapters, activeGroup, ascending]);
 
-  const columns = gridColumns(width);
-  const similarRows = useMemo<Row[]>(
-    () => chunk(similar, columns).map((items, i) => ({ type: 'similar', key: `similar-${i}`, items })),
-    [similar, columns],
-  );
+  // "Similar Manga" là một dải cuộn ngang như app gốc, rộng vừa ~3,4 bìa để thấy là cuộn được.
+  const similarWidth = Math.min(140, Math.max(100, Math.floor(width / 3.4)));
+  const similarRows = useMemo<Row[]>(() => (similar.length ? [{ type: 'similar', items: similar }] : []), [similar]);
 
   let data = NO_ROWS;
   if (!locked) {
@@ -258,7 +250,7 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
         return (
           <SimilarRow
             items={item.items}
-            columns={columns}
+            itemWidth={similarWidth}
             headers={headers}
             blur={!allowNsfw && source.nsfw}
             onOpen={openSimilar}
@@ -278,7 +270,19 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
         />
       );
     },
-    [columns, headers, allowNsfw, source.nsfw, openSimilar, key, progress.read, currentUrl, currentInfo, openChapter, openMark],
+    [
+      similarWidth,
+      headers,
+      allowNsfw,
+      source.nsfw,
+      openSimilar,
+      key,
+      progress.read,
+      currentUrl,
+      currentInfo,
+      openChapter,
+      openMark,
+    ],
   );
 
   let listHeader = null;
@@ -335,6 +339,7 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
         groups={groups}
         activeGroup={activeGroup}
         onSelectGroup={setScanlator}
+        onSummary={() => setSummaryOpen(true)}
       />
     );
   }
@@ -366,7 +371,7 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
           ref={listRef}
           data={data}
           renderItem={renderItem}
-          keyExtractor={item => (item.type === 'chapter' ? item.chapter.url : item.key)}
+          keyExtractor={item => (item.type === 'chapter' ? item.chapter.url : 'similar')}
           getItemType={item => item.type}
           extraData={progress}
           // Đảo thứ tự/đổi tab thay cả danh sách: không neo theo dòng đang thấy kẻo nhảy tới cuối.
@@ -430,6 +435,12 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
           chapters={chapters}
         />
       )}
+      <ChapterSummaryDialog
+        visible={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        mangaKey={key}
+        chapters={chapters}
+      />
       <MarkChapterDialog
         visible={markOpen}
         onClose={() => setMarkOpen(false)}
@@ -445,33 +456,31 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
 
 const SimilarRow = memo(function SimilarRowItem({
   items,
-  columns,
+  itemWidth,
   headers,
   blur,
   onOpen,
 }: {
   items: MangaItem[];
-  columns: number;
+  itemWidth: number;
   headers: Record<string, string>;
   blur: boolean;
   onOpen: (item: MangaItem) => void;
 }) {
   return (
-    <View style={styles.similarRow}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.similarRow}>
       {items.map(item => (
-        <MangaGridItem
-          key={item.url}
-          title={item.title}
-          cover={item.cover}
-          headers={headers}
-          blur={blur}
-          onPress={() => onOpen(item)}
-        />
+        <View key={item.url} style={{ width: itemWidth }}>
+          <MangaGridItem
+            title={item.title}
+            cover={item.cover}
+            headers={headers}
+            blur={blur}
+            onPress={() => onOpen(item)}
+          />
+        </View>
       ))}
-      {Array.from({ length: Math.max(0, columns - items.length) }, (_, i) => (
-        <View key={`filler-${i}`} style={styles.filler} />
-      ))}
-    </View>
+    </ScrollView>
   );
 });
 
@@ -481,7 +490,5 @@ const styles = StyleSheet.create({
   // Chừa chỗ cho nút nổi "Bắt đầu đọc".
   footer: { height: 96 },
   fab: { bottom: space.lg },
-  similarRow: { flexDirection: 'row', paddingHorizontal: space.lg - 6, paddingTop: space.sm },
-  // Cùng padding với ô MangaGridItem để ô trống chia đều bề ngang với ô có truyện.
-  filler: { flex: 1, paddingHorizontal: space.xs + 2 },
+  similarRow: { paddingHorizontal: space.lg - 6, paddingTop: space.sm },
 });

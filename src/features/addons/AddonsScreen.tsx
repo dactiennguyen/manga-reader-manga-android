@@ -4,7 +4,7 @@ import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-
 
 import { useAppNavigation } from '../../app/routes';
 import { Favicon } from '../../components/Favicon';
-import { ChevronDown, EyeOff, Plus, Puzzle, Search } from '../../components/icons';
+import { ChevronDown, EyeOff, Plus, Puzzle, Search, Settings2 } from '../../components/icons';
 import {
   Button,
   Checkbox,
@@ -18,7 +18,8 @@ import {
   SearchField,
 } from '../../components/ui';
 import { getHost } from '../../lib/url';
-import { ENGINE_LIST, languageName } from '../../sources';
+import { languageName, useEngineSummaries } from '../../sources';
+import { CATALOG_NOTES, catalogSite, catalogSources } from '../../sources/catalog';
 import type { ContentType, EngineId, SourceConfig } from '../../sources/types';
 import { useAllowNsfw } from '../../store/useSettings';
 import { useSources } from '../../store/useSources';
@@ -30,14 +31,25 @@ const CONTENT_FILTERS: { value: ContentType; label: string }[] = [
   { value: 'novel', label: 'Tiểu thuyết' },
 ];
 
-const CUSTOM_ENGINES = ENGINE_LIST.filter(e => e.allowCustomSites);
 
-/** "Supported sites": danh sách site, bật/tắt bằng ô chọn, lọc theo ngôn ngữ và loại truyện. */
+/**
+ * "Supported sites": danh mục site dựng sẵn + site tự thêm, lọc theo ngôn ngữ
+ * và loại truyện. Ô chọn = ghim site vào trang chủ và Bookmark › Site truyện.
+ */
 export function AddonsScreen() {
   const navigation = useAppNavigation();
   const { c } = useTheme();
-  const sources = useSources(s => s.sources);
+  const stored = useSources(s => s.sources);
+  const customEngines = useEngineSummaries().filter(e => e.allowCustomSites);
   const updateSource = useSources(s => s.updateSource);
+  // Bản đã lưu (đã ghim/chỉnh cài đặt) thay cho bản trong danh mục.
+  const sources = useMemo(() => {
+    const byId = new Map(catalogSources().map(s => [s.id, s]));
+    for (const s of stored) {
+      byId.set(s.id, s);
+    }
+    return [...byId.values()];
+  }, [stored]);
   const allowNsfw = useAllowNsfw();
   const [content, setContent] = useState<ContentType | null>(null);
   const [lang, setLang] = useState<string | null>(null);
@@ -139,13 +151,14 @@ export function AddonsScreen() {
         </Pressable>
       )}
       <Text style={[font.caption, styles.explain, { color: c.muted }]}>
-        Mỗi addon hiểu cấu trúc HTML của một loại theme: app tải trang của site rồi hiển thị danh sách, thông tin
-        truyện và ảnh chương bằng giao diện native, không quảng cáo. Bỏ chọn để tắt một site; nhấn giữ để mở cài
-        đặt nguồn.
+        Mỗi addon hiểu cấu trúc HTML của một loại theme: khi bạn mở các site này trong trình duyệt, app hiển thị danh
+        sách, thông tin truyện và ảnh chương bằng giao diện native, không quảng cáo. Đánh dấu để ghim site vào trang
+        chủ và Bookmark › Site truyện; nhấn giữ để mở cài đặt nguồn. Site không có trong danh sách nhưng dùng cùng
+        theme thì thêm bằng nút bên dưới.
       </Text>
       <Text style={[font.overline, { color: c.muted }]}>Thêm site theo theme</Text>
       <View style={styles.engines}>
-        {CUSTOM_ENGINES.map(engine => (
+        {customEngines.map(engine => (
           <Chip key={engine.id} icon={Plus} label={engine.label} onPress={() => addSite(engine.id)} />
         ))}
       </View>
@@ -178,6 +191,12 @@ export function AddonsScreen() {
                 accessibilityLabel="Tìm site"
               />
               <IconButton icon={Plus} color={c.onAppBar} onPress={() => addSite()} accessibilityLabel="Thêm site" />
+              <IconButton
+                icon={Settings2}
+                color={c.onAppBar}
+                onPress={() => navigation.navigate('AddonManager')}
+                accessibilityLabel="Quản lý addon"
+              />
             </>
           }
         />
@@ -260,6 +279,7 @@ const SourceRow = memo(function SourceRowItem({
   onToggle: (source: SourceConfig, enabled: boolean) => void;
 }) {
   const { c } = useTheme();
+  const note = catalogSite(source.id)?.note;
   return (
     <Pressable
       onPress={() => onOpen(source)}
@@ -284,9 +304,14 @@ const SourceRow = memo(function SourceRowItem({
             </View>
           )}
         </View>
-        <Text numberOfLines={2} style={[font.caption, { color: c.muted }]}>
+        <Text numberOfLines={1} style={[font.caption, { color: c.muted }]}>
           {getHost(source.baseUrl)} | {languageName(source.lang)}
         </Text>
+        {note && (
+          <Text numberOfLines={1} style={[font.caption, { color: c.warning }]}>
+            {CATALOG_NOTES[note]}
+          </Text>
+        )}
       </View>
       <Checkbox checked={source.enabled} onChange={enabled => onToggle(source, enabled)} />
     </Pressable>

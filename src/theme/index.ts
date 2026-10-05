@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { useColorScheme, useWindowDimensions } from 'react-native';
 
 import { useSettings } from '../store/useSettings';
 
@@ -128,6 +128,13 @@ export function useIsDark(): boolean {
 export function useTheme(): { c: Palette; dark: boolean } {
   const dark = useIsDark();
   return { c: dark ? darkPalette : lightPalette, dark };
+}
+
+/** Bề rộng (dp) từ đó dùng bố cục tablet như app gốc. */
+export const WIDE_MIN_WIDTH = 600;
+
+export function useIsWide(): boolean {
+  return useWindowDimensions().width >= WIDE_MIN_WIDTH;
 }
 
 export const radius = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;

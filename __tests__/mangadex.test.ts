@@ -1,7 +1,9 @@
-import { mangadex } from '../src/sources/engines/mangadex';
 import { configureSources } from '../src/sources/runtime';
 import type { SourceConfig } from '../src/sources/types';
+import { sourceEngine } from './helpers/addons';
 import { mockFetch, urlStarts } from './helpers/mockFetch';
+
+const mangadex = sourceEngine('mangadex');
 
 const src: SourceConfig = {
   id: 'mangadex.org',

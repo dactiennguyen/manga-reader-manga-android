@@ -32,7 +32,7 @@ import {
 import { getEngine } from '../../sources';
 import { addDays, dayKey, dayKeyToDate, formatDate, formatDuration, formatRelative } from '../../lib/time';
 import { useHistory, type ReadingEntry } from '../../store/useHistory';
-import { useSources } from '../../store/useSources';
+import { useSource } from '../../store/useSources';
 import { computeStreak, lastDays, useStats, type DailyStats } from '../../store/useStats';
 import { font, radius, space, useTheme } from '../../theme';
 import { formatCount } from '../../lib/format';
@@ -372,7 +372,7 @@ function ReadingHeatmap({ daily }: { daily: Record<string, DailyStats> }) {
 function RecentItemBase({ entry }: { entry: ReadingEntry }) {
   const navigation = useAppNavigation();
   const { c } = useTheme();
-  const source = useSources(s => s.sources.find(src => src.id === entry.sourceId));
+  const source = useSource(entry.sourceId);
   const headers = useMemo(() => (source ? getEngine(source.engine).imageHeaders(source) : undefined), [source]);
   return (
     <Pressable

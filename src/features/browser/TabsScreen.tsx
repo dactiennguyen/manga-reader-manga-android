@@ -8,7 +8,7 @@ import { EmptyState, Header, IconButton, ListItem, Screen, Segmented, confirm } 
 import { formatRelative } from '../../lib/time';
 import { displayUrl } from '../../lib/url';
 import { useBrowser, type BrowserTab } from '../../store/useBrowser';
-import { font, radius, space, useTheme } from '../../theme';
+import { WIDE_MIN_WIDTH, font, radius, space, useTheme } from '../../theme';
 import { Favicon } from '../../components/Favicon';
 
 type Mode = 'normal' | 'incognito';
@@ -29,7 +29,7 @@ export function TabsScreen() {
   const incognito = mode === 'incognito';
   const list = tabs.filter(t => t.incognito === incognito);
   const normalCount = tabs.filter(t => !t.incognito).length;
-  const columns = width >= 600 ? 3 : 2;
+  const columns = width >= WIDE_MIN_WIDTH ? 3 : 2;
   const cardWidth = Math.floor((width - space.md * (columns + 1)) / columns);
 
   const openTab = (id: string) => {

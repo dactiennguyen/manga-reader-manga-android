@@ -15,7 +15,7 @@ import { useActiveTab, useBrowser } from '../../store/useBrowser';
 import { useHistory } from '../../store/useHistory';
 import { useSettings } from '../../store/useSettings';
 import { findSourceForUrl, useSources } from '../../store/useSources';
-import { useTheme } from '../../theme';
+import { useIsWide, useTheme } from '../../theme';
 import { AdblockSheet } from './AdblockSheet';
 import { runAddonOnPage } from './addon';
 import { AddressBar, type AddonState, type AddressBarHandle } from './AddressBar';
@@ -33,10 +33,20 @@ import { HomePage } from './HomePage';
 import { useEvent } from './hooks';
 import { LinkMenu, type LinkTarget } from './LinkMenu';
 import { clearSiteCookies, launchExternal, savePage } from './pageActions';
-import { JS_CLEAR_STORAGE, JS_FIND_CLEAR, jsFind, jsFindStep, jsRequestHtml, type HtmlPurpose } from './scripts';
+import { MediaSheet, type MediaFound } from './MediaSheet';
+import {
+  JS_CLEAR_STORAGE,
+  JS_FIND_CLEAR,
+  JS_FIND_MEDIA,
+  jsFind,
+  jsFindStep,
+  jsRequestHtml,
+  type HtmlPurpose,
+} from './scripts';
 import { resolveInput } from './searchEngines';
 import { Snackbar, type SnackbarData } from './Snackbar';
 import { SuggestionsPanel } from './SuggestionsPanel';
+import { TabStrip } from './TabStrip';
 import { CoachMarks, useTourTargets, type TourStep } from './Tour';
 
 const ADDON_STEP: TourStep = {
@@ -80,6 +90,8 @@ export function BrowserScreen() {
   const { c } = useTheme();
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
+  // Tablet: thanh địa chỉ có ← → ⟳ và bookmark, dải tab ngang như app gốc.
+  const wide = useIsWide();
   const isFocused = useIsFocused();
   const tab = useActiveTab();
   const tabCount = useBrowser(s => s.tabs.reduce((n, t) => (t.incognito === tab.incognito ? n + 1 : n), 0));
@@ -124,6 +136,9 @@ export function BrowserScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [adblockSheet, setAdblockSheet] = useState(false);
   const [bookmarkDialog, setBookmarkDialog] = useState(false);
+  const [mediaFound, setMediaFound] = useState<MediaFound | null>(null);
+  /** Đang chờ trang trả danh sách media (bấm "Tải video trên trang"). */
+  const mediaPending = useRef(false);
   const [saveDialog, setSaveDialog] = useState<{ saving: boolean } | null>(null);
   const [linkTarget, setLinkTarget] = useState<LinkTarget | null>(null);
   const [appLink, setAppLink] = useState<{ url: string; host: string } | null>(null);
@@ -148,10 +163,10 @@ export function BrowserScreen() {
   const addonState: AddonState = !pageUrl
     ? null
     : source
-      ? 'source'
-      : detected && detected.host === pageHost
-        ? 'detected'
-        : null;
+    ? 'source'
+    : detected && detected.host === pageHost
+    ? 'detected'
+    : null;
   const bookmark = pageUrl ? webBookmarks.find(b => sameUrl(b.url, pageUrl)) : undefined;
   const overlayOpen =
     menuOpen ||
@@ -159,6 +174,7 @@ export function BrowserScreen() {
     bookmarkDialog ||
     !!saveDialog ||
     !!linkTarget ||
+    !!mediaFound ||
     !!appLink ||
     tourPrompt ||
     !!tourSteps;
@@ -395,6 +411,17 @@ export function BrowserScreen() {
           prev && prev.tabId === tab.id ? { ...prev, result: { count: message.count, index: message.index } } : prev,
         );
         return;
+      case 'media':
+        if (!mediaPending.current) {
+          return;
+        }
+        mediaPending.current = false;
+        if (message.items.length) {
+          setMediaFound({ pageUrl: message.url, items: message.items });
+        } else {
+          toast('Không tìm thấy video tải được trên trang này (video phát trực tuyến dạng luồng không tải được)');
+        }
+        return;
     }
   });
 
@@ -615,6 +642,10 @@ export function BrowserScreen() {
       case 'viewSource':
         navigation.navigate('ViewSource', { url: pageUrl });
         return;
+      case 'findMedia':
+        mediaPending.current = true;
+        webRef.current?.inject(JS_FIND_MEDIA);
+        return;
       case 'adblock':
         setAdblockSheet(true);
         return;
@@ -744,7 +775,22 @@ export function BrowserScreen() {
         onNewTab={newTabFromBar}
         onMenuPress={() => setMenuOpen(true)}
         registerTour={tour.register}
+        wide={
+          wide
+            ? {
+                canBack: !showingHome,
+                canForward: (tab.showHome && hasPage) || (!showingHome && navState.canGoForward),
+                loading: showProgress,
+                onBack: goBack,
+                onForward: goForward,
+                onReload: () => (showProgress ? webRef.current?.stop() : webRef.current?.reload()),
+                bookmarked: pageUrl && !showingHome ? !!bookmark : null,
+                onBookmarkPress: () => setBookmarkDialog(true),
+              }
+            : undefined
+        }
       />
+      {wide && !editing && <TabStrip activeTab={tab} onNewTab={newTabFromBar} />}
 
       <View style={styles.content}>
         {hasPage && (
@@ -778,10 +824,7 @@ export function BrowserScreen() {
         )}
         {showProgress && (
           <View
-            style={[
-              styles.progress,
-              { backgroundColor: c.accent, width: `${Math.max(5, navState.progress * 100)}%` },
-            ]}
+            style={[styles.progress, { backgroundColor: c.accent, width: `${Math.max(5, navState.progress * 100)}%` }]}
           />
         )}
         {editing && (
@@ -838,6 +881,7 @@ export function BrowserScreen() {
         }}
       />
       <LinkMenu target={linkTarget} pageUrl={tab.url} incognito={tab.incognito} onClose={() => setLinkTarget(null)} />
+      <MediaSheet found={mediaFound} onClose={() => setMediaFound(null)} />
       {bookmarkDialog && !!pageUrl && (
         <BookmarkDialog
           page={{ url: pageUrl, title: tab.title }}

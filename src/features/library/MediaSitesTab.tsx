@@ -53,7 +53,6 @@ export function MediaSitesTab() {
         .sort((a, b) => a.name.localeCompare(b.name)),
     [sources, allowNsfw],
   );
-  const disabledCount = sources.filter(s => !s.enabled).length;
   const hiddenNsfw = allowNsfw ? 0 : sources.filter(s => s.enabled && s.nsfw).length;
 
   const open = useCallback(
@@ -67,19 +66,16 @@ export function MediaSitesTab() {
         icon={Globe}
         title="Chưa có site truyện"
         message={
-          sources.length
-            ? 'Các site đã thêm đang tắt hoặc là site 18+ đang bị ẩn. Bật lại trong Quản lý addon hoặc thêm site mới.'
-            : 'Bạn chưa có site truyện nào. Bấm nút bên dưới để thêm site truyện vào addon.'
+          hiddenNsfw
+            ? 'Các site đã ghim đều là site 18+ đang bị ẩn. Bật nội dung 18+ trong Cài đặt hoặc ghim thêm site.'
+            : 'Chưa ghim site truyện nào. Đánh dấu site trong danh sách site được hỗ trợ để ghim vào đây.'
         }
-        action={{ label: 'Thêm site truyện', icon: Plus, onPress: () => navigation.navigate('AddSite') }}
+        action={{ label: 'Site được hỗ trợ', icon: Puzzle, onPress: () => navigation.navigate('Addons') }}
       />
     );
   }
 
-  const notes = [
-    disabledCount ? `${disabledCount} site đang tắt` : '',
-    hiddenNsfw ? `${hiddenNsfw} site 18+ bị ẩn` : '',
-  ].filter(Boolean);
+  const notes = hiddenNsfw ? [`${hiddenNsfw} site 18+ bị ẩn`] : [];
 
   return (
     <FlatList
@@ -95,7 +91,7 @@ export function MediaSitesTab() {
           </Text>
           <View style={styles.actions}>
             <Button
-              title="Quản lý addon"
+              title="Site được hỗ trợ"
               icon={Puzzle}
               variant="secondary"
               small

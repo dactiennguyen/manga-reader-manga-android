@@ -14,10 +14,11 @@ import { WebBookmarksTab } from './WebBookmarksTab';
 
 type BookmarkView = 'manga' | 'novel' | 'web' | 'sites' | 'quick';
 
+// Thứ tự như app gốc: Web, Manga, (Novel), Manga Site, Quick access.
 const VIEW_OPTIONS = [
+  { value: 'web', label: 'Trang web' },
   { value: 'manga', label: 'Truyện tranh' },
   { value: 'novel', label: 'Tiểu thuyết' },
-  { value: 'web', label: 'Trang web' },
   { value: 'sites', label: 'Site truyện' },
   { value: 'quick', label: 'Truy cập nhanh' },
 ] as const;

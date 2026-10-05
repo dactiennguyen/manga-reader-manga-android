@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
 } from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
+import { errorMessage } from '../../lib/http';
 import { displayUrl } from '../../lib/url';
 import type { Chapter, Page } from '../../sources/types';
 import {
@@ -25,6 +26,7 @@ import {
   type DownloadManga,
   type DownloadStatus,
 } from '../../store/useDownloads';
+import { startFileDownload } from '../downloads/fileDownloader';
 import { requestPageReload } from './pageImageCache';
 
 type MenuProps = {
@@ -142,6 +144,16 @@ export function PageMenuSheet({ page, index, onClose }: PageMenuProps) {
         title="Mở ảnh trong trình duyệt"
         disabled={local}
         onPress={run(target => openInBrowser(navigation, target.uri))}
+      />
+      <ListItem
+        icon={Download}
+        title="Tải ảnh về máy"
+        disabled={local}
+        onPress={run(target => {
+          startFileDownload(target.uri, { pageUrl: target.headers?.Referer, kind: 'image' })
+            .then(() => toast('Đang tải ảnh — xem trong Tải xuống › Tệp & media'))
+            .catch(error => toast(`Không tải được ảnh: ${errorMessage(error)}`));
+        })}
       />
       <ListItem icon={RotateCw} title="Tải lại ảnh" onPress={run(target => requestPageReload(target.uri))} />
     </Sheet>

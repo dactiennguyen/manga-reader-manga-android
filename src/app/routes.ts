@@ -17,9 +17,11 @@ export type RootStackParamList = {
   /** Lịch sử đọc truyện + lịch sử duyệt web. */
   History: { tab?: 'reading' | 'web' } | undefined;
   /** Chương đã tải + trang web đã lưu. */
-  Downloads: { tab?: 'chapters' | 'pages' } | undefined;
-  /** "Manage add-ons": các engine và site đang hỗ trợ. */
+  Downloads: { tab?: 'chapters' | 'pages' | 'files' } | undefined;
+  /** "Supported sites": danh mục site của các addon. */
   Addons: undefined;
+  /** "Add-ons" (AddOnPage của app gốc): addon đang cài, phiên bản, cập nhật từ kho. */
+  AddonManager: undefined;
   /** "Add supported site": thêm domain dùng cùng theme. */
   AddSite: { url?: string; engine?: EngineId } | undefined;
   SourceSettings: { sourceId: string };

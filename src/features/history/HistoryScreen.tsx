@@ -23,7 +23,7 @@ import { clearAllProgress, getProgress } from '../../store/progress';
 import { useHistory, type ReadingEntry, type WebEntry } from '../../store/useHistory';
 import { useLibrary } from '../../store/useLibrary';
 import { useAllowNsfw } from '../../store/useSettings';
-import { getSource, useSources } from '../../store/useSources';
+import { getSource, useSources, withCatalog } from '../../store/useSources';
 import { font, space, useTheme } from '../../theme';
 import { refreshUnread } from '../library/updates';
 import { ReadingHistoryItem, WebHistoryItem } from './HistoryItems';
@@ -122,7 +122,7 @@ function ReadingHistory({ query }: { query: string }) {
 
   const sourceInfo = useMemo(() => {
     const map: Record<string, { headers: Record<string, string>; nsfw: boolean }> = {};
-    for (const src of sources) {
+    for (const src of withCatalog(sources)) {
       map[src.id] = { headers: getEngine(src.engine).imageHeaders(src), nsfw: src.nsfw };
     }
     return map;

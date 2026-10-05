@@ -8,6 +8,7 @@ import { useAppNavigation, type RootStackParamList } from '../../app/routes';
 import { DropdownButton } from '../../components/Dropdown';
 import { Favicon } from '../../components/Favicon';
 import { Dialog, Sheet } from '../../components/Sheet';
+import { SideTabs } from '../../components/SideTabs';
 import { BookOpen, Download, FileText, Pause, Play, Trash2 } from '../../components/icons';
 import { Button, Checkbox, EmptyState, Header, IconButton, Screen, confirm, toast } from '../../components/ui';
 import { formatBytes } from '../../lib/format';
@@ -18,8 +19,8 @@ import type { ContentType } from '../../sources/types';
 import { useBrowser, type SavedPage } from '../../store/useBrowser';
 import { useDownloads, type DownloadTask } from '../../store/useDownloads';
 import { useAllowNsfw } from '../../store/useSettings';
-import { getSource, useSources } from '../../store/useSources';
-import { font, space, useTheme } from '../../theme';
+import { getSource, useSources, withCatalog } from '../../store/useSources';
+import { font, space, useIsWide, useTheme } from '../../theme';
 import {
   ChapterRow,
   DownloadMangaRow,
@@ -30,13 +31,16 @@ import {
   type DownloadGroup,
 } from './DownloadRows';
 import { removeDownloads } from './downloader';
+import { FileDownloads } from './FileDownloads';
 
-type DownloadView = ContentType | 'web';
+type DownloadView = ContentType | 'web' | 'files';
 
+// Thứ tự như app gốc: Files & Media, Web Page, Manga, Novel.
 const VIEW_OPTIONS = [
+  { value: 'files', label: 'Tệp & media' },
+  { value: 'web', label: 'Trang web' },
   { value: 'manga', label: 'Truyện tranh' },
   { value: 'novel', label: 'Tiểu thuyết' },
-  { value: 'web', label: 'Trang web' },
 ] as const;
 
 const CONTENT_NAME: Record<ContentType, string> = { manga: 'truyện tranh', novel: 'tiểu thuyết' };
@@ -48,6 +52,9 @@ function viewFromParam(tab: TabParam): DownloadView {
   if (tab === 'pages') {
     return 'web';
   }
+  if (tab === 'files') {
+    return 'files';
+  }
   // 'chapters': Truyện tranh, trừ khi chỉ có tiểu thuyết được tải.
   const tasks = Object.values(useDownloads.getState().tasks);
   return !tasks.some(t => t.content === 'manga') && tasks.some(t => t.content === 'novel') ? 'novel' : 'manga';
@@ -56,6 +63,7 @@ function viewFromParam(tab: TabParam): DownloadView {
 export function DownloadsScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Downloads'>>();
   const { c } = useTheme();
+  const wide = useIsWide();
   const tabParam = route.params?.tab;
   const [view, setView] = useState<DownloadView>(() => viewFromParam(tabParam));
   const tasks = useDownloads(s => s.tasks);
@@ -69,11 +77,20 @@ export function DownloadsScreen() {
   }, [tabParam]);
 
   const scoped = useMemo(
-    () => (view === 'web' ? [] : Object.values(tasks).filter(t => t.content === view)),
+    () => (view === 'web' || view === 'files' ? [] : Object.values(tasks).filter(t => t.content === view)),
     [tasks, view],
   );
   const active = scoped.filter(isActive);
   const resumable = scoped.filter(isResumable);
+
+  const body =
+    view === 'files' ? (
+      <FileDownloads />
+    ) : view === 'web' ? (
+      <SavedPages />
+    ) : (
+      <ChapterDownloads key={view} content={view} tasks={scoped} columns={wide ? 2 : 1} />
+    );
 
   return (
     <Screen>
@@ -81,9 +98,11 @@ export function DownloadsScreen() {
         title="Tải xuống"
         right={
           <>
-            <View style={styles.dropdown}>
-              <DropdownButton value={view} options={VIEW_OPTIONS} onChange={setView} />
-            </View>
+            {!wide && (
+              <View style={styles.dropdown}>
+                <DropdownButton value={view} options={VIEW_OPTIONS} onChange={setView} />
+              </View>
+            )}
             {active.length > 0 && (
               <IconButton
                 icon={Pause}
@@ -103,14 +122,30 @@ export function DownloadsScreen() {
           </>
         }
       />
-      {view === 'web' ? <SavedPages /> : <ChapterDownloads key={view} content={view} tasks={scoped} />}
+      {/* Tablet: danh mục dọc bên trái như app gốc, nội dung bên phải. */}
+      {wide ? (
+        <View style={styles.split}>
+          <SideTabs value={view} options={VIEW_OPTIONS} onChange={setView} />
+          <View style={styles.pane}>{body}</View>
+        </View>
+      ) : (
+        body
+      )}
     </Screen>
   );
 }
 
 // ─── Truyện đã tải ──────────────────────────────────────────────────────────
 
-function ChapterDownloads({ content, tasks }: { content: ContentType; tasks: DownloadTask[] }) {
+function ChapterDownloads({
+  content,
+  tasks,
+  columns,
+}: {
+  content: ContentType;
+  tasks: DownloadTask[];
+  columns: number;
+}) {
   const navigation = useAppNavigation();
   const pause = useDownloads(s => s.pause);
   const resume = useDownloads(s => s.resume);
@@ -126,7 +161,7 @@ function ChapterDownloads({ content, tasks }: { content: ContentType; tasks: Dow
 
   const sourceInfo = useMemo(() => {
     const map: Record<string, { headers: Record<string, string>; nsfw: boolean }> = {};
-    for (const src of sources) {
+    for (const src of withCatalog(sources)) {
       map[src.id] = { headers: getEngine(src.engine).imageHeaders(src), nsfw: src.nsfw };
     }
     return map;
@@ -210,7 +245,9 @@ function ChapterDownloads({ content, tasks }: { content: ContentType; tasks: Dow
   return (
     <>
       <FlashList
+        key={columns}
         data={groups}
+        numColumns={columns}
         keyExtractor={group => group.mangaKey}
         renderItem={({ item: group }) => (
           <DownloadMangaRow
@@ -375,6 +412,8 @@ function SavedPages() {
 
 const styles = StyleSheet.create({
   dropdown: { marginRight: space.sm },
+  split: { flex: 1, flexDirection: 'row' },
+  pane: { flex: 1 },
   list: { paddingVertical: space.xs, paddingBottom: space.xl },
   sheetActions: {
     flexDirection: 'row',

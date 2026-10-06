@@ -113,7 +113,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   addonRepoUrl: '',
   autoUpdateAddons: true,
   hideStatusBar: false,
-  preventCapture: false,
+  preventCapture: !__DEV__,
   tourDone: false,
   novel: DEFAULT_NOVEL_SETTINGS,
 };

@@ -91,3 +91,6 @@ local.properties
 
 # Gói addon để đăng lên kho addon (npm run addons)
 /dist/
+
+# Screenshots taken while testing stay local
+/test-screenshots/

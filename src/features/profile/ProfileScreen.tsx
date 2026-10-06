@@ -13,7 +13,6 @@ import {
   Info,
   Palette,
   Pencil,
-  ShieldCheck,
   SlidersHorizontal,
   Smartphone,
   Sun,
@@ -52,7 +51,6 @@ export function ProfileScreen() {
   const handedness = useSettings(s => s.handedness);
   const keepAwake = useSettings(s => s.keepAwakeWhileDrawing);
   const haptics = useSettings(s => s.haptics);
-  const preventCapture = useSettings(s => s.preventCapture);
   const role = useSettings(s => s.role);
   const defaultStyle = useSettings(s => s.defaultStyle);
   const set = useSettings(s => s.set);
@@ -202,13 +200,6 @@ export function ProfileScreen() {
         </Section>
 
         <Section title="Privacy and data">
-          <SwitchRow
-            icon={ShieldCheck}
-            title="Block screenshots"
-            subtitle="Prevents screenshots and screen recording while the app is open"
-            value={preventCapture}
-            onValueChange={value => set({ preventCapture: value })}
-          />
           <ListItem
             icon={FolderInput}
             title={`Import project (.${ARCHIVE_EXTENSION})`}

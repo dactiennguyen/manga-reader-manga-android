@@ -8,19 +8,13 @@ import { loadFonts } from '../engine/fonts';
 import { ensureDirs } from '../lib/files';
 import { setSecureScreen } from '../lib/screen';
 import { flushPendingWrites } from '../lib/storage';
-import { useSettings } from '../store/useSettings';
 import { useStory } from '../store/useStory';
 import { useTheme } from '../theme';
 import { RootNavigator } from './navigation';
 
 function useBootstrap() {
-  const preventCapture = useSettings(s => s.preventCapture);
-
   useEffect(() => {
-    setSecureScreen(preventCapture);
-  }, [preventCapture]);
-
-  useEffect(() => {
+    setSecureScreen(!__DEV__);
     ensureDirs().catch(() => {});
     loadFonts().catch(() => {});
     useStory.getState().purgeTrash();

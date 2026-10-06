@@ -169,7 +169,6 @@ Quản lý tài khoản, credit và gói, cùng mọi cài đặt của app.
 │ Hỏi trước thao tác tốn nhiều credit [●━]
 │ Thông báo khi AI tạo xong [●━]│
 │ RIÊNG TƯ VÀ DỮ LIỆU           │
-│ Chống chụp màn hình      [●━] │
 │ Nhập dự án (.mangaka)        ›│
 │ Thùng rác (2)                ›│
 │ KHÁC                          │
@@ -215,8 +214,7 @@ Quản lý tài khoản, credit và gói, cùng mọi cài đặt của app.
 | AI | Hỏi trước thao tác tốn nhiều credit | Công tắc | Bật |
 | | Thông báo khi AI tạo xong | Công tắc | Bật |
 | | Ngôn ngữ AI viết | Chọn một: Theo ngôn ngữ app · Tiếng Việt · English | Theo ngôn ngữ app |
-| Riêng tư và dữ liệu | Chống chụp màn hình | Công tắc | Bật ở bản phát hành |
-| | Nhập dự án (.mangaka) | Mở trình chọn file | |
+| Riêng tư và dữ liệu | Nhập dự án (.mangaka) | Mở trình chọn file | |
 | | Thùng rác | Mở màn con; hiện số mục | |
 | | Dung lượng đã dùng | Chỉ đọc: tổng dung lượng truyện trên máy; chạm để xem theo từng truyện | |
 | Khác | Trợ giúp, Điều khoản, Chính sách riêng tư, Giới thiệu (phiên bản) | Liên kết | |
@@ -265,7 +263,6 @@ Quản lý tài khoản, credit và gói, cùng mọi cài đặt của app.
 | Đổi Chủ đề | Áp dụng ngay, chuyển màu mượt 200ms |
 | Đổi Ngôn ngữ | Áp dụng ngay, không cần khởi động lại |
 | Đổi Tay thuận | Thanh công cụ Canvas và nút trợ lý nổi đổi bên |
-| Bật/tắt Chống chụp màn hình | Áp dụng ngay cho toàn app |
 | Sửa bút danh | Lưu khi rời ô |
 | Bấm Đăng xuất | Bảng xác nhận nêu rõ "Truyện trên máy vẫn được giữ"; sau đó thẻ tài khoản thành trạng thái chưa đăng nhập |
 | Bấm Xóa tài khoản | Bảng cảnh báo 2 bước, yêu cầu gõ "XÓA"; xóa dữ liệu trên máy chủ, truyện trên máy giữ nguyên |
@@ -283,4 +280,3 @@ Màn này không gọi AI. Nó hiển thị số dư và lịch sử credit củ
 | Hết credit | Số dư màu đỏ son; dòng nhắc giờ nhận credit miễn phí tiếp theo |
 | Thanh toán thất bại hoặc bị hủy | Thông báo nhanh; số dư không đổi |
 | Lịch sử credit trống | "Bạn chưa dùng tính năng AI nào" + nút "Thử ngay" dẫn về Trang chủ |
-| Bản dev | Mục Chống chụp màn hình mặc định tắt |

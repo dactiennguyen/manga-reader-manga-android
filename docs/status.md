@@ -42,7 +42,7 @@ Chưa kiểm tra: máy thật, bản release, iOS, bút cảm ứng, truyện r�
 | 17 | Đọc thử | Xong phần chính | Chưa có phóng to và trang đôi khi xoay ngang |
 | 18 | Xuất bản | Xong | PDF, PNG (ZIP), CBZ, ảnh dài; rời màn hình khi đang xuất thì hủy |
 | 19 | Trợ lý AI | Chưa làm | Chờ phần AI; tab này đang ẩn |
-| 20 | Hồ sơ và cài đặt | Xong, không credit | Thùng rác, nhập dự án, chủ đề, tay thuận, chống chụp màn hình |
+| 20 | Hồ sơ và cài đặt | Xong, không credit | Thùng rác, nhập dự án, chủ đề, tay thuận |
 
 ## Khác với tài liệu thiết kế
 

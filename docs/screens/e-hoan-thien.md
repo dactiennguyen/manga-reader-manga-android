@@ -118,7 +118,7 @@ Toàn màn hình, nền đen, ẩn thanh trạng thái. Chạm giữa màn hình
 | Trang đã gắn cờ | Biểu tượng ⚑ đỏ son ở góc trang; chạm để đọc/sửa ghi chú hoặc gỡ cờ |
 | Danh sách cờ | Bảng trượt: mọi cờ của chương theo trang; chạm để nhảy tới; nút "Gỡ tất cả" |
 | Đang chạy AI nhận xét | Bảng nhận xét mở với khung xương, chữ hiện dần; vẫn lật trang được phía sau |
-| Chống chụp màn hình bật | Màn hình này không chụp/quay được, như phần còn lại của app |
+| Bản phát hành | Màn hình này không chụp/quay được, như phần còn lại của app |
 
 ---
 

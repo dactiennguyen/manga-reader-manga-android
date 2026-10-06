@@ -15,7 +15,6 @@ export type AppSettings = {
   handedness: Handedness;
   keepAwakeWhileDrawing: boolean;
   haptics: boolean;
-  preventCapture: boolean;
   onboarded: boolean;
   onboardingStep: number;
   penName: string;
@@ -33,7 +32,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   handedness: 'right',
   keepAwakeWhileDrawing: true,
   haptics: true,
-  preventCapture: !__DEV__,
   onboarded: false,
   onboardingStep: 0,
   penName: '',

@@ -144,7 +144,7 @@ Mục tiêu: có một trợ lý hiểu cả bộ truyện, và một nơi quả
 | Màn hình | Thành phần chính | AI |
 | --- | --- | --- |
 | 19. Trợ lý AI | Khung chat biết toàn bộ truyện đang mở. Gợi ý câu hỏi nhanh. Chèn câu trả lời vào kịch bản hoặc ghi chú | Hỏi đáp về cốt truyện và nhân vật, động não, giải thích kỹ thuật vẽ manga |
-| 20. Hồ sơ và cài đặt | Tài khoản, gói và credit, giao diện sáng hoặc tối, ngôn ngữ, sao lưu và khôi phục, chống chụp màn hình | Lịch sử dùng credit theo từng loại thao tác |
+| 20. Hồ sơ và cài đặt | Tài khoản, gói và credit, giao diện sáng hoặc tối, ngôn ngữ, sao lưu và khôi phục | Lịch sử dùng credit theo từng loại thao tác |
 
 Các bảng phụ như bảng lớp, chọn màu, chọn phông chữ và mua credit là bottom sheet nằm trong màn hình cha, không tính vào 20 màn hình.
 
@@ -329,7 +329,7 @@ Chưa có gì bị xóa. Việc xóa chỉ bắt đầu sau khi tài liệu này
 | --- | --- | --- |
 | Nguồn truyện | Toàn bộ `addons/` (10 nguồn), `src/addons/`, `src/sources/` | |
 | Màn hình | Toàn bộ `src/features/`: reader, catalog, addons, library, browser, detail, novel, history, downloads, stats, verify | Ý tưởng bố cục của màn Cài đặt, viết lại theo thiết kế mới |
-| Trạng thái | `src/store/`: useStats, useHistory, useReaderSettings, progress, useDownloads, useBrowser, useSources, useFiles, useAdblock, useLibrary | `useSettings`, rút gọn còn giao diện, ngôn ngữ, chống chụp màn hình |
+| Trạng thái | `src/store/`: useStats, useHistory, useReaderSettings, progress, useDownloads, useBrowser, useSources, useFiles, useAdblock, useLibrary | `useSettings`, rút gọn còn giao diện, ngôn ngữ |
 | Thành phần | MangaCard, WebView, AddressBarParts, SideTabs, Favicon | `ui.tsx`, Sheet, Dropdown, icons, ErrorView, đổi sang phong cách mới |
 | Tiện ích | `src/lib/`: http, adblock, url, sha256, base64 | storage, id, time, format, async, screen |
 | Native Android | `NativeLibraryTasksModule.kt`, `UpdateCheckWorker.kt`, `specs/NativeLibraryTasks.ts` | `NativeScreenModule.kt` (xoay màn hình, chống chụp), `MainActivity`, `MainApplication` |

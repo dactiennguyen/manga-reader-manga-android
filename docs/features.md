@@ -325,10 +325,11 @@ Mọi kết quả AI nằm trên **lớp mới**, không sửa lớp của ngư�
 | Ngôn ngữ AI viết | Theo ngôn ngữ truyện | Tiếng Việt |
 | Tay thuận | Phải, trái (đảo vị trí thanh công cụ vẽ) | Phải |
 | Xác nhận trước thao tác AI nặng | Bật, tắt | Bật |
-| Chống chụp màn hình | Bật, tắt | Bật ở bản phát hành |
 | Giữ màn hình sáng khi vẽ | Bật, tắt | Bật |
 | Thông báo khi AI tạo xong | Bật, tắt | Bật |
 | Thùng rác | Xem, khôi phục, xóa hẳn | |
+
+Chống chụp và quay màn hình không phải là một mục cài đặt: bản phát hành luôn bật, bản dev luôn tắt.
 
 ---
 

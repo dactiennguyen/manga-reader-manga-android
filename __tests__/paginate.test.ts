@@ -3,7 +3,12 @@ import type { Block, BlockType, Scene } from '../src/model/types';
 
 let counter = 0;
 const block = (type: BlockType, text: string): Block => ({ id: `b${counter++}`, type, text });
-const scene = (blocks: Block[], description = ''): Scene => ({ id: `s${counter++}`, chapterId: 'c', description, blocks });
+const scene = (blocks: Block[], description = ''): Scene => ({
+  id: `s${counter++}`,
+  chapterId: 'c',
+  description,
+  blocks,
+});
 
 describe('paginate', () => {
   it('each action block opens a panel and dialogue follows the panel before it', () => {
@@ -18,7 +23,7 @@ describe('paginate', () => {
     expect(pages).toHaveLength(1);
     expect(pages[0].panels).toHaveLength(2);
     expect(pages[0].panels[0].description).toBe('Minh stops his bike (An alley, rainy afternoon)');
-    expect(pages[0].panels[0].blockIds).toEqual([blocks[1].id, blocks[2].id]);
+    expect(pages[0].panels[0].blockIds).toEqual([blocks[0].id, blocks[1].id, blocks[2].id]);
     expect(pages[0].panels[1].blockIds).toEqual([blocks[3].id, blocks[4].id]);
     expect(pages[0].panels[0].shot).toBe('wide');
   });
@@ -49,6 +54,18 @@ describe('paginate', () => {
     const plan = paginate([scene([a, b])], { skipBlockIds: new Set([a.id]) });
     expect(plan.flatMap(p => p.panels.flatMap(panel => panel.blockIds))).toEqual([b.id]);
     expect(paginate([scene([a])], { skipBlockIds: new Set([a.id]) })).toEqual([]);
+  });
+
+  it('keeps setting blocks linked to a panel so nothing looks unplaced', () => {
+    const lone = block('setting', 'A quiet harbor');
+    const trailing = block('setting', 'Night falls');
+    const action = block('action', 'Boats rock gently');
+    expect(paginate([scene([lone])])[0].panels[0]).toMatchObject({
+      description: 'A quiet harbor',
+      blockIds: [lone.id],
+    });
+    const plan = paginate([scene([action, trailing])]);
+    expect(plan.flatMap(p => p.panels.flatMap(panel => panel.blockIds))).toEqual([action.id, trailing.id]);
   });
 
   it('an empty script yields no pages', () => {

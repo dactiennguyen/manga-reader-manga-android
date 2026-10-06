@@ -51,7 +51,13 @@ export function DropdownButton<T extends string>({
           <ChevronDown size={16} color={c.onAppBar} />
         </Pressable>
       </View>
-      <Modal visible={!!menu} transparent animationType="fade" onRequestClose={() => setMenu(null)} statusBarTranslucent>
+      <Modal
+        visible={!!menu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenu(null)}
+        statusBarTranslucent
+      >
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenu(null)} />
         {menu && (
           <View style={[styles.menu, { top: menu.top, right: menu.right, backgroundColor: c.elevated }]}>

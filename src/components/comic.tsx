@@ -48,6 +48,34 @@ export function Halftone({
   );
 }
 
+const INNER_STYLE_KEYS = new Set([
+  'padding',
+  'paddingHorizontal',
+  'paddingVertical',
+  'paddingTop',
+  'paddingBottom',
+  'paddingLeft',
+  'paddingRight',
+  'gap',
+  'rowGap',
+  'columnGap',
+  'alignItems',
+  'justifyContent',
+  'flexDirection',
+  'flexWrap',
+  'backgroundColor',
+]);
+
+function splitCardStyle(style: StyleProp<ViewStyle>): { outer: ViewStyle; inner: ViewStyle } {
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = { flexGrow: 1 };
+  for (const [key, value] of Object.entries(flat)) {
+    (INNER_STYLE_KEYS.has(key) ? inner : outer)[key] = value;
+  }
+  return { outer: outer as ViewStyle, inner: inner as ViewStyle };
+}
+
 export function ComicCard({
   children,
   onPress,
@@ -71,6 +99,7 @@ export function ComicCard({
 }) {
   const { c } = useTheme();
   const edge = borderColor ?? c.ink;
+  const { outer: outerStyle, inner: innerStyle } = splitCardStyle(style);
   const body = (pressed: boolean) => (
     <>
       {shadow > 0 && (
@@ -86,6 +115,7 @@ export function ComicCard({
           styles.card,
           { backgroundColor: color ?? c.surface, borderColor: edge },
           pressed && shadow > 0 && { transform: [{ translateX: shadow / 2 }, { translateY: shadow / 2 }] },
+          innerStyle,
           contentStyle,
         ]}
       >
@@ -94,7 +124,7 @@ export function ComicCard({
       </View>
     </>
   );
-  const outer = [{ marginRight: shadow, marginBottom: shadow }, style];
+  const outer = [{ marginRight: shadow, marginBottom: shadow }, outerStyle];
   if (!onPress && !onLongPress) {
     return <View style={outer}>{body(false)}</View>;
   }
@@ -455,7 +485,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: space.lg,
     marginTop: space.lg,
     marginBottom: space.sm,
   },

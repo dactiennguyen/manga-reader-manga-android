@@ -74,7 +74,12 @@ function drawPlaceholder(
   const builder = Skia.ParagraphBuilder.Make(
     {
       textAlign: TextAlign.Center,
-      textStyle: { color: Skia.Color('#9A958E'), fontFamilies: [FONT_FAMILY.sans], fontSize: 24, heightMultiplier: 1.2 },
+      textStyle: {
+        color: Skia.Color('#9A958E'),
+        fontFamilies: [FONT_FAMILY.sans],
+        fontSize: 24,
+        heightMultiplier: 1.2,
+      },
     },
     fonts,
   );

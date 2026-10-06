@@ -4,6 +4,7 @@ import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ComicCard } from '../../components/comic';
 import { X } from '../../components/icons';
 import { Button, Header, IconButton, Screen, Stepper } from '../../components/ui';
+import { plural } from '../../lib/format';
 import { SHOT_LABEL } from '../../model/constants';
 import { paginate, type PagePlan } from '../../model/paginate';
 import type { Block, ID, Scene } from '../../model/types';
@@ -47,7 +48,7 @@ export function AutoPaginateSheet({
       <Screen>
         <Header
           title="Auto-paginate"
-          subtitle={`${plans.length} pages · ${panelTotal} panels`}
+          subtitle={`${plural(plans.length, 'page')} · ${plural(panelTotal, 'panel')}`}
           hideBack
           right={<IconButton icon={X} color={c.onAppBar} onPress={onClose} accessibilityLabel="Close" />}
         />
@@ -62,7 +63,7 @@ export function AutoPaginateSheet({
           {plans.map((plan, index) => (
             <ComicCard key={index} style={styles.card}>
               <Text style={[font.overline, { color: c.accent }]}>
-                PAGE {firstPageNumber + index} · {plan.panels.length} panels
+                PAGE {firstPageNumber + index} · {plural(plan.panels.length, 'panel')}
               </Text>
               {plan.panels.map((panel, panelIndex) => (
                 <View key={panelIndex} style={[styles.panel, { borderTopColor: c.border }]}>
@@ -95,7 +96,7 @@ export function AutoPaginateSheet({
         <View style={[styles.footer, { borderTopColor: c.border, backgroundColor: c.surface }]}>
           <Button title="Cancel" variant="secondary" onPress={onClose} style={styles.flex} />
           <Button
-            title={`Apply ${plans.length} pages`}
+            title={`Apply ${plural(plans.length, 'page')}`}
             disabled={plans.length === 0}
             onPress={() => onApply(plans)}
             style={styles.flex}

@@ -1,6 +1,17 @@
 import { artHasContent, loadArt } from '../engine/artStore';
 import type { StoryData } from '../store/useStory';
-import type { Chapter, ChapterStatus, Character, ID, Page, PageStatus, Project, ProjectStatus, Relation, WorldEntry } from './types';
+import type {
+  Chapter,
+  ChapterStatus,
+  Character,
+  ID,
+  Page,
+  PageStatus,
+  Project,
+  ProjectStatus,
+  Relation,
+  WorldEntry,
+} from './types';
 
 export function chapterIdsOf(project: Project | undefined): ID[] {
   return project ? project.acts.flatMap(act => act.chapterIds) : [];
@@ -22,7 +33,8 @@ export function chapterLabel(state: StoryData, chapterId: ID): string {
     return '';
   }
   const number = chapterNumber(state.projects[chapter.projectId], chapterId);
-  return `Chapter ${number} · ${chapter.title}`;
+  const title = chapter.title.trim();
+  return !title || title === `Chapter ${number}` ? `Chapter ${number}` : `Chapter ${number} · ${title}`;
 }
 
 export function pageStatus(page: Page): PageStatus {
@@ -132,11 +144,14 @@ export function projectOfPage(state: StoryData, pageId: ID | undefined): Project
 
 export function pageNumber(state: StoryData, pageId: ID): { index: number; total: number } {
   const page = state.pages[pageId];
-  const ids = page ? (state.chapters[page.chapterId]?.pageIds ?? []) : [];
+  const ids = page ? state.chapters[page.chapterId]?.pageIds ?? [] : [];
   return { index: ids.indexOf(pageId) + 1, total: ids.length };
 }
 
-export function characterUsage(state: StoryData, characterId: ID): { dialogues: number; bubbles: number; chapterIds: ID[] } {
+export function characterUsage(
+  state: StoryData,
+  characterId: ID,
+): { dialogues: number; bubbles: number; chapterIds: ID[] } {
   const character = state.characters[characterId];
   let dialogues = 0;
   let bubbles = 0;

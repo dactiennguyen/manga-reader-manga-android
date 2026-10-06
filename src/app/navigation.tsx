@@ -69,9 +69,7 @@ function AppTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View
-      style={[styles.tabBar, { backgroundColor: c.surface, borderTopColor: c.ink, paddingBottom: insets.bottom }]}
-    >
+    <View style={[styles.tabBar, { backgroundColor: c.surface, borderTopColor: c.ink, paddingBottom: insets.bottom }]}>
       {renderTab(0)}
       {renderTab(1)}
       <View style={styles.tab}>
@@ -129,11 +127,7 @@ export function RootNavigator() {
       <Stack.Screen name="WorldEntry" component={WorldEntryScreen} />
       <Stack.Screen name="Storyboard" component={StoryboardScreen} />
       <Stack.Screen name="PanelLayout" component={PanelLayoutScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen
-        name="Canvas"
-        component={CanvasScreen}
-        options={{ gestureEnabled: false, animation: 'fade' }}
-      />
+      <Stack.Screen name="Canvas" component={CanvasScreen} options={{ gestureEnabled: false, animation: 'fade' }} />
       <Stack.Screen
         name="Lettering"
         component={LetteringScreen}

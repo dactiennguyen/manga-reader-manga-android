@@ -35,7 +35,10 @@ export function restoreScriptVersion(chapterId: ID, version: ScriptVersion): voi
   snapshotScript(chapterId);
   useStory.getState().replaceScript(
     chapterId,
-    version.scenes.map(scene => ({ description: scene.description, blocks: scene.blocks.map(block => ({ ...block })) })),
+    version.scenes.map(scene => ({
+      description: scene.description,
+      blocks: scene.blocks.map(block => ({ ...block })),
+    })),
   );
 }
 

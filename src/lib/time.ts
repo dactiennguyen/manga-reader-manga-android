@@ -33,17 +33,16 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function formatDate(time: number, withWeekday = false): string {
   const d = new Date(time);
-  const date = `${String(d.getDate()).padStart(2, '0')}/${String(
-    d.getMonth() + 1,
-  ).padStart(2, '0')}/${d.getFullYear()}`;
+  const date = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(
+    2,
+    '0',
+  )}/${d.getFullYear()}`;
   return withWeekday ? `${WEEKDAYS[d.getDay()]}, ${date}` : date;
 }
 
 export function formatTime(time: number): string {
   const d = new Date(time);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(
-    d.getMinutes(),
-  ).padStart(2, '0')}`;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export function formatRelative(time: number, now: number = Date.now()): string {

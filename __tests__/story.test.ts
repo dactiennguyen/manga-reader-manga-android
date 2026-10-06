@@ -137,7 +137,9 @@ describe('pages and panels', () => {
     });
     const page = story().pages[pageId];
     expect(collectPanelIds(page.layout)).toHaveLength(3);
-    const described = Object.values(page.panels).map(p => p.description).sort();
+    const described = Object.values(page.panels)
+      .map(p => p.description)
+      .sort();
     expect(described).toEqual(['one', 'three', 'two']);
   });
 

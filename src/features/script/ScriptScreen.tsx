@@ -23,6 +23,7 @@ import {
 } from '../../components/icons';
 import { Button, Chip, confirm, EmptyState, Header, IconButton, Screen, toast } from '../../components/ui';
 import { isRtl, panelOrder } from '../../engine/layout';
+import { plural } from '../../lib/format';
 import { uid } from '../../lib/id';
 import { BLOCK_LABEL, BLOCK_TYPES, DIALOGUE_KIND_LABEL, DIALOGUE_KINDS, LIMITS } from '../../model/constants';
 import { estimatePages, estimateScenePages } from '../../model/paginate';
@@ -79,7 +80,7 @@ const SceneSection = memo(function SceneSectionBase({
           <Caret size={18} color={c.text} />
           <Text style={[styles.sceneTitle, { color: c.text }]}>Scene {index + 1}</Text>
           <Text style={[styles.sceneMeta, { color: c.muted }]}>
-            {pagesText(estimateScenePages(scene))} · {scene.blocks.length} blocks
+            {pagesText(estimateScenePages(scene))} · {plural(scene.blocks.length, 'block')}
           </Text>
         </Pressable>
         <IconButton
@@ -259,7 +260,7 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
         return;
       }
       const { block } = found;
-      const created: Block = { id: uid(), type: block.type, text };
+      const created: Block = { id: uid(), type: block.type === 'setting' ? 'action' : block.type, text };
       if (block.type === 'dialogue') {
         created.kind = block.kind ?? 'speak';
       }
@@ -566,8 +567,7 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
           />
           <View style={styles.stats}>
             <Text style={[styles.statsText, { color: c.muted }]}>
-              {pagesText(estimatePages(scenes))} · {scenes.length} {scenes.length === 1 ? 'scene' : 'scenes'} ·{' '}
-              {blockCount} blocks
+              {pagesText(estimatePages(scenes))} · {plural(scenes.length, 'scene')} · {plural(blockCount, 'block')}
             </Text>
             <Text style={[styles.statsText, { color: saving ? c.muted : c.success }]}>
               {saving ? 'Saving…' : 'Saved ✓'}

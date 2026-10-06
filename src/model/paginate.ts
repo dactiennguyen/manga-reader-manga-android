@@ -17,10 +17,11 @@ function shotFor(index: number, total: number, hasDialogue: boolean): Shot {
 
 function panelsOfScene(scene: Scene): { description: string; blocks: Block[] }[] {
   const panels: { description: string; blocks: Block[] }[] = [];
-  let setting = '';
+  let setting: Block | null = null;
   let current: { description: string; blocks: Block[] } | null = null;
   const open = (description: string) => {
-    current = { description, blocks: [] };
+    current = { description, blocks: setting ? [setting] : [] };
+    setting = null;
     panels.push(current);
     return current;
   };
@@ -30,26 +31,34 @@ function panelsOfScene(scene: Scene): { description: string; blocks: Block[] }[]
       continue;
     }
     if (block.type === 'setting') {
-      setting = text;
+      if (setting && current) {
+        (current as { blocks: Block[] }).blocks.push(setting);
+      }
+      setting = block;
       continue;
     }
+    const place: string = setting ? (setting as Block).text.trim() : '';
     if (block.type === 'action') {
-      const panel = open(setting ? `${text} (${setting})` : text);
-      panel.blocks.push(block);
-      setting = '';
+      open(place ? `${text} (${place})` : text).blocks.push(block);
       continue;
     }
-    const target: { description: string; blocks: Block[] } = current ?? open(setting || scene.description || '');
-    const spoken = target.blocks.filter(b => b.type !== 'action').length;
+    const target: { description: string; blocks: Block[] } =
+      current && !setting ? current : open(place || scene.description || '');
+    const spoken = target.blocks.filter(b => b.type !== 'action' && b.type !== 'setting').length;
     if (spoken >= 3) {
       open(target.description).blocks.push(block);
     } else {
       target.blocks.push(block);
     }
-    setting = '';
   }
-  if (!panels.length && (setting || scene.description.trim())) {
-    panels.push({ description: setting || scene.description.trim(), blocks: [] });
+  if (setting) {
+    if (current) {
+      (current as { blocks: Block[] }).blocks.push(setting);
+    } else {
+      open((setting as Block).text.trim());
+    }
+  } else if (!panels.length && scene.description.trim()) {
+    panels.push({ description: scene.description.trim(), blocks: [] });
   }
   return panels;
 }
@@ -80,7 +89,11 @@ export function paginate(scenes: Scene[], options: { pages?: number; skipBlockId
     panels.forEach((panel, index) => {
       all.push({
         description: panel.description,
-        shot: shotFor(index, panels.length, panel.blocks.some(b => b.type === 'dialogue')),
+        shot: shotFor(
+          index,
+          panels.length,
+          panel.blocks.some(b => b.type === 'dialogue'),
+        ),
         blockIds: panel.blocks.map(b => b.id),
       });
     });

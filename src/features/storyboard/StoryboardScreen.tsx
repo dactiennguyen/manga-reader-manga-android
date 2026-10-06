@@ -25,6 +25,7 @@ import {
 import { Button, confirm, Fab, Header, IconButton, Screen, toast } from '../../components/ui';
 import { Dialog } from '../../components/Sheet';
 import { isRtl, pageSize, panelOrder } from '../../engine/layout';
+import { plural } from '../../lib/format';
 import { SHOT_LABEL } from '../../model/constants';
 import type { PagePlan } from '../../model/paginate';
 import { chapterLabel, scriptOutdated } from '../../model/selectors';
@@ -144,7 +145,7 @@ export function StoryboardScreen({ navigation, route }: ScreenProps<'Storyboard'
   const applyPlans = (plans: PagePlan[]) => {
     const created = story.applyPagination(chapterId, plans, 'append');
     setPaginating(false);
-    toast(`${created.length} pages added from script`);
+    toast(`${plural(created.length, 'page')} added from script`);
   };
   const toggleSelect = (pageId: ID) =>
     setSelection(prev => {
@@ -257,7 +258,7 @@ export function StoryboardScreen({ navigation, route }: ScreenProps<'Storyboard'
           <Text style={[font.caption, { color: c.textSecondary }]}>
             {selection
               ? `${selection.length} selected`
-              : `${pages.length} pages · ${doneCount} done · ${flagCount} flagged   ${
+              : `${plural(pages.length, 'page')} · ${doneCount} done · ${flagCount} flagged   ${
                   manga ? '← reading direction' : '↓ vertical scroll'
                 }`}
           </Text>

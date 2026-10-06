@@ -160,8 +160,8 @@ function panelsFromPlan(
   const template = templateId
     ? TEMPLATES.find(t => t.id === templateId)
     : plan?.panels.length
-      ? defaultTemplate(format, plan.panels.length)
-      : undefined;
+    ? defaultTemplate(format, plan.panels.length)
+    : undefined;
   if (!template) {
     return { layout: null, panels: {} };
   }
@@ -587,7 +587,10 @@ export const useStory = create<StoryState>()(
           }
           return {
             scenes,
-            chapters: { ...state.chapters, [chapterId]: { ...chapter, sceneIds, scriptChangedAt: now, updatedAt: now } },
+            chapters: {
+              ...state.chapters,
+              [chapterId]: { ...chapter, sceneIds, scriptChangedAt: now, updatedAt: now },
+            },
             projects: touchProject(state.projects, chapter.projectId, now),
           };
         }),
@@ -797,7 +800,7 @@ export const useStory = create<StoryState>()(
             panels,
             gutterH: DEFAULT_GUTTER_H,
             gutterV: DEFAULT_GUTTER_V,
-            height: project.format === 'webtoon' ? (init.height ?? WEBTOON_DEFAULT_H) : undefined,
+            height: project.format === 'webtoon' ? init.height ?? WEBTOON_DEFAULT_H : undefined,
             done: false,
             bubbles: [],
             effects: [],
@@ -855,7 +858,11 @@ export const useStory = create<StoryState>()(
           return {
             pages: {
               ...state.pages,
-              [pageId]: { ...page, panels: { ...page.panels, [panelId]: { ...panel, ...patch } }, updatedAt: Date.now() },
+              [pageId]: {
+                ...page,
+                panels: { ...page.panels, [panelId]: { ...panel, ...patch } },
+                updatedAt: Date.now(),
+              },
             },
           };
         }),

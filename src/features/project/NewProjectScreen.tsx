@@ -18,6 +18,7 @@ import {
   TextField,
   toast,
 } from '../../components/ui';
+import { StyleSample } from '../onboarding/StyleSample';
 import { ART_STYLE_LABEL, ART_STYLES, GENRES, LIMITS } from '../../model/constants';
 import type { ArtStyle, PageSize, ProjectFormat } from '../../model/types';
 import { useSettings } from '../../store/useSettings';
@@ -53,15 +54,6 @@ const FORMATS: { key: FormatKey; format: ProjectFormat; pageSize: PageSize; labe
   },
 ];
 
-const STYLE_ART: Record<ArtStyle, { stroke: number; head: number; eye: number; dark: boolean; lines: number }> = {
-  shounen: { stroke: 4, head: 40, eye: 7, dark: false, lines: 4 },
-  shoujo: { stroke: 1.5, head: 38, eye: 11, dark: false, lines: 0 },
-  seinen: { stroke: 2.5, head: 34, eye: 4, dark: false, lines: 2 },
-  chibi: { stroke: 3, head: 52, eye: 9, dark: false, lines: 0 },
-  horror: { stroke: 3, head: 38, eye: 5, dark: true, lines: 3 },
-  slice: { stroke: 1.5, head: 36, eye: 4, dark: false, lines: 0 },
-};
-
 function FormatArt({ kind }: { kind: FormatKey }) {
   const webtoon = kind === 'webtoon';
   const small = kind === 'manga-A5';
@@ -84,43 +76,9 @@ function FormatArt({ kind }: { kind: FormatKey }) {
 }
 
 function StyleArt({ style }: { style: ArtStyle }) {
-  const art = STYLE_ART[style];
-  const fg = art.dark ? PAPER : INK;
-  const bg = art.dark ? INK : PAPER;
   return (
-    <View style={[styles.styleArt, { backgroundColor: bg }]}>
-      {Array.from({ length: art.lines }, (_, index) => (
-        <View
-          key={index}
-          style={[styles.styleLine, { backgroundColor: fg, top: 10 + index * 14, height: art.stroke / 2 + 0.5 }]}
-        />
-      ))}
-      <View
-        style={[
-          styles.styleHead,
-          {
-            width: art.head,
-            height: art.head,
-            borderRadius: art.head / 2,
-            borderWidth: art.stroke,
-            borderColor: fg,
-            backgroundColor: bg,
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.styleEye,
-            { width: art.eye, height: art.eye * 1.3, borderRadius: art.eye, backgroundColor: fg },
-          ]}
-        />
-        <View
-          style={[
-            styles.styleEye,
-            { width: art.eye, height: art.eye * 1.3, borderRadius: art.eye, backgroundColor: fg },
-          ]}
-        />
-      </View>
+    <View style={styles.styleArt}>
+      <StyleSample style={style} size={112} />
     </View>
   );
 }
@@ -395,10 +353,7 @@ const styles = StyleSheet.create({
   styleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
   styleCell: { width: '47%', flexGrow: 1, borderWidth: 2, borderRadius: radius.md, overflow: 'hidden' },
   styleCellWide: { width: '30%' },
-  styleArt: { height: 84, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  styleLine: { position: 'absolute', left: -10, right: -10, transform: [{ rotate: '-12deg' }] },
-  styleHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  styleEye: {},
+  styleArt: { height: 112, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: PAPER },
   styleText: { padding: space.sm, gap: 2 },
   styleCheck: {
     position: 'absolute',

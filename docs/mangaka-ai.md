@@ -7,6 +7,7 @@ Bộ tài liệu gồm ba phần:
 - **Tổng quan sản phẩm** — file này.
 - **[Mô tả tính năng](features.md)** — quy tắc xử lý của từng tính năng, có mã F-xx.
 - **[Mô tả giao diện 20 màn hình](screens/README.md)** — bố cục, thành phần, hành động, trạng thái của từng màn.
+- **[Tình trạng triển khai](status.md)** — phần nào đã làm, đã kiểm tra thế nào, khác gì so với thiết kế. Ảnh chụp màn hình nằm trong [screenshots/](screenshots/).
 
 ## Tóm tắt
 

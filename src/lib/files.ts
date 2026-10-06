@@ -1,12 +1,5 @@
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {
-  errorCodes,
-  isErrorWithCode,
-  keepLocalCopy,
-  pick,
-  saveDocuments,
-  types,
-} from '@react-native-documents/picker';
+import { errorCodes, isErrorWithCode, keepLocalCopy, pick, saveDocuments, types } from '@react-native-documents/picker';
 
 import NativeFiles from '../../specs/NativeFiles';
 import { uid } from './id';
@@ -55,9 +48,7 @@ function isCancel(error: unknown): boolean {
   return isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED;
 }
 
-export async function pickToCache(
-  type: string | string[],
-): Promise<{ path: string; name: string } | null> {
+export async function pickToCache(type: string | string[]): Promise<{ path: string; name: string } | null> {
   try {
     const [picked] = await pick({ type });
     const name = picked.name ?? `file-${uid()}`;

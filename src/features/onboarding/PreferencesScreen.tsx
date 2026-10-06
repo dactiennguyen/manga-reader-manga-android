@@ -145,8 +145,8 @@ export function PreferencesScreen({ navigation, route }: ScreenProps<'Preference
           <View style={styles.flex}>
             <ProgressBar value={(step + 1) / STEP_COUNT} />
           </View>
-          <Text style={[font.label, { color: c.onAppBar }]}>
-            {step + 1}/{STEP_COUNT}
+          <Text numberOfLines={1} style={[font.label, styles.stepLabel, { color: c.onAppBar }]}>
+            {`${step + 1}/${STEP_COUNT}`}
           </Text>
         </View>
       </Header>
@@ -240,6 +240,7 @@ export function PreferencesScreen({ navigation, route }: ScreenProps<'Preference
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   progress: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingRight: space.sm },
+  stepLabel: { minWidth: 30, textAlign: 'right' },
   skip: { paddingHorizontal: space.md, paddingVertical: space.sm },
   content: { padding: space.lg, paddingBottom: space.xl, width: '100%', maxWidth: 560, alignSelf: 'center' },
   hint: { marginTop: space.xs, marginBottom: space.lg },

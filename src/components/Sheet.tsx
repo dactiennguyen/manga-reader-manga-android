@@ -4,7 +4,6 @@ import {
   Easing,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -66,10 +65,7 @@ export function Sheet({
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView
-        style={styles.fill}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.backdrop, opacity: progress }]}>
           <Pressable style={styles.fill} onPress={onClose} />
         </Animated.View>
@@ -137,10 +133,7 @@ export function Dialog({
   const { c } = useTheme();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView
-        style={[styles.fill, styles.dialogWrap]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={[styles.fill, styles.dialogWrap]} behavior="padding">
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: c.backdrop }]} onPress={onClose} />
         <View style={[styles.dialog, { backgroundColor: c.elevated }, style]}>
           {!!title && <Text style={[font.heading, { color: c.text }]}>{title}</Text>}
@@ -184,5 +177,11 @@ const styles = StyleSheet.create({
   },
   dialogWrap: { justifyContent: 'center', padding: space.xl },
   dialog: { borderRadius: radius.xl, padding: space.xl, gap: space.md, maxHeight: '90%' },
-  dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    marginTop: space.sm,
+  },
 });

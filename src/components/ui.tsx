@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, Check, ChevronRight, Search, X } from './icons';
-import { useRef, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
   PanResponder,
@@ -14,6 +14,7 @@ import {
   ToastAndroid,
   Alert,
   View,
+  useWindowDimensions,
   type StyleProp,
   type TextInputProps,
   type TextStyle,
@@ -21,6 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useKeyboardHeight } from '../lib/keyboard';
 import { font, radius, space, useTheme } from '../theme';
 import type { LucideIcon } from './icons';
 
@@ -54,7 +56,6 @@ export function confirm(
   });
 }
 
-
 export function Screen({
   children,
   style,
@@ -66,15 +67,23 @@ export function Screen({
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
+  const { height: windowHeight } = useWindowDimensions();
+  const root = useRef<ComponentRef<typeof View>>(null);
+  const [overlap, setOverlap] = useState(0);
+  useEffect(() => {
+    if (keyboard <= 0) {
+      setOverlap(0);
+      return;
+    }
+    root.current?.measureInWindow((_x, y, _width, height) => {
+      const covered = y + height - (windowHeight - keyboard);
+      setOverlap(covered > 0 ? covered + insets.bottom : 0);
+    });
+  }, [keyboard, windowHeight, insets.bottom]);
+  const bottom = overlap > 0 ? overlap : edges.includes('bottom') ? insets.bottom : 0;
   return (
-    <View
-      style={[
-        styles.flex,
-        { backgroundColor: c.bg },
-        edges.includes('bottom') && { paddingBottom: insets.bottom },
-        style,
-      ]}
-    >
+    <View ref={root} collapsable={false} style={[styles.flex, { backgroundColor: c.bg, paddingBottom: bottom }, style]}>
       {edges.includes('top') && <View style={{ height: insets.top, backgroundColor: c.appBar }} />}
       {children}
     </View>
@@ -126,7 +135,6 @@ export function Header({
     </View>
   );
 }
-
 
 export function IconButton({
   icon: Icon,
@@ -228,9 +236,7 @@ export function Button({
       ) : (
         Icon && <Icon size={small ? 16 : 18} color={palette.fg} />
       )}
-      <Text style={[small ? font.caption : font.label, styles.bold, { color: palette.fg }]}>
-        {title}
-      </Text>
+      <Text style={[small ? font.caption : font.label, styles.bold, { color: palette.fg }]}>{title}</Text>
     </Pressable>
   );
 }
@@ -264,7 +270,6 @@ export function Fab({
     </Pressable>
   );
 }
-
 
 export function Chip({
   label,
@@ -307,11 +312,7 @@ export function Chip({
 
 export function ChipRow({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={[styles.chipRow, style]}
-    >
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.chipRow, style]}>
       {children}
     </ScrollView>
   );
@@ -480,9 +481,7 @@ export function Stepper({
       >
         <Text style={[styles.stepGlyph, { color: c.text }]}>−</Text>
       </Pressable>
-      <Text style={[font.label, styles.stepValue, { color: c.text }]}>
-        {format ? format(value) : value}
-      </Text>
+      <Text style={[font.label, styles.stepValue, { color: c.text }]}>{format ? format(value) : value}</Text>
       <Pressable
         onPress={() => onChange(clamp(value + step))}
         disabled={value >= max}
@@ -570,7 +569,6 @@ export function Slider({
     </View>
   );
 }
-
 
 export function Section({
   title,
@@ -714,7 +712,6 @@ export function Badge({ text, color, style }: { text: string; color?: string; st
   );
 }
 
-
 export function EmptyState({
   icon: Icon,
   title,
@@ -753,7 +750,6 @@ export function LoadingView({ label, style }: { label?: string; style?: StylePro
   );
 }
 
-
 type TextFieldProps = TextInputProps & {
   ref?: Ref<ComponentRef<typeof TextInput>>;
   icon?: LucideIcon;
@@ -784,15 +780,7 @@ export function TextField({ ref, icon: Icon, onClear, style, inputStyle, ...prop
 }
 
 export function SearchField(props: Omit<TextFieldProps, 'icon'>) {
-  return (
-    <TextField
-      icon={Search}
-      returnKeyType="search"
-      autoCorrect={false}
-      autoCapitalize="none"
-      {...props}
-    />
-  );
+  return <TextField icon={Search} returnKeyType="search" autoCorrect={false} autoCapitalize="none" {...props} />;
 }
 
 export function FieldLabel({ children }: { children: string }) {

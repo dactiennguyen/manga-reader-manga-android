@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Sheet } from '../../components/Sheet';
 import { Button, Divider } from '../../components/ui';
+import { plural } from '../../lib/format';
 import { formatRelative } from '../../lib/time';
 import type { ID } from '../../model/types';
 import { listScriptVersions } from '../../store/scriptHistory';
@@ -44,7 +45,7 @@ export function VersionsSheet({
                 <View style={styles.info}>
                   <Text style={[styles.time, { color: c.text }]}>{formatRelative(version.at)}</Text>
                   <Text style={[styles.meta, { color: c.muted }]}>
-                    {version.scenes.length} scenes · {blocks} blocks
+                    {plural(version.scenes.length, 'scene')} · {plural(blocks, 'block')}
                   </Text>
                   {first && (
                     <Text style={[styles.preview, { color: c.textSecondary }]} numberOfLines={2}>

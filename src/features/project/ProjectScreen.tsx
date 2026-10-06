@@ -29,6 +29,7 @@ import {
   TextField,
   toast,
 } from '../../components/ui';
+import { plural } from '../../lib/format';
 import { ART_STYLE_LABEL, ART_STYLES, GENRES, LIMITS } from '../../model/constants';
 import { chapterIdsOf, chapterProgress, chapterStatus, projectProgress } from '../../model/selectors';
 import type { Project } from '../../model/types';
@@ -86,7 +87,7 @@ function nextStepOf(state: StoryData, project: Project, navigation: AppNavigatio
   if (status === 'drawing') {
     const { done, total } = chapterProgress(state, chapterId);
     return {
-      text: `Chapter ${number} has ${total - done} pages left.`,
+      text: `Chapter ${number} has ${plural(total - done, 'page')} left.`,
       actions: [{ label: 'Keep drawing', onPress: () => navigation.navigate('Storyboard', { chapterId }) }],
     };
   }

@@ -4,6 +4,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Cover } from '../../components/comic';
 import { ArchiveRestore, Trash } from '../../components/icons';
 import { Button, confirm, EmptyState, Header, IconButton, Screen, toast } from '../../components/ui';
+import { plural } from '../../lib/format';
 import { DAY_MS } from '../../lib/time';
 import { LIMITS } from '../../model/constants';
 import type { Project } from '../../model/types';
@@ -47,10 +48,14 @@ export function TrashScreen() {
   };
 
   const onDeleteAll = async () => {
-    const ok = await confirm(`Delete all ${items.length} stories in the trash forever?`, 'This cannot be undone.', {
-      confirmText: 'Delete all',
-      destructive: true,
-    });
+    const ok = await confirm(
+      `Delete ${plural(items.length, 'story', 'stories')} in the trash forever?`,
+      'This cannot be undone.',
+      {
+        confirmText: 'Delete all',
+        destructive: true,
+      },
+    );
     if (ok) {
       const { deleteProjectForever } = useStory.getState();
       items.forEach(project => deleteProjectForever(project.id));

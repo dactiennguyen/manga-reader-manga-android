@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAppNavigation, useAppRoute } from '../../app/routes';
@@ -85,6 +85,7 @@ export function ExportScreen() {
   const [history, setHistory] = useState<ExportResult[]>(() => readJSON<ExportResult[]>(historyKey) ?? []);
   const [missing, setMissing] = useState<Record<string, boolean>>({});
   const cancelRef = useRef(false);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useEffect(
     () => () => {
@@ -151,6 +152,7 @@ export function ExportScreen() {
       setHistory(next);
       writeJSON(historyKey, next);
       setPhase({ kind: 'done', result });
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
     } catch (error) {
       if (cancelRef.current || error instanceof ExportCancelled) {
         setPhase({ kind: 'idle' });
@@ -197,7 +199,7 @@ export function ExportScreen() {
   return (
     <Screen>
       <Header title="Export" subtitle={project.title} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <SectionTitle>Chapters</SectionTitle>
         <ComicCard contentStyle={styles.card}>
           {selectable.length > 1 && (

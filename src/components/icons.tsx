@@ -286,7 +286,11 @@ function create(glyph: GlyphName, filled?: GlyphName): IconComponent {
         allowFontScaling={false}
         accessible={!!accessibilityLabel}
         accessibilityLabel={accessibilityLabel}
-        style={[styles.icon, { fontSize: px, lineHeight: px, width: px, height: px, color }, style as StyleProp<TextStyle>]}
+        style={[
+          styles.icon,
+          { fontSize: px, lineHeight: px, width: px, height: px, color },
+          style as StyleProp<TextStyle>,
+        ]}
       >
         {String.fromCodePoint(GLYPHS[name])}
       </Text>

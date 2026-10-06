@@ -399,7 +399,7 @@ export function PanelLayoutScreen({ navigation, route }: ScreenProps<'PanelLayou
   const scriptBlockId = shapes.map(s => page.panels[s.id]?.blockIds[0]).find(Boolean);
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <Header
         onBack={goBack}
         right={

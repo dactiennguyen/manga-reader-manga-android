@@ -2,7 +2,7 @@
 
 App Android giúp một người tự làm trọn một chương manga trên điện thoại: viết kịch bản, dựng nhân vật, chia khung, vẽ tranh, đặt thoại và xuất file. Viết bằng React Native, giao diện tiếng Anh.
 
-Tài liệu sản phẩm nằm trong [docs/](docs/): [tổng quan](docs/mangaka-ai.md), [mô tả tính năng](docs/features.md), [mô tả 20 màn hình](docs/screens/README.md).
+Tài liệu sản phẩm nằm trong [docs/](docs/): [tổng quan](docs/mangaka-ai.md), [mô tả tính năng](docs/features.md), [mô tả 20 màn hình](docs/screens/README.md), [tình trạng triển khai](docs/status.md) và [ảnh chụp màn hình](docs/screenshots/).
 
 Phần AI (gợi ý cốt truyện, vẽ khung, trợ lý) chưa làm; bản hiện tại gồm các tính năng làm tay. App đọc truyện cũ còn ở tag `legacy-reader`.
 

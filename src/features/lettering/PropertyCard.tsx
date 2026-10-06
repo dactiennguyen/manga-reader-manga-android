@@ -197,7 +197,7 @@ export function BubbleCard({
       )}
       {speech && (
         <Row>
-          <Chip label={bubble.tail ? 'Hide tail' : 'Show tail'} selected={!!bubble.tail} onPress={onToggleTail} />
+          <Chip label="Tail" selected={!!bubble.tail} onPress={onToggleTail} />
           <Chip label={speaker ?? 'Speaker'} icon={User} selected={!!speaker} onPress={onPickSpeaker} />
         </Row>
       )}

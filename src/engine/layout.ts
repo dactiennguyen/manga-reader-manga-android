@@ -443,7 +443,12 @@ export const TEMPLATES: LayoutTemplate[] = [
   { id: 'b5', count: 5, kind: 'bleed', spec: H(0.34, B, H(0.5, V(0.5, P, P), V(0.5, P, P))) },
   { id: 'g6-grid', count: 6, kind: 'grid', spec: H(1 / 3, V(0.5, P, P), H(0.5, V(0.5, P, P), V(0.5, P, P))) },
   { id: 'g6-mix', count: 6, kind: 'grid', spec: H(0.3, V(0.6, P, P), H(0.5, P, V(1 / 3, P, V(0.5, P, P)))) },
-  { id: 'd6', count: 6, kind: 'diagonal', spec: HS(0.3, 0.36, V(0.5, P, P), HS(0.52, 0.46, V(0.4, P, P), V(0.6, P, P))) },
+  {
+    id: 'd6',
+    count: 6,
+    kind: 'diagonal',
+    spec: HS(0.3, 0.36, V(0.5, P, P), HS(0.52, 0.46, V(0.4, P, P), V(0.6, P, P))),
+  },
   {
     id: 'g7-a',
     count: 7,
@@ -485,7 +490,9 @@ export function buildTemplate(template: LayoutTemplate, newId: () => ID): BuiltL
 
 export function templatesFor(format: Project['format'], count?: number): LayoutTemplate[] {
   return TEMPLATES.filter(
-    t => (format === 'webtoon' ? t.kind === 'strip' || t.count === 1 : t.kind !== 'strip') && (!count || t.count === count),
+    t =>
+      (format === 'webtoon' ? t.kind === 'strip' || t.count === 1 : t.kind !== 'strip') &&
+      (!count || t.count === count),
   );
 }
 

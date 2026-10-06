@@ -30,6 +30,7 @@ import {
   SearchField,
   toast,
 } from '../../components/ui';
+import { plural } from '../../lib/format';
 import { pickToCache } from '../../lib/files';
 import { importProjectArchive } from '../../lib/projectArchive';
 import { formatRelative } from '../../lib/time';
@@ -203,7 +204,7 @@ export function LibraryScreen() {
               </Text>
             )}
             <Text style={[font.caption, { color: c.muted }]}>
-              {item.chapters} ch. · {item.total} pages · {formatRelative(project.updatedAt)}
+              {item.chapters} ch. · {plural(item.total, 'page')} · {formatRelative(project.updatedAt)}
             </Text>
             <ProgressBar value={item.ratio} />
           </View>
@@ -305,7 +306,9 @@ export function LibraryScreen() {
                 ))}
               </ChipRow>
               <View style={styles.countRow}>
-                <Text style={[font.label, { color: c.textSecondary }]}>{visible.length} stories</Text>
+                <Text style={[font.label, { color: c.textSecondary }]}>
+                  {plural(visible.length, 'story', 'stories')}
+                </Text>
                 <Pressable style={styles.sortButton} hitSlop={8} onPress={() => setSortMenu(true)}>
                   <ArrowDownUp size={16} color={c.text} />
                   <Text style={[font.label, { color: c.text }]}>{SORT_LABEL[sort]}</Text>

@@ -63,7 +63,12 @@ export function CharacterPicker({
     <Sheet visible={visible} onClose={close} title={title}>
       <View style={styles.body}>
         {characters.length > 5 && (
-          <SearchField value={query} onChangeText={setQuery} placeholder="Search characters" onClear={() => setQuery('')} />
+          <SearchField
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search characters"
+            onClear={() => setQuery('')}
+          />
         )}
         {!shown.length && !creating && (
           <Text style={[font.body, styles.empty, { color: c.muted }]}>
@@ -119,5 +124,11 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   body: { paddingHorizontal: space.lg, gap: space.sm },
   empty: { paddingVertical: space.md },
-  createRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm },
+  createRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+  },
 });

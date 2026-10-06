@@ -53,14 +53,12 @@ jobs:
         run: npm ci
 
       - name: Check TypeScript
-        run: |
-          npx tsc --noEmit
-          npx tsc --noEmit -p __tests__/live/tsconfig.json
+        run: npx tsc --noEmit
 
       - name: Lint
         run: npm run lint
 
-      - name: Check addon bundles and run tests
+      - name: Run tests
         run: npm test -- --runInBand
 
       - name: Set up Java

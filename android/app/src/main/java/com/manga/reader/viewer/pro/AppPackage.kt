@@ -12,12 +12,12 @@ class AppPackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? =
       when (name) {
         NativeScreenModule.NAME -> NativeScreenModule(reactContext)
-        NativeLibraryTasksModule.NAME -> NativeLibraryTasksModule(reactContext)
+        NativeFilesModule.NAME -> NativeFilesModule(reactContext)
         else -> null
       }
 
   override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
-    listOf(NativeScreenModule.NAME, NativeLibraryTasksModule.NAME).associateWith { name ->
+    listOf(NativeScreenModule.NAME, NativeFilesModule.NAME).associateWith { name ->
       ReactModuleInfo(
           name = name,
           className = name,

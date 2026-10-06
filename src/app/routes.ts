@@ -1,50 +1,46 @@
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation, useRoute, type NavigatorScreenParams, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import type { EngineId, Genre } from '../sources/types';
-import { useBrowser } from '../store/useBrowser';
+import type { ID, WorldType } from '../model/types';
+
+export type TabParamList = {
+  Home: undefined;
+  Library: undefined;
+  Profile: undefined;
+};
+
+export type ProjectTab = 'chapters' | 'characters' | 'world' | 'notes';
 
 export type RootStackParamList = {
-  Browser: undefined;
-  Tabs: undefined;
-  Bookmarks: { tab?: 'media' | 'web' | 'sites' } | undefined;
-  History: { tab?: 'reading' | 'web' } | undefined;
-  Downloads: { tab?: 'chapters' | 'pages' | 'files' } | undefined;
-  Addons: undefined;
-  AddonManager: undefined;
-  AddSite: { url?: string; engine?: EngineId } | undefined;
-  SourceSettings: { sourceId: string };
-  Catalog: { sourceId: string; query?: string; genre?: Genre };
-  MangaSearch: { query?: string } | undefined;
-  MangaDetail: { sourceId: string; url: string; title?: string; cover?: string };
-  Reader: { sourceId: string; mangaUrl: string; chapterUrl: string; page?: number };
-  NovelReader: { sourceId: string; mangaUrl: string; chapterUrl: string; paragraph?: number };
-  ReadingStats: undefined;
-  Settings: undefined;
-  ViewerSettings: undefined;
-  NovelSettings: undefined;
-  AdblockSettings: undefined;
-  CustomizeHomepage: undefined;
-  BackupRestore: undefined;
-  ClearData: undefined;
+  Welcome: undefined;
+  SignIn: { from?: 'profile' } | undefined;
+  Preferences: { edit?: boolean } | undefined;
+  Tabs: NavigatorScreenParams<TabParamList> | undefined;
+  NewProject: { idea?: string; blankCanvas?: boolean } | undefined;
+  Project: { projectId: ID; tab?: ProjectTab };
+  Outline: { projectId: ID };
+  Script: { chapterId: ID; blockId?: ID };
+  Character: { characterId: ID };
+  World: { projectId: ID; type?: WorldType; view?: 'list' | 'timeline' };
+  WorldEntry: { entryId: ID };
+  Storyboard: { chapterId: ID };
+  PanelLayout: { pageId: ID; mode?: 'panels' | 'art' };
+  Canvas: { pageId: ID; panelId: ID };
+  Lettering: { pageId: ID };
+  Preview: { projectId: ID; chapterId?: ID; pageId?: ID };
+  Export: { projectId: ID; chapterId?: ID };
+  Trash: undefined;
   About: undefined;
-  ViewSource: { url: string };
-  SavedPage: { id: string };
-  QRScanner: undefined;
-  Verify: { url: string };
 };
 
 export type AppNavigation = NativeStackNavigationProp<RootStackParamList>;
+
+export type ScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, T>;
 
 export function useAppNavigation(): AppNavigation {
   return useNavigation<AppNavigation>();
 }
 
-export function openInBrowser(
-  navigation: AppNavigation,
-  url: string,
-  options: { newTab?: boolean } = {},
-): void {
-  useBrowser.getState().openUrl(url, { newTab: options.newTab ?? true });
-  navigation.popTo('Browser');
+export function useAppRoute<T extends keyof RootStackParamList>(): RouteProp<RootStackParamList, T> {
+  return useRoute<RouteProp<RootStackParamList, T>>();
 }

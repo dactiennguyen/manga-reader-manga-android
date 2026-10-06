@@ -178,7 +178,7 @@ export function IconButton({
   );
 }
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'ink';
 
 export function Button({
   title,
@@ -201,10 +201,11 @@ export function Button({
 }) {
   const { c } = useTheme();
   const palette = {
-    primary: { bg: c.accent, fg: c.onAccent, border: c.accent },
-    secondary: { bg: c.primaryContainer, fg: c.onPrimaryContainer, border: c.primaryContainer },
-    ghost: { bg: 'transparent', fg: c.accent, border: c.border },
-    danger: { bg: c.dangerSoft, fg: c.danger, border: c.dangerSoft },
+    primary: { bg: c.accent, fg: c.onAccent, border: c.ink },
+    secondary: { bg: c.surface, fg: c.text, border: c.ink },
+    ghost: { bg: 'transparent', fg: c.text, border: c.border },
+    danger: { bg: c.dangerSoft, fg: c.danger, border: c.danger },
+    ink: { bg: c.ink, fg: c.onInk, border: c.ink },
   }[variant];
   return (
     <Pressable
@@ -254,12 +255,12 @@ export function Fab({
       accessibilityLabel={label}
       style={({ pressed }) => [
         styles.fab,
-        { backgroundColor: c.primaryContainer, bottom: insets.bottom + 20, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: c.accent, borderColor: c.ink, bottom: insets.bottom + 20, opacity: pressed ? 0.85 : 1 },
         style,
       ]}
     >
-      <Icon size={22} color={c.onPrimaryContainer} fill={c.onPrimaryContainer} stroke={c.primaryContainer} />
-      {!!label && <Text style={[font.label, { color: c.onPrimaryContainer }]}>{label}</Text>}
+      <Icon size={22} color={c.onAccent} />
+      {!!label && <Text style={[font.label, { color: c.onAccent }]}>{label}</Text>}
     </Pressable>
   );
 }
@@ -292,7 +293,7 @@ export function Chip({
         styles.chip,
         selected
           ? { backgroundColor: c.primaryContainer, borderColor: c.primaryContainer }
-          : { borderColor: c.border },
+          : { borderColor: c.border, backgroundColor: c.surface },
         { opacity: pressed ? 0.8 : 1 },
         style,
       ]}
@@ -329,7 +330,7 @@ export function Segmented<T extends string | number>({
 }) {
   const { c } = useTheme();
   return (
-    <View style={[styles.segmented, { borderColor: c.border }, disabled && styles.disabled]}>
+    <View style={[styles.segmented, { borderColor: c.ink, backgroundColor: c.surface }, disabled && styles.disabled]}>
       {options.map((option, index) => {
         const active = option.value === value;
         return (
@@ -339,7 +340,7 @@ export function Segmented<T extends string | number>({
             onPress={() => onChange(option.value)}
             style={[
               styles.segment,
-              index > 0 && [styles.segmentDivider, { borderLeftColor: c.border }],
+              index > 0 && [styles.segmentDivider, { borderLeftColor: c.ink }],
               active && { backgroundColor: c.primaryContainer },
             ]}
           >
@@ -586,7 +587,7 @@ export function Section({
   return (
     <View style={[styles.section, style]}>
       {!!title && <Text style={[font.overline, styles.sectionTitle, { color: c.muted }]}>{title}</Text>}
-      <View style={[styles.card, { backgroundColor: c.surface }]}>{children}</View>
+      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>{children}</View>
       {!!footer && <Text style={[font.caption, styles.sectionFooter, { color: c.muted }]}>{footer}</Text>}
     </View>
   );
@@ -731,8 +732,8 @@ export function EmptyState({
   return (
     <View style={[styles.empty, style]}>
       {Icon && (
-        <View style={[styles.emptyIcon, { backgroundColor: c.surfaceAlt }]}>
-          <Icon size={30} color={c.muted} />
+        <View style={[styles.emptyIcon, { backgroundColor: c.surface, borderColor: c.ink }]}>
+          <Icon size={30} color={c.text} />
         </View>
       )}
       <Text style={[font.heading, styles.center, { color: c.text }]}>{title}</Text>
@@ -764,7 +765,7 @@ type TextFieldProps = TextInputProps & {
 export function TextField({ ref, icon: Icon, onClear, style, inputStyle, ...props }: TextFieldProps) {
   const { c } = useTheme();
   return (
-    <View style={[styles.field, { backgroundColor: c.surfaceAlt }, style]}>
+    <View style={[styles.field, { backgroundColor: c.surface, borderColor: c.border }, style]}>
       {Icon && <Icon size={18} color={c.muted} />}
       <TextInput
         ref={ref}
@@ -810,7 +811,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 64,
+    minHeight: 56,
     paddingHorizontal: space.xs,
     gap: space.xs,
   },
@@ -840,10 +841,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    minHeight: 44,
+    minHeight: 46,
     paddingHorizontal: space.xl,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+    borderRadius: radius.md,
+    borderWidth: 2,
   },
   buttonSmall: { minHeight: 34, paddingHorizontal: space.lg, gap: 6 },
   fab: {
@@ -852,29 +853,26 @@ const styles = StyleSheet.create({
     minWidth: 56,
     height: 56,
     borderRadius: 16,
+    borderWidth: 2,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    height: 32,
+    height: 34,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 17,
+    borderWidth: 1.5,
   },
   chipLabel: { fontSize: 13, fontWeight: '500' },
   chipRow: { gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm },
-  segmented: { flexDirection: 'row', borderRadius: radius.pill, borderWidth: 1, overflow: 'hidden' },
+  segmented: { flexDirection: 'row', borderRadius: radius.md, borderWidth: 2, overflow: 'hidden' },
   segment: {
     flex: 1,
     flexDirection: 'row',
@@ -884,7 +882,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  segmentDivider: { borderLeftWidth: 1 },
+  segmentDivider: { borderLeftWidth: 2 },
   tabBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
   tabScroll: { paddingHorizontal: space.xs },
   tab: { alignItems: 'center', paddingTop: 14, paddingHorizontal: 14 },
@@ -919,9 +917,9 @@ const styles = StyleSheet.create({
   sliderFill: { height: 4 },
   sliderThumb: { position: 'absolute', width: 20, height: 20, borderRadius: 10, borderWidth: 3 },
   section: { gap: space.sm },
-  sectionTitle: { paddingHorizontal: space.lg + 2 },
-  sectionFooter: { paddingHorizontal: space.lg + 2 },
-  card: { borderRadius: radius.lg, overflow: 'hidden', marginHorizontal: space.md },
+  sectionTitle: { paddingHorizontal: space.lg },
+  sectionFooter: { paddingHorizontal: space.lg },
+  card: { borderRadius: radius.lg, borderWidth: 1, overflow: 'hidden', marginHorizontal: space.lg },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -944,7 +942,14 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 11, fontWeight: '800', color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md, padding: space.xl },
-  emptyIcon: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center' },
+  emptyIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyAction: { marginTop: space.sm },
   field: {
     flexDirection: 'row',
@@ -952,6 +957,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     minHeight: 46,
     borderRadius: radius.md,
+    borderWidth: 1.5,
     paddingHorizontal: space.md,
   },
   fieldInput: { flex: 1, fontSize: 15, paddingVertical: 10 },

@@ -1,7 +1,7 @@
 import { createMMKV } from 'react-native-mmkv';
 import { createJSONStorage, type StateStorage } from 'zustand/middleware';
 
-export const storage = createMMKV({ id: 'manga-reader' });
+export const storage = createMMKV({ id: 'mangaka' });
 
 const mmkvStateStorage: StateStorage = {
   getItem: name => storage.getString(name) ?? null,
@@ -12,6 +12,36 @@ const mmkvStateStorage: StateStorage = {
 };
 
 export const persistStorage = createJSONStorage(() => mmkvStateStorage);
+
+const pending = new Map<string, string>();
+let timer: ReturnType<typeof setTimeout> | null = null;
+
+export function flushPendingWrites(): void {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  for (const [name, value] of pending) {
+    storage.set(name, value);
+  }
+  pending.clear();
+}
+
+const debouncedStateStorage: StateStorage = {
+  getItem: name => pending.get(name) ?? storage.getString(name) ?? null,
+  setItem: (name, value) => {
+    pending.set(name, value);
+    if (!timer) {
+      timer = setTimeout(flushPendingWrites, 400);
+    }
+  },
+  removeItem: name => {
+    pending.delete(name);
+    storage.remove(name);
+  },
+};
+
+export const debouncedPersistStorage = createJSONStorage(() => debouncedStateStorage);
 
 export function readJSON<T>(key: string): T | undefined {
   const raw = storage.getString(key);

@@ -1,75 +1,164 @@
+import { createBottomTabNavigator, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AddonManagerScreen } from '../features/addons/AddonManagerScreen';
-import { AddonsScreen } from '../features/addons/AddonsScreen';
-import { AddSiteScreen } from '../features/addons/AddSiteScreen';
-import { SourceSettingsScreen } from '../features/addons/SourceSettingsScreen';
-import { BrowserScreen } from '../features/browser/BrowserScreen';
-import { QRScannerScreen } from '../features/browser/QRScannerScreen';
-import { SavedPageScreen } from '../features/browser/SavedPageScreen';
-import { TabsScreen } from '../features/browser/TabsScreen';
-import { ViewSourceScreen } from '../features/browser/ViewSourceScreen';
-import { CatalogScreen } from '../features/catalog/CatalogScreen';
-import { MangaSearchScreen } from '../features/catalog/MangaSearchScreen';
-import { MangaDetailScreen } from '../features/detail/MangaDetailScreen';
-import { DownloadsScreen } from '../features/downloads/DownloadsScreen';
-import { HistoryScreen } from '../features/history/HistoryScreen';
-import { BookmarksScreen } from '../features/library/BookmarksScreen';
-import { NovelReaderScreen } from '../features/novel/NovelReaderScreen';
-import { NovelSettingsScreen } from '../features/novel/NovelSettingsScreen';
-import { ReaderScreen } from '../features/reader/ReaderScreen';
-import { ViewerSettingsScreen } from '../features/reader/ViewerSettingsScreen';
-import { AboutScreen } from '../features/settings/AboutScreen';
-import { AdblockSettingsScreen } from '../features/settings/AdblockSettingsScreen';
-import { BackupRestoreScreen } from '../features/settings/BackupRestoreScreen';
-import { ClearDataScreen } from '../features/settings/ClearDataScreen';
-import { CustomizeHomepageScreen } from '../features/settings/CustomizeHomepageScreen';
-import { SettingsScreen } from '../features/settings/SettingsScreen';
-import { ReadingStatsScreen } from '../features/stats/ReadingStatsScreen';
-import { VerifyScreen } from '../features/verify/VerifyScreen';
+import { House, LibraryBig, Plus, User, type LucideIcon } from '../components/icons';
+import { CanvasScreen } from '../features/canvas/CanvasScreen';
+import { CharacterScreen } from '../features/characters/CharacterScreen';
+import { ExportScreen } from '../features/export/ExportScreen';
+import { HomeScreen } from '../features/home/HomeScreen';
+import { LetteringScreen } from '../features/lettering/LetteringScreen';
+import { LibraryScreen } from '../features/library/LibraryScreen';
+import { PreferencesScreen } from '../features/onboarding/PreferencesScreen';
+import { SignInScreen } from '../features/onboarding/SignInScreen';
+import { WelcomeScreen } from '../features/onboarding/WelcomeScreen';
+import { OutlineScreen } from '../features/outline/OutlineScreen';
+import { PanelLayoutScreen } from '../features/page/PanelLayoutScreen';
+import { PreviewScreen } from '../features/preview/PreviewScreen';
+import { AboutScreen } from '../features/profile/AboutScreen';
+import { ProfileScreen } from '../features/profile/ProfileScreen';
+import { TrashScreen } from '../features/profile/TrashScreen';
+import { NewProjectScreen } from '../features/project/NewProjectScreen';
+import { ProjectScreen } from '../features/project/ProjectScreen';
+import { ScriptScreen } from '../features/script/ScriptScreen';
+import { StoryboardScreen } from '../features/storyboard/StoryboardScreen';
+import { WorldEntryScreen } from '../features/world/WorldEntryScreen';
+import { WorldScreen } from '../features/world/WorldScreen';
+import { useSettings } from '../store/useSettings';
 import { useTheme } from '../theme';
-import type { RootStackParamList } from './routes';
+import { useAppNavigation, type RootStackParamList, type TabParamList } from './routes';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
+
+const TAB_META: Record<keyof TabParamList, { label: string; icon: LucideIcon }> = {
+  Home: { label: 'Trang chủ', icon: House },
+  Library: { label: 'Thư viện', icon: LibraryBig },
+  Profile: { label: 'Hồ sơ', icon: User },
+};
+
+function AppTabBar({ state, navigation }: BottomTabBarProps) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const root = useAppNavigation();
+
+  const renderTab = (index: number) => {
+    const route = state.routes[index];
+    const meta = TAB_META[route.name as keyof TabParamList];
+    const focused = state.index === index;
+    const Icon = meta.icon;
+    return (
+      <Pressable
+        key={route.key}
+        accessibilityRole="button"
+        accessibilityState={focused ? { selected: true } : {}}
+        accessibilityLabel={meta.label}
+        onPress={() => {
+          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          if (!focused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        }}
+        style={styles.tab}
+      >
+        <Icon size={24} color={focused ? c.accent : c.muted} fill={focused ? c.accent : 'none'} />
+        <Text style={[styles.tabLabel, { color: focused ? c.accent : c.muted }]}>{meta.label}</Text>
+      </Pressable>
+    );
+  };
+
+  return (
+    <View
+      style={[styles.tabBar, { backgroundColor: c.surface, borderTopColor: c.ink, paddingBottom: insets.bottom }]}
+    >
+      {renderTab(0)}
+      {renderTab(1)}
+      <View style={styles.tab}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Tạo truyện mới"
+          onPress={() => root.navigate('NewProject')}
+          style={({ pressed }) => [
+            styles.createButton,
+            { backgroundColor: c.accent, borderColor: c.ink, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <Plus size={28} color={c.onAccent} />
+        </Pressable>
+      </View>
+      {renderTab(2)}
+    </View>
+  );
+}
+
+const renderTabBar = (props: BottomTabBarProps) => <AppTabBar {...props} />;
+
+function Tabs() {
+  return (
+    <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Library" component={LibraryScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
 
 export function RootNavigator() {
   const { c } = useTheme();
+  const onboarded = useSettings(s => s.onboarded);
   return (
     <Stack.Navigator
-      initialRouteName="Browser"
+      initialRouteName={onboarded ? 'Tabs' : 'Welcome'}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
         contentStyle: { backgroundColor: c.bg },
       }}
     >
-      <Stack.Screen name="Browser" component={BrowserScreen} />
-      <Stack.Screen name="Tabs" component={TabsScreen} options={{ animation: 'fade_from_bottom' }} />
-      <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
-      <Stack.Screen name="History" component={HistoryScreen} />
-      <Stack.Screen name="Downloads" component={DownloadsScreen} />
-      <Stack.Screen name="Addons" component={AddonsScreen} />
-      <Stack.Screen name="AddonManager" component={AddonManagerScreen} />
-      <Stack.Screen name="AddSite" component={AddSiteScreen} />
-      <Stack.Screen name="SourceSettings" component={SourceSettingsScreen} />
-      <Stack.Screen name="Catalog" component={CatalogScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="MangaSearch" component={MangaSearchScreen} />
-      <Stack.Screen name="MangaDetail" component={MangaDetailScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="Reader" component={ReaderScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="NovelReader" component={NovelReaderScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="ReadingStats" component={ReadingStatsScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="ViewerSettings" component={ViewerSettingsScreen} />
-      <Stack.Screen name="NovelSettings" component={NovelSettingsScreen} />
-      <Stack.Screen name="AdblockSettings" component={AdblockSettingsScreen} />
-      <Stack.Screen name="CustomizeHomepage" component={CustomizeHomepageScreen} />
-      <Stack.Screen name="BackupRestore" component={BackupRestoreScreen} />
-      <Stack.Screen name="ClearData" component={ClearDataScreen} />
+      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="Preferences" component={PreferencesScreen} />
+      <Stack.Screen name="Tabs" component={Tabs} options={{ animation: 'fade' }} />
+      <Stack.Screen name="NewProject" component={NewProjectScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="Project" component={ProjectScreen} />
+      <Stack.Screen name="Outline" component={OutlineScreen} />
+      <Stack.Screen name="Script" component={ScriptScreen} />
+      <Stack.Screen name="Character" component={CharacterScreen} />
+      <Stack.Screen name="World" component={WorldScreen} />
+      <Stack.Screen name="WorldEntry" component={WorldEntryScreen} />
+      <Stack.Screen name="Storyboard" component={StoryboardScreen} />
+      <Stack.Screen name="PanelLayout" component={PanelLayoutScreen} options={{ gestureEnabled: false }} />
+      <Stack.Screen
+        name="Canvas"
+        component={CanvasScreen}
+        options={{ gestureEnabled: false, animation: 'fade' }}
+      />
+      <Stack.Screen
+        name="Lettering"
+        component={LetteringScreen}
+        options={{ gestureEnabled: false, animation: 'none' }}
+      />
+      <Stack.Screen name="Preview" component={PreviewScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="Export" component={ExportScreen} />
+      <Stack.Screen name="Trash" component={TrashScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
-      <Stack.Screen name="ViewSource" component={ViewSourceScreen} />
-      <Stack.Screen name="SavedPage" component={SavedPageScreen} />
-      <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="Verify" component={VerifyScreen} options={{ animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: { flexDirection: 'row', borderTopWidth: 2 },
+  tab: { flex: 1, height: 60, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  tabLabel: { fontSize: 11, fontWeight: '700' },
+  createButton: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -22,
+    elevation: 4,
+  },
+});

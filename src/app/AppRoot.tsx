@@ -1,93 +1,43 @@
 import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { useEffect, useMemo } from 'react';
-import { StatusBar } from 'react-native';
+import { AppState, StatusBar, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ADDON_CHECK_KEY, checkAddonUpdates } from '../addons/updater';
-import { toast } from '../components/ui';
-import { startDownloader } from '../features/downloads/downloader';
-import { applyUpdateSchedule } from '../features/library/backgroundUpdates';
-import { checkLibraryUpdates } from '../features/library/updates';
-import { setWebUserAgent } from '../lib/http';
+import { loadFonts } from '../engine/fonts';
+import { ensureDirs } from '../lib/files';
 import { setSecureScreen } from '../lib/screen';
-import { storage } from '../lib/storage';
-import { DAY_MS } from '../lib/time';
-import { configureSources } from '../sources/runtime';
-import { useBrowser } from '../store/useBrowser';
-import { useLibrary } from '../store/useLibrary';
+import { flushPendingWrites } from '../lib/storage';
 import { useSettings } from '../store/useSettings';
+import { useStory } from '../store/useStory';
 import { useTheme } from '../theme';
 import { RootNavigator } from './navigation';
 
-const LAST_UPDATE_CHECK = 'updates:lastRun';
-const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000;
-
-const TAB_MAX_AGE = { never: 0, day: DAY_MS, week: 7 * DAY_MS, month: 30 * DAY_MS } as const;
-
 function useBootstrap() {
+  const preventCapture = useSettings(s => s.preventCapture);
+
   useEffect(() => {
-    startDownloader();
+    setSecureScreen(preventCapture);
+  }, [preventCapture]);
 
-    let secure: boolean | undefined;
-    let notify: boolean | undefined;
-    const applySettings = () => {
-      const s = useSettings.getState();
-      configureSources({ allowNsfw: s.showNsfw && s.ageConfirmed });
-      if (s.notifyUpdates !== notify) {
-        notify = s.notifyUpdates;
-        applyUpdateSchedule(notify);
+  useEffect(() => {
+    ensureDirs().catch(() => {});
+    loadFonts().catch(() => {});
+    useStory.getState().purgeTrash();
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') {
+        flushPendingWrites();
       }
-      if (s.preventCapture !== secure) {
-        secure = s.preventCapture;
-        setSecureScreen(secure);
-      }
-    };
-    applySettings();
-    const unsubscribeSettings = useSettings.subscribe(applySettings);
-    setWebUserAgent(useBrowser.getState().userAgent);
-    const unsubscribeBrowser = useBrowser.subscribe(state => setWebUserAgent(state.userAgent));
-
-    const { autoCloseTabs, checkUpdatesOnLaunch } = useSettings.getState();
-    if (autoCloseTabs !== 'never') {
-      useBrowser.getState().closeTabsOlderThan(TAB_MAX_AGE[autoCloseTabs]);
-    }
-
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const lastRun = storage.getNumber(LAST_UPDATE_CHECK) ?? 0;
-    const hasBookmarks = Object.keys(useLibrary.getState().bookmarks).length > 0;
-    if (checkUpdatesOnLaunch && hasBookmarks && Date.now() - lastRun > UPDATE_CHECK_INTERVAL) {
-      storage.set(LAST_UPDATE_CHECK, Date.now());
-      timers.push(setTimeout(() => checkLibraryUpdates(), 4000));
-    }
-
-    const { addonRepoUrl, autoUpdateAddons } = useSettings.getState();
-    const lastAddonCheck = storage.getNumber(ADDON_CHECK_KEY) ?? 0;
-    if (autoUpdateAddons && addonRepoUrl && Date.now() - lastAddonCheck > DAY_MS) {
-      timers.push(
-        setTimeout(() => {
-          storage.set(ADDON_CHECK_KEY, Date.now());
-          checkAddonUpdates(addonRepoUrl)
-            .then(report => {
-              if (report.installed.length) {
-                toast(`Đã cập nhật addon: ${report.installed.map(a => a.label).join(', ')}`);
-              }
-            })
-            .catch(() => {});
-        }, 6000),
-      );
-    }
-
+    });
     return () => {
-      timers.forEach(clearTimeout);
-      unsubscribeSettings();
-      unsubscribeBrowser();
+      subscription.remove();
+      flushPendingWrites();
     };
   }, []);
 }
 
 export function AppRoot() {
   const { c, dark } = useTheme();
-  const hideStatusBar = useSettings(s => s.hideStatusBar);
   useBootstrap();
 
   const navigationTheme = useMemo<Theme>(() => {
@@ -107,11 +57,17 @@ export function AppRoot() {
   }, [c, dark]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} hidden={hideStatusBar} />
-      <NavigationContainer theme={navigationTheme}>
-        <RootNavigator />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
+        <NavigationContainer theme={navigationTheme}>
+          <RootNavigator />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

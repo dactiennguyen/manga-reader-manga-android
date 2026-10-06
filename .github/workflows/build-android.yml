@@ -1,0 +1,103 @@
+name: Build Android APK (manual)
+
+run-name: Android APK · ${{ inputs.architecture }} · ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: 'CPU: arm64 cho điện thoại 64-bit; universal cho mọi ABI của project'
+        required: true
+        type: choice
+        default: arm64
+        options:
+          - arm64
+          - universal
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build release APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      NODE_OPTIONS: --max-old-space-size=4096
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check TypeScript
+        run: |
+          npx tsc --noEmit
+          npx tsc --noEmit -p __tests__/live/tsconfig.json
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check addon bundles and run tests
+        run: npm test -- --runInBand
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android build tools
+        run: |
+          sdkmanager \
+            'platforms;android-37.0' \
+            'build-tools;37.0.0' \
+            'ndk;27.1.12297006' \
+            'cmake;3.22.1'
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Build APK
+        working-directory: android
+        env:
+          BUILD_ARCHITECTURE: ${{ inputs.architecture }}
+        run: |
+          case "$BUILD_ARCHITECTURE" in
+            arm64) architectures='arm64-v8a' ;;
+            universal) architectures='armeabi-v7a,arm64-v8a,x86,x86_64' ;;
+            *) echo 'Unsupported architecture' >&2; exit 1 ;;
+          esac
+          ./gradlew :app:assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            --max-workers=2 \
+            "-PreactNativeArchitectures=$architectures"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: manga-reader-${{ inputs.architecture }}-${{ github.run_number }}
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

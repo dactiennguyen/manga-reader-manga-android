@@ -6,7 +6,7 @@ App không phải WebView bọc site, cũng không phải app đọc truyện th
 
 ## Chạy app
 
-Cần Node ≥ 22.11, JDK 17 và Android SDK.
+Cần Node 22 ≥ 22.13, JDK 17 và Android SDK.
 
 ```sh
 npm install
@@ -32,6 +32,19 @@ python3 scripts/gen-catalog.py     # sinh lại danh mục site từ kết quả
 ```
 
 Mỗi site đi trọn luồng như người dùng: thêm site (dò theme, thư mục) → danh sách → chi tiết → chương → tải một ảnh trang. Kèm theo là tìm kiếm, thể loại, trang 2 và nhận diện URL. Kết quả ghi vào [docs/rn-engine-test.csv](docs/rn-engine-test.csv).
+
+## Build APK thủ công trên GitHub Actions
+
+Workflow [Build Android APK (manual)](.github/workflows/build-android.yml) chỉ chạy khi bấm **Run workflow**. Workflow cài dependency bằng `npm ci`, kiểm tra TypeScript, ESLint, addon và Jest, rồi build APK release bằng Gradle wrapper của project. Test gọi website thật không chạy trong CI.
+
+1. Push code lên GitHub; file workflow cần có trên nhánh mặc định để hiện nút chạy thủ công.
+2. Mở **Actions → Build Android APK (manual) → Run workflow**, chọn nhánh cần build.
+3. Chọn `arm64` cho điện thoại Android 64-bit hoặc `universal` để gộp `armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`. Bản universal lớn hơn và build lâu hơn.
+4. Khi job hoàn tất, tải `manga-reader-<architecture>-<run_number>` trong **Artifacts**, giải nén và cài file APK. Artifact được giữ 14 ngày.
+
+APK release có sẵn JavaScript bundle nên chạy độc lập, không cần Metro. Workflow dùng Node 22, JDK 17, SDK Platform 37.0, Build Tools 37.0.0, NDK 27.1.12297006 và CMake 3.22.1.
+
+Hiện `android/app/build.gradle` ký release bằng `android/app/debug.keystore` có sẵn trong repo, phù hợp cài thử và không cần thêm GitHub Secrets. Phát hành Google Play cần cấu hình khóa ký riêng và build AAB.
 
 ## Cấu trúc
 

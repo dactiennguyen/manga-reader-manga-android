@@ -22,7 +22,7 @@ export function chapterLabel(state: StoryData, chapterId: ID): string {
     return '';
   }
   const number = chapterNumber(state.projects[chapter.projectId], chapterId);
-  return `Chương ${number} · ${chapter.title}`;
+  return `Chapter ${number} · ${chapter.title}`;
 }
 
 export function pageStatus(page: Page): PageStatus {

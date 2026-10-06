@@ -33,9 +33,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 const TAB_META: Record<keyof TabParamList, { label: string; icon: LucideIcon }> = {
-  Home: { label: 'Trang chủ', icon: House },
-  Library: { label: 'Thư viện', icon: LibraryBig },
-  Profile: { label: 'Hồ sơ', icon: User },
+  Home: { label: 'Home', icon: House },
+  Library: { label: 'Library', icon: LibraryBig },
+  Profile: { label: 'Profile', icon: User },
 };
 
 function AppTabBar({ state, navigation }: BottomTabBarProps) {
@@ -77,7 +77,7 @@ function AppTabBar({ state, navigation }: BottomTabBarProps) {
       <View style={styles.tab}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Tạo truyện mới"
+          accessibilityLabel="New story"
           onPress={() => root.navigate('NewProject')}
           style={({ pressed }) => [
             styles.createButton,

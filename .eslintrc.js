@@ -1,7 +1,7 @@
 module.exports = {
   root: true,
   extends: '@react-native',
-  // Code của app bên thứ ba (chỉ để tham khảo) và thư mục build — không lint.
+  // Third-party reference code and build output are not linted.
   ignorePatterns: ['cookie-manga-extracted/', 'dist/', 'screenshots/'],
   overrides: [
     {

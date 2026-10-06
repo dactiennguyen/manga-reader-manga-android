@@ -212,7 +212,7 @@ export const useStory = create<StoryState>()(
         const chapter: Chapter = {
           id: chapterId,
           projectId,
-          title: 'Chương 1',
+          title: 'Chapter 1',
           summary: '',
           goal: '',
           characterIds: [],
@@ -304,7 +304,7 @@ export const useStory = create<StoryState>()(
           if (!project) {
             return state;
           }
-          const act: Act = { id: actId, title: title ?? `Hồi ${project.acts.length + 1}`, chapterIds: [] };
+          const act: Act = { id: actId, title: title ?? `Act ${project.acts.length + 1}`, chapterIds: [] };
           return {
             projects: {
               ...state.projects,
@@ -377,7 +377,7 @@ export const useStory = create<StoryState>()(
           const chapter: Chapter = {
             id: chapterId,
             projectId,
-            title: init.title ?? `Chương ${total + 1}`,
+            title: init.title ?? `Chapter ${total + 1}`,
             summary: init.summary ?? '',
             goal: init.goal ?? '',
             characterIds: [],
@@ -437,7 +437,7 @@ export const useStory = create<StoryState>()(
         const newId = get().addChapter(project.id, {
           actId: act?.id,
           index: act ? act.chapterIds.indexOf(chapterId) + 1 : undefined,
-          title: `${source.title} (bản sao)`,
+          title: `${source.title} (copy)`,
           summary: source.summary,
           goal: source.goal,
         });
@@ -642,7 +642,7 @@ export const useStory = create<StoryState>()(
         }
         return get().addCharacter(source.projectId, {
           ...source,
-          name: `${source.name} (bản sao)`,
+          name: `${source.name} (copy)`,
           locked: false,
           sheet: { ...source.sheet, expressions: { ...source.sheet.expressions } },
         });

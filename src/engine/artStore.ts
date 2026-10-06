@@ -24,8 +24,8 @@ export function newLayer(name: string): ArtLayer {
 }
 
 export function emptyArt(): PanelArt {
-  const sketch = { ...newLayer('Phác thảo'), opacity: 1 };
-  const ink = newLayer('Nét mực');
+  const sketch = { ...newLayer('Sketch'), opacity: 1 };
+  const ink = newLayer('Ink');
   return { layers: [sketch, ink], activeLayerId: sketch.id };
 }
 

@@ -12,10 +12,10 @@ export const FONT_FAMILY: Record<BubbleFont, string> = {
 };
 
 export const FONT_LABEL: Record<BubbleFont, string> = {
-  hand: 'Viết tay',
-  sans: 'Chữ thường',
-  sansBold: 'Chữ đậm',
-  display: 'Tiêu đề',
+  hand: 'Handwritten',
+  sans: 'Sans',
+  sansBold: 'Sans bold',
+  display: 'Display',
 };
 
 const SOURCES: Record<BubbleFont, number> = {

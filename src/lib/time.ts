@@ -21,15 +21,15 @@ export function addDays(key: string, days: number): string {
 export function dayLabel(time: number, now: number = Date.now()): string {
   const key = dayKey(time);
   if (key === dayKey(now)) {
-    return 'Hôm nay';
+    return 'Today';
   }
   if (key === dayKey(now - DAY_MS)) {
-    return 'Hôm qua';
+    return 'Yesterday';
   }
   return formatDate(time, true);
 }
 
-const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function formatDate(time: number, withWeekday = false): string {
   const d = new Date(time);
@@ -50,18 +50,18 @@ export function formatRelative(time: number, now: number = Date.now()): string {
   const diff = Math.max(0, now - time);
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) {
-    return 'vừa xong';
+    return 'just now';
   }
   if (minutes < 60) {
-    return `${minutes} phút trước`;
+    return `${minutes} min ago`;
   }
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours} giờ trước`;
+    return `${hours} hr ago`;
   }
   const days = Math.floor(hours / 24);
   if (days < 30) {
-    return `${days} ngày trước`;
+    return days === 1 ? '1 day ago' : `${days} days ago`;
   }
   return formatDate(time);
 }
@@ -71,12 +71,12 @@ export function formatDuration(seconds: number): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   if (h > 0) {
-    return m > 0 ? `${h} giờ ${m} phút` : `${h} giờ`;
+    return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
   }
   if (m > 0) {
-    return `${m} phút`;
+    return `${m} min`;
   }
-  return `${s} giây`;
+  return `${s} sec`;
 }
 
 export function groupByDay<T>(

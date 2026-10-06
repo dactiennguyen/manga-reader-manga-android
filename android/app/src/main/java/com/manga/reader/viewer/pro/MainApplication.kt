@@ -14,7 +14,7 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // TurboModule của app (specs/*.ts).
+          // The app's TurboModules (specs/*.ts).
           add(AppPackage())
         },
     )

@@ -10,11 +10,11 @@ export function formatBytes(bytes: number): string {
     unit++;
   }
   const digits = unit === 0 || value >= 100 ? 0 : 1;
-  return `${value.toFixed(digits).replace('.', ',')} ${units[unit]}`;
+  return `${value.toFixed(digits)} ${units[unit]}`;
 }
 
 export function formatCount(value: number): string {
   const n = Math.round(value);
   const sign = n < 0 ? '-' : '';
-  return sign + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return sign + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }

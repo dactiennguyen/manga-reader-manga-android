@@ -20,7 +20,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
-/** Cài đặt specs/NativeFiles.ts: nén/giải nén, ghép ảnh thành PDF và chia sẻ file. */
+/** Implements specs/NativeFiles.ts: zip/unzip, images to PDF, and file sharing. */
 class NativeFilesModule(reactContext: ReactApplicationContext) : NativeFilesSpec(reactContext) {
 
   private val executor = Executors.newSingleThreadExecutor()
@@ -62,9 +62,9 @@ class NativeFilesModule(reactContext: ReactApplicationContext) : NativeFilesSpec
           var entry = zis.nextEntry
           while (entry != null) {
             val target = File(dest, entry.name)
-            // Chặn entry trỏ ra ngoài thư mục đích ("zip slip").
+            // Reject entries that resolve outside the destination (zip slip).
             if (!target.canonicalPath.startsWith(destRoot)) {
-              throw SecurityException("Entry nằm ngoài thư mục đích: ${entry.name}")
+              throw SecurityException("Entry escapes the destination folder: ${entry.name}")
             }
             if (entry.isDirectory) {
               target.mkdirs()
@@ -88,13 +88,13 @@ class NativeFilesModule(reactContext: ReactApplicationContext) : NativeFilesSpec
     executor.execute {
       val document = PdfDocument()
       try {
-        // Trang đôi: trang đầu đứng riêng (bìa), các trang sau ghép cặp.
+        // Spreads: the first page stands alone (cover), the rest are paired.
         val sheets: List<List<String>> =
             if (!spread) paths.map { listOf(it) }
             else paths.take(1).map { listOf(it) } + paths.drop(1).chunked(2)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
         sheets.forEachIndexed { index, sheet ->
-          val bitmaps = sheet.map { BitmapFactory.decodeFile(it) ?: throw IllegalArgumentException("Không đọc được ảnh: $it") }
+          val bitmaps = sheet.map { BitmapFactory.decodeFile(it) ?: throw IllegalArgumentException("Cannot decode image: $it") }
           val ratio = bitmaps[0].height.toFloat() / bitmaps[0].width.toFloat()
           val slots = if (spread && index > 0) 2 else 1
           val pageHeight = Math.round(PAGE_WIDTH_PT * ratio)
@@ -141,7 +141,7 @@ class NativeFilesModule(reactContext: ReactApplicationContext) : NativeFilesSpec
 
   companion object {
     const val NAME = "NativeFiles"
-    // Bề rộng một trang B5 tính theo point (1/72 inch).
+    // Width of one B5 page in points (1/72 inch).
     private const val PAGE_WIDTH_PT = 516
   }
 }

@@ -2,6 +2,7 @@ import {
   PaintStyle,
   PathOp,
   Skia,
+  StrokeCap,
   StrokeJoin,
   TextAlign,
   TileMode,
@@ -23,12 +24,12 @@ const INK = '#16161A';
 const PAPER = '#FFFFFF';
 
 export const SFX_STYLES: { label: string; font: Bubble['font']; letterSpacing: number; skew: number }[] = [
-  { label: 'Đậm', font: 'display', letterSpacing: 1, skew: 0 },
-  { label: 'Nghiêng', font: 'display', letterSpacing: 2, skew: -0.25 },
-  { label: 'Giãn', font: 'display', letterSpacing: 10, skew: 0 },
-  { label: 'Tay', font: 'hand', letterSpacing: 2, skew: -0.12 },
-  { label: 'Vuông', font: 'sansBold', letterSpacing: 1, skew: 0 },
-  { label: 'Rung', font: 'sansBold', letterSpacing: 6, skew: 0.2 },
+  { label: 'Bold', font: 'display', letterSpacing: 1, skew: 0 },
+  { label: 'Slant', font: 'display', letterSpacing: 2, skew: -0.25 },
+  { label: 'Wide', font: 'display', letterSpacing: 10, skew: 0 },
+  { label: 'Hand', font: 'hand', letterSpacing: 2, skew: -0.12 },
+  { label: 'Block', font: 'sansBold', letterSpacing: 1, skew: 0 },
+  { label: 'Shake', font: 'sansBold', letterSpacing: 6, skew: 0.2 },
 ];
 
 function random(seed: string): () => number {
@@ -76,24 +77,103 @@ function ellipsePoint(bubble: Bubble, angle: number, scale = 1): Pt {
   return { x: c.x + (Math.cos(angle) * bubble.w * scale) / 2, y: c.y + (Math.sin(angle) * bubble.h * scale) / 2 };
 }
 
-function unrotate(bubble: Bubble, p: Pt): Pt {
-  if (!bubble.rotation) {
+export function rotatePoint(p: Pt, center: Pt, degrees: number): Pt {
+  if (!degrees) {
     return p;
   }
+  const r = (degrees * Math.PI) / 180;
+  const dx = p.x - center.x;
+  const dy = p.y - center.y;
+  return {
+    x: center.x + dx * Math.cos(r) - dy * Math.sin(r),
+    y: center.y + dx * Math.sin(r) + dy * Math.cos(r),
+  };
+}
+
+export function toBubbleLocal(bubble: Pick<Bubble, 'x' | 'y' | 'w' | 'h' | 'rotation'>, p: Pt): Pt {
+  return rotatePoint(p, bubbleCenter(bubble), -bubble.rotation);
+}
+
+export function hitTestBubble(bubble: Pick<Bubble, 'x' | 'y' | 'w' | 'h' | 'rotation'>, p: Pt, pad = 0): boolean {
+  const q = toBubbleLocal(bubble, p);
+  return (
+    q.x >= bubble.x - pad &&
+    q.x <= bubble.x + bubble.w + pad &&
+    q.y >= bubble.y - pad &&
+    q.y <= bubble.y + bubble.h + pad
+  );
+}
+
+export function bubbleCorners(bubble: Pick<Bubble, 'x' | 'y' | 'w' | 'h' | 'rotation'>): Pt[] {
   const c = bubbleCenter(bubble);
-  const r = (-bubble.rotation * Math.PI) / 180;
-  const dx = p.x - c.x;
-  const dy = p.y - c.y;
-  return { x: c.x + dx * Math.cos(r) - dy * Math.sin(r), y: c.y + dx * Math.sin(r) + dy * Math.cos(r) };
+  return [
+    { x: bubble.x, y: bubble.y },
+    { x: bubble.x + bubble.w, y: bubble.y },
+    { x: bubble.x + bubble.w, y: bubble.y + bubble.h },
+    { x: bubble.x, y: bubble.y + bubble.h },
+  ].map(p => rotatePoint(p, c, bubble.rotation));
+}
+
+export function bubbleBounds(bubble: Pick<Bubble, 'x' | 'y' | 'w' | 'h' | 'rotation'>): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  const pts = bubbleCorners(bubble);
+  const xs = pts.map(p => p.x);
+  const ys = pts.map(p => p.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
 function tailPath(bubble: Bubble, tip: Pt): SkPath {
   const c = bubbleCenter(bubble);
   const angle = Math.atan2((tip.y - c.y) / bubble.h, (tip.x - c.x) / bubble.w);
-  const spread = 0.22;
+  const boxed = bubble.type === 'machine';
+  const spread = bubble.type === 'shout' ? 0.3 : boxed ? 0.16 : 0.22;
   const a = ellipsePoint(bubble, angle - spread, 0.9);
   const b = ellipsePoint(bubble, angle + spread, 0.9);
-  return Skia.PathBuilder.Make().moveTo(a.x, a.y).lineTo(tip.x, tip.y).lineTo(b.x, b.y).close().build();
+  const builder = Skia.PathBuilder.Make().moveTo(a.x, a.y);
+  if (boxed) {
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const nx = (b.x - a.x) * 0.5;
+    const ny = (b.y - a.y) * 0.5;
+    const k1 = { x: mx + (tip.x - mx) * 0.55, y: my + (tip.y - my) * 0.55 };
+    builder
+      .lineTo(k1.x + nx, k1.y + ny)
+      .lineTo(k1.x + nx * 0.2, k1.y + ny * 0.2)
+      .lineTo(tip.x, tip.y)
+      .lineTo(k1.x - nx, k1.y - ny)
+      .lineTo(k1.x - nx * 0.2, k1.y - ny * 0.2)
+      .lineTo(b.x, b.y);
+  } else if (bubble.type === 'shout') {
+    builder.lineTo(tip.x, tip.y).lineTo(b.x, b.y);
+  } else {
+    const bend = 0.18;
+    const qa = { x: a.x + (tip.x - a.x) * 0.5 + (b.x - a.x) * bend, y: a.y + (tip.y - a.y) * 0.5 + (b.y - a.y) * bend };
+    const qb = { x: b.x + (tip.x - b.x) * 0.5 + (b.x - a.x) * bend, y: b.y + (tip.y - b.y) * 0.5 + (b.y - a.y) * bend };
+    builder.quadTo(qa.x, qa.y, tip.x, tip.y).quadTo(qb.x, qb.y, b.x, b.y);
+  }
+  return builder.close().build();
+}
+
+function chamferPath(bubble: Bubble): SkPath {
+  const k = Math.min(18, bubble.w * 0.12, bubble.h * 0.2);
+  const { x, y, w, h } = bubble;
+  return Skia.PathBuilder.Make()
+    .moveTo(x + k, y)
+    .lineTo(x + w - k, y)
+    .lineTo(x + w, y + k)
+    .lineTo(x + w, y + h - k)
+    .lineTo(x + w - k, y + h)
+    .lineTo(x + k, y + h)
+    .lineTo(x, y + h - k)
+    .lineTo(x, y + k)
+    .close()
+    .build();
 }
 
 function cloudPath(bubble: Bubble): SkPath {
@@ -134,7 +214,7 @@ export function bubbleBodyPath(bubble: Bubble): SkPath | null {
     case 'narration':
       return bubble.narrationStyle === 'plain' ? null : Skia.Path.Rect(rect);
     case 'machine':
-      return Skia.Path.Rect(rect);
+      return chamferPath(bubble);
     case 'think':
       return cloudPath(bubble);
     case 'shout':
@@ -148,7 +228,7 @@ function withTail(bubble: Bubble, body: SkPath): SkPath {
   if (!bubble.tail || bubble.type === 'think' || bubble.type === 'narration') {
     return body;
   }
-  const tip = unrotate(bubble, bubble.tail);
+  const tip = toBubbleLocal(bubble, bubble.tail);
   return Skia.Path.MakeFromOp(body, tailPath(bubble, tip), PathOp.Union) ?? body;
 }
 
@@ -225,7 +305,7 @@ function drawThoughtTrail(canvas: SkCanvas, bubble: Bubble): void {
   if (!bubble.tail) {
     return;
   }
-  const tip = unrotate(bubble, bubble.tail);
+  const tip = toBubbleLocal(bubble, bubble.tail);
   const c = bubbleCenter(bubble);
   const angle = Math.atan2((tip.y - c.y) / bubble.h, (tip.x - c.x) / bubble.w);
   const start = ellipsePoint(bubble, angle, 1.02);
@@ -267,7 +347,15 @@ export function drawBubble(canvas: SkCanvas, bubble: Bubble, fonts: SkTypefaceFo
     line.setStrokeJoin(bubble.type === 'machine' || bubble.type === 'shout' ? StrokeJoin.Miter : StrokeJoin.Round);
     line.setColor(Skia.Color(INK));
     if (bubble.type === 'whisper') {
-      line.setPathEffect(Skia.PathEffect.MakeDash([12, 9], 0));
+      line.setStrokeWidth(BUBBLE_STROKE * 0.8);
+      line.setStrokeCap(StrokeCap.Round);
+      line.setPathEffect(Skia.PathEffect.MakeDash([10, 9], 0));
+    }
+    if (bubble.type === 'narration' && bubble.narrationStyle !== 'inverse') {
+      const shadow = Skia.Paint();
+      shadow.setColor(Skia.Color(INK));
+      canvas.drawRect(Skia.XYWHRect(bubble.x + 6, bubble.y + 6, bubble.w, bubble.h), shadow);
+      canvas.drawPath(path, fill);
     }
     canvas.drawPath(path, line);
     if (bubble.type === 'think') {

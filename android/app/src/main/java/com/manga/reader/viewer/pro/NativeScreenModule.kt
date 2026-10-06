@@ -5,7 +5,7 @@ import android.view.WindowManager
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.UiThreadUtil
 
-/** Cài đặt specs/NativeScreen.ts: khoá xoay màn hình và FLAG_SECURE cho Activity hiện tại. */
+/** Implements specs/NativeScreen.ts: orientation lock and FLAG_SECURE for the current Activity. */
 class NativeScreenModule(reactContext: ReactApplicationContext) : NativeScreenSpec(reactContext) {
 
   override fun getName() = NAME

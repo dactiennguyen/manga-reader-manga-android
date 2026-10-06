@@ -9,9 +9,9 @@ import { useTheme } from '../../theme';
 export type PageMode = 'panels' | 'art' | 'lettering';
 
 const MODES: { key: PageMode; label: string; icon: LucideIcon }[] = [
-  { key: 'panels', label: 'Khung', icon: PanelsTopLeft },
-  { key: 'art', label: 'Tranh', icon: Brush },
-  { key: 'lettering', label: 'Thoại', icon: MessageSquare },
+  { key: 'panels', label: 'Panels', icon: PanelsTopLeft },
+  { key: 'art', label: 'Art', icon: Brush },
+  { key: 'lettering', label: 'Lettering', icon: MessageSquare },
 ];
 
 export function ModeBar({

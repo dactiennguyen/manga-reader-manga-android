@@ -1,22 +1,20 @@
-// Các package chỉ phát hành dạng ESM cần được Babel biên dịch khi chạy Jest.
+// ESM-only packages must be compiled by Babel when running under Jest.
 const ESM_PACKAGES = [
   '(jest-)?react-native',
   '@react-native(-community)?',
   '@react-navigation',
   'react-native-.*',
-  '@shopify/flash-list',
+  '@shopify/.*',
   '@dr.pogodin',
-  '@preeternal',
-  '@mhpdev',
   '@sayem314',
-  '@react-native-clipboard',
   '@react-native-documents',
+  'perfect-freehand',
 ];
 
 module.exports = {
   preset: '@react-native/jest-preset',
   setupFiles: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [`node_modules/(?!(${ESM_PACKAGES.join('|')})/)`],
-  testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/', '/__tests__/live/', '/cookie-manga-extracted/'],
+  testPathIgnorePatterns: ['/node_modules/', '/cookie-manga-extracted/'],
   modulePathIgnorePatterns: ['<rootDir>/cookie-manga-extracted/'],
 };

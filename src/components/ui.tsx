@@ -42,7 +42,7 @@ export function confirm(
       title,
       message,
       [
-        { text: options.cancelText ?? 'Huỷ', style: 'cancel', onPress: () => resolve(false) },
+        { text: options.cancelText ?? 'Cancel', style: 'cancel', onPress: () => resolve(false) },
         {
           text: options.confirmText ?? 'OK',
           style: options.destructive ? 'destructive' : 'default',
@@ -105,7 +105,7 @@ export function Header({
           icon={ArrowLeft}
           color={c.onAppBar}
           onPress={onBack ?? (() => navigation.goBack())}
-          accessibilityLabel="Quay lại"
+          accessibilityLabel="Back"
         />
       )}
       <View style={[styles.flex, styles.headerTitle, hideBack && { paddingLeft: space.md }]}>

@@ -1,9 +1,8 @@
-"""Sinh src/components/icons.tsx: icon tên kiểu Lucide nhưng vẽ bằng font Material Icons
-(cùng bộ icon app Flutter gốc dùng).
+"""Generates src/components/icons.tsx: Lucide-style icon names drawn with the Material Icons font.
 
-Thêm icon: bổ sung vào MAP (tên component -> tên glyph trong
-MaterialIcons-Regular.codepoints), rồi chạy `python3 scripts/gen-icons.py`.
-Font tương ứng: android/app/src/main/assets/fonts/MaterialIcons-Regular.ttf
+To add an icon: add an entry to MAP (component name -> glyph name in
+MaterialIcons-Regular.codepoints), then run `python3 scripts/gen-icons.py`.
+Font: android/app/src/main/assets/fonts/MaterialIcons-Regular.ttf
 (google/material-design-icons, Apache 2.0).
 """
 import os
@@ -13,7 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CP_FILE = os.path.join(HERE, 'MaterialIcons-Regular.codepoints')
 
-# Tên Lucide -> (glyph thường, glyph khi có fill)
+# Lucide name -> (regular glyph, glyph used when filled)
 MAP = {
     'AArrowDown': ('text_decrease', None),
     'AArrowUp': ('text_increase', None),
@@ -281,7 +280,7 @@ def main():
         cps[name] = code
     missing = sorted({g for pair in MAP.values() for g in pair if g and g not in cps})
     if missing:
-        sys.exit('Glyph không có trong font: ' + ', '.join(missing))
+        sys.exit('Glyphs missing from the font: ' + ', '.join(missing))
 
     glyphs = sorted({g for pair in MAP.values() for g in pair if g})
     lines = []

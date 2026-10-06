@@ -18,7 +18,7 @@ export function CharacterPicker({
   onPick,
   selectedIds = [],
   excludeIds = [],
-  title = 'Chọn nhân vật',
+  title = 'Pick a character',
   allowClear,
   allowCreate = true,
 }: {
@@ -63,17 +63,17 @@ export function CharacterPicker({
     <Sheet visible={visible} onClose={close} title={title}>
       <View style={styles.body}>
         {characters.length > 5 && (
-          <SearchField value={query} onChangeText={setQuery} placeholder="Tìm nhân vật" onClear={() => setQuery('')} />
+          <SearchField value={query} onChangeText={setQuery} placeholder="Search characters" onClear={() => setQuery('')} />
         )}
         {!shown.length && !creating && (
           <Text style={[font.body, styles.empty, { color: c.muted }]}>
-            {characters.length ? 'Không có nhân vật nào khớp.' : 'Truyện chưa có nhân vật nào.'}
+            {characters.length ? 'No characters match.' : 'This story has no characters yet.'}
           </Text>
         )}
       </View>
       {allowClear && (
         <ListItem
-          title="Không gán nhân vật"
+          title="No character"
           onPress={() => {
             close();
             onPick(undefined);
@@ -83,7 +83,7 @@ export function CharacterPicker({
       {shown.map(character => (
         <ListItem
           key={character.id}
-          title={character.name || 'Chưa đặt tên'}
+          title={character.name || 'Unnamed'}
           subtitle={ROLE_LABEL[character.role]}
           left={<Avatar character={character} size={40} />}
           selected={selectedIds.includes(character.id)}
@@ -101,15 +101,15 @@ export function CharacterPicker({
               autoFocus
               value={name}
               onChangeText={setName}
-              placeholder="Tên nhân vật mới"
+              placeholder="New character name"
               maxLength={30}
               onSubmitEditing={create}
               style={styles.flex}
             />
-            <Button title="Tạo" icon={Plus} small onPress={create} disabled={!name.trim()} />
+            <Button title="Create" icon={Plus} small onPress={create} disabled={!name.trim()} />
           </View>
         ) : (
-          <ListItem title="Tạo nhanh nhân vật mới" icon={UserPlus} onPress={() => setCreating(true)} />
+          <ListItem title="Quick-create a character" icon={UserPlus} onPress={() => setCreating(true)} />
         ))}
     </Sheet>
   );

@@ -145,7 +145,7 @@ export async function saveToDevice(path: string, fileName: string, mimeType: str
 
 function native() {
   if (!NativeFiles) {
-    throw new Error('Thiết bị này chưa hỗ trợ thao tác file.');
+    throw new Error('File operations are not supported on this device.');
   }
   return NativeFiles;
 }

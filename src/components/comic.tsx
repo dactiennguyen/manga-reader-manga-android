@@ -183,7 +183,7 @@ export function Cover({
               adjustsFontSizeToFit
               style={[font.display, styles.coverTitle, { color: c.text, fontSize: Math.max(13, width * 0.16) }]}
             >
-              {project.title || 'Chưa đặt tên'}
+              {project.title || 'Untitled'}
             </Text>
           </View>
           <View style={[styles.coverStripe, { backgroundColor: c.accent }]} />
@@ -311,7 +311,7 @@ export function PromptDialog({
   message,
   initialValue = '',
   placeholder,
-  confirmText = 'Lưu',
+  confirmText = 'Save',
   maxLength,
   multiline,
   allowEmpty,
@@ -345,7 +345,7 @@ export function PromptDialog({
       title={title}
       message={message}
       actions={[
-        { label: 'Huỷ', onPress: onClose, variant: 'ghost' },
+        { label: 'Cancel', onPress: onClose, variant: 'ghost' },
         {
           label: confirmText,
           variant: 'primary',

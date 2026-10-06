@@ -3,16 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { toast } from '../../components/ui';
 
-/**
- * Đọc to chương novel (novelTts): đọc lần lượt từng đoạn, mỗi lần một mẩu
- * không quá giới hạn của engine; báo đoạn đang đọc để tô sáng và cuộn theo.
- */
 
 export type TtsState = 'idle' | 'playing' | 'paused';
 
 export type Tts = {
   state: TtsState;
-  /** Đoạn đang đọc; null khi không đọc. */
   index: number | null;
   start: (paragraphs: readonly string[], from: number) => void;
   pause: () => void;
@@ -22,11 +17,9 @@ export type Tts = {
 
 export const TTS_UNSUPPORTED = 'Thiết bị không hỗ trợ đọc văn bản';
 
-/** Android thường giới hạn 4000 ký tự mỗi lần; iOS không giới hạn. */
 const MAX_CHUNK = 3900;
 const chunkLimit = () => Math.max(200, Math.min(Speech.maxInputLength || MAX_CHUNK, MAX_CHUNK));
 
-/** Cắt đoạn văn dài theo câu, câu quá dài thì cắt theo khoảng trắng. */
 export function splitForSpeech(text: string, limit: number): string[] {
   const clean = text.replace(/\s+/g, ' ').trim();
   if (!clean) {
@@ -68,9 +61,7 @@ export function useTts({
 }: {
   rate: number;
   pitch: number;
-  /** Mã ngôn ngữ của nguồn (en, vi…) để chọn giọng phù hợp. */
   language?: string;
-  /** Đọc hết chương. Trả về true nếu đang chuyển sang chương sau (sẽ gọi start lại). */
   onChapterEnd: () => boolean;
 }): Tts {
   const [state, setStateValue] = useState<TtsState>('idle');
@@ -81,16 +72,11 @@ export function useTts({
     paragraph: 0,
     chunks: [] as string[],
     chunk: 0,
-    /** Mã câu đang đọc do engine trả về. */
     utterance: null as string | null,
-    /** Tăng mỗi lần dừng/đọc lại — kết quả của lượt cũ bị bỏ qua. */
     token: 0,
-    /** Tạm dừng bằng API của engine (Android 8+); không thì dừng hẳn và đọc lại mẩu hiện tại. */
     nativePaused: false,
-    /** Lệnh tạm dừng đang chờ engine trả lời — bấm tiếp tục quá nhanh thì đợi nó xong. */
     pausing: null as Promise<void> | null,
   });
-  // Sự kiện xong có thể tới trước khi speak() trả về mã câu.
   const earlyFinished = useRef(new Set<string>());
   const advanceRef = useRef<() => void>(() => {});
   const onChapterEndRef = useRef(onChapterEnd);
@@ -150,7 +136,6 @@ export function useTts({
     );
   }, [fail]);
 
-  /** Bắt đầu đọc từ đoạn `from` (bỏ qua đoạn trống). false nếu không còn đoạn nào. */
   const beginParagraph = useCallback(
     (from: number) => {
       const r = run.current;
@@ -213,13 +198,11 @@ export function useTts({
     };
   }, [fail]);
 
-  // Rời màn: dừng đọc.
   useEffect(() => halt, [halt]);
 
   const start = useCallback(
     (paragraphs: readonly string[], from: number) => {
       halt();
-      // Màn khác (nghe thử trong cài đặt) có thể đã đổi cấu hình giọng.
       Speech.configure(voiceRef.current);
       run.current.paragraphs = paragraphs;
       setState('playing');

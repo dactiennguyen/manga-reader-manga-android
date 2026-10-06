@@ -4,40 +4,29 @@ import { persist } from 'zustand/middleware';
 import type { OrientationLock } from '../lib/screen';
 import { persistStorage } from '../lib/storage';
 
-/** Cách hiển thị trang truyện trong reader. */
 export type ViewMode = 'vertical' | 'horizontal' | 'single' | 'double';
 
-/** Hướng đọc khi ở chế độ ngang. Manga Nhật thường đọc phải sang trái. */
 export type ReadingDirection = 'ltr' | 'rtl';
 
-/** Vùng chạm để cuộn/lật trang ("Tap here to set the touch area…"). */
 export type TapZone = 'edges' | 'topBottom' | 'leftRight' | 'off';
 
 export type ViewerPrefs = {
   viewMode: ViewMode;
   direction: ReadingDirection;
-  /** Khoảng cách giữa các trang ở chế độ dọc ("Vertical viewer separator"). */
   pageGap: boolean;
 };
 
 export type ReaderSettings = ViewerPrefs & {
   autoScroll: boolean;
-  /** Tốc độ tự cuộn, px/giây. Chỉ áp dụng cho viewMode 'vertical'. */
   autoScrollSpeed: number;
   tapToScroll: boolean;
   tapZone: TapZone;
-  /** Ảnh độ phân giải gốc; tắt thì Android thu nhỏ ảnh quá lớn để tránh tràn texture. */
   highResImages: boolean;
-  /** Số trang tải trước quanh trang đang xem. */
   preloadPages: number;
-  /** Giây chờ rồi tự sang chương sau khi đọc hết; 0 = không tự chuyển. */
   nextChapterDelay: number;
-  /** Ẩn thanh trạng thái/thanh công cụ khi đọc. */
   immersive: boolean;
   keepScreenOn: boolean;
-  /** Khoá xoay khi đọc (manga lẫn novel); rời reader thì trả về tự xoay. */
   orientationLock: OrientationLock;
-  /** Ghi đè chế độ xem theo từng truyện (khi bỏ chọn "Áp dụng cho mọi truyện"). */
   overrides: Record<string, Partial<ViewerPrefs>>;
 };
 
@@ -50,7 +39,6 @@ type ReaderSettingsActions = {
   toggleTapToScroll: () => void;
   setPreloadPages: (count: number) => void;
   setNextChapterDelay: (seconds: number) => void;
-  /** Lưu prefs cho riêng một truyện, hoặc mặc định chung nếu mangaKey rỗng. */
   setViewerPrefs: (prefs: Partial<ViewerPrefs>, mangaKey?: string) => void;
   clearOverride: (mangaKey: string) => void;
   reset: () => void;
@@ -117,10 +105,6 @@ export const useReaderSettings = create<ReaderSettings & ReaderSettingsActions>(
   ),
 );
 
-/**
- * Prefs thực tế cho một truyện: override riêng (nếu có) đè lên mặc định.
- * Trả về object mới mỗi lần đổi — dùng với useShallow hoặc lấy từng field.
- */
 export function resolveViewerPrefs(
   state: ReaderSettings,
   mangaKey?: string,
@@ -134,13 +118,8 @@ export function resolveViewerPrefs(
   };
 }
 
-/**
- * Selector hook: chỉ re-render khi đúng field đó đổi.
- * Dùng cái này thay vì lấy cả store để tránh render lại reader không cần thiết.
- */
 export const useViewMode = () => useReaderSettings(state => state.viewMode);
 export const useDirection = () => useReaderSettings(state => state.direction);
 
-/** Hướng ngang chỉ có ý nghĩa khi đang ở chế độ horizontal/single/double. */
 export const useIsDirectionRelevant = () =>
   useReaderSettings(state => state.viewMode !== 'vertical');

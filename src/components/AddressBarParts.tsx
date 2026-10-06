@@ -20,14 +20,7 @@ import {
 } from './icons';
 import { IconButton, ListItem } from './ui';
 
-/**
- * Các khối của thanh địa chỉ theo app gốc:
- * [mảnh ghép addon] [ô URL … QR] [số tab] [⋮]
- * Dùng chung cho trình duyệt và các màn native (catalog, chi tiết, reader)
- * để màn native trông như vẫn nằm trong tab.
- */
 
-/** Ô vuông mảnh ghép: xanh khi trang được addon hỗ trợ / đang ở màn addon. */
 export function PuzzleButton({
   active,
   busy,
@@ -66,7 +59,6 @@ export function PuzzleButton({
   );
 }
 
-/** Ô vuông viền hiển thị số tab. */
 export function TabCountButton({
   count,
   incognito,
@@ -101,10 +93,6 @@ export function TabCountButton({
   );
 }
 
-/**
- * Thanh trên của màn addon: bấm mảnh ghép hoặc ô URL để quay về trang web
- * gốc trong tab, như nút chuyển giữa giao diện addon và trang web của app gốc.
- */
 export function AddonBar({ url, onMenu }: { url: string; onMenu?: () => void }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();

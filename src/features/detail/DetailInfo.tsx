@@ -17,11 +17,8 @@ type Props = {
   cover?: string;
   headers: Record<string, string>;
   detail?: MangaDetail;
-  /** Lỗi tải lần đầu (chưa có dữ liệu). */
   error?: unknown;
-  /** Truyện/nguồn 18+ khi chưa cho phép: làm mờ bìa và ẩn nội dung. */
   locked: boolean;
-  /** Lưới "Truyện tương tự" nối ngay sau phần này. */
   hasSimilar: boolean;
   onRetry: () => void;
   onGenre: (genre: Genre) => void;
@@ -29,10 +26,6 @@ type Props = {
   onUnlock: () => void;
 };
 
-/**
- * Tab "Mô tả" như app gốc: breadcrumb ⌂ › tên, bìa đặt giữa, rồi từng mục
- * nhãn đậm + giá trị.
- */
 export function DetailInfo(props: Props) {
   const { source, url, title, cover, headers, detail, error, locked } = props;
   const { c } = useTheme();
@@ -68,7 +61,6 @@ export function DetailInfo(props: Props) {
   } else {
     body = (
       <>
-        {/* Thứ tự như app gốc: Tên khác, Đánh giá, Cập nhật, Tác giả, Trạng thái. */}
         {altTitles.length > 0 && <Field label="Tên khác" value={altTitles.join(', ')} />}
         {detail.rating !== undefined && detail.rating > 0 && (
           <Field label="Đánh giá">
@@ -148,14 +140,12 @@ function Field({ label, value, children }: { label: string; value?: string; chil
   );
 }
 
-/** Mô tả thu gọn 4 dòng, mũi tên ⌄ để mở. */
 function Description({ text }: { text?: string }) {
   const { c } = useTheme();
   const [expanded, setExpanded] = useState(false);
   if (!text) {
     return <Text style={[font.body, styles.italic, { color: c.muted }]}>Chưa có mô tả</Text>;
   }
-  // Không đo được số dòng thật trước khi vẽ nên ước lượng theo độ dài.
   const long = text.length > 200 || text.split('\n').length > 4;
   const Arrow = expanded ? ChevronUp : ChevronDown;
   return (

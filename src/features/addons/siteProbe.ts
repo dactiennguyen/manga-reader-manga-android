@@ -6,13 +6,8 @@ import { detectEngine, getEngine, SITE_LANGUAGES } from '../../sources';
 import { cleanText, parseHtml } from '../../sources/html';
 import type { ContentType, EngineId, SourceConfig } from '../../sources/types';
 
-/**
- * Tải trang chủ của site người dùng nhập để đoán sẵn cấu hình nguồn
- * ("Add supported site"): theme, tên, thư mục danh sách, ngôn ngữ, 18+.
- */
 
 export type SiteProbe = {
-  /** Gốc site sau khi theo redirect, không có "/" cuối. */
   baseUrl: string;
   host: string;
   engine: EngineId | null;
@@ -23,7 +18,6 @@ export type SiteProbe = {
   content: ContentType;
 };
 
-/** Thư mục danh sách hay gặp của theme WordPress truyện. */
 const LIST_DIRS = new Set([
   'manga',
   'mangas',
@@ -44,10 +38,8 @@ const NOVEL_DIRS = new Set(['novel', 'novels']);
 
 const NSFW_WORDS = /\b(hentai|porn|porno|xxx|nsfw|smut|erotic|ecchi|doujin(?:shi)?|r-?18|adult)\b|18\+/i;
 
-/** Tên site: og:site_name, không có thì phần đầu của <title> ("Site – Read Manga Online"). */
 function siteName($: CheerioAPI, host: string): string {
   const og = cleanText($('meta[property="og:site_name"]').attr('content'));
-  // Có site để og:site_name là "/" hay "-" — không có chữ thì bỏ qua.
   if (/\p{L}/u.test(og)) {
     return og;
   }
@@ -62,7 +54,6 @@ function siteName($: CheerioAPI, host: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/** Đoạn path đầu không thể là thư mục truyện. */
 const NOT_DIRS = new Set([
   'page',
   'tag',
@@ -79,7 +70,6 @@ const NOT_DIRS = new Set([
   'feed',
 ]);
 
-/** Thư mục chung của các link trang truyện: "/seri/abc/" → "seri". */
 function dirFromLinks(urls: string[], host: string): string | undefined {
   const counts = new Map<string, number>();
   for (const url of urls) {
@@ -104,7 +94,6 @@ function dirFromLinks(urls: string[], host: string): string | undefined {
   return best;
 }
 
-/** Đoán thư mục từ link trong khối danh sách truyện của theme, rồi tới trang tìm kiếm. */
 async function engineMangaDir(
   engineId: EngineId,
   $: CheerioAPI,
@@ -122,7 +111,6 @@ async function engineMangaDir(
   if (fromHome) {
     return fromHome;
   }
-  // Trang chủ tự chế không có khối danh sách: xem kết quả tìm kiếm.
   const src: SourceConfig = {
     id: host,
     engine: engineId,
@@ -144,7 +132,6 @@ async function engineMangaDir(
   return undefined;
 }
 
-/** Thư mục có nhiều link trang truyện nhất (dạng /<dir>/<slug>/). */
 function guessMangaDir($: CheerioAPI, baseUrl: string, host: string): string {
   const counts = new Map<string, number>();
   $('a[href]').each((_, el) => {
@@ -157,7 +144,6 @@ function guessMangaDir($: CheerioAPI, baseUrl: string, host: string): string {
     if (!dir || !LIST_DIRS.has(dir)) {
       return;
     }
-    // Link tới trang truyện đáng tin hơn link tới chính trang danh sách.
     const weight = segments.length >= 2 && segments[1] !== 'page' ? 2 : 1;
     counts.set(dir, (counts.get(dir) ?? 0) + weight);
   });
@@ -172,7 +158,6 @@ function guessMangaDir($: CheerioAPI, baseUrl: string, host: string): string {
   return best;
 }
 
-/** "en-US" → "en", "pt_BR" → "pt-BR"; không khớp ngôn ngữ nào thì mặc định tiếng Anh. */
 export function normalizeLanguage(raw: string | undefined): string {
   const value = (raw ?? '').trim().replace('_', '-').toLowerCase();
   if (!value) {
@@ -205,9 +190,7 @@ export async function probeSite(input: string): Promise<SiteProbe> {
   if (!origin || !getHost(origin)) {
     throw new Error('Địa chỉ site không hợp lệ.');
   }
-  // Trang chủ là trang nặng nhất của site; có site mất cả chục giây mới trả về.
   const res = await request(`${origin}/`, { timeoutMs: 60_000 });
-  // Site đổi tên miền thường redirect sang domain mới — lưu domain thật.
   const baseUrl = getOrigin(res.url) || origin;
   const host = getHost(baseUrl);
   const $ = parseHtml(res.text);

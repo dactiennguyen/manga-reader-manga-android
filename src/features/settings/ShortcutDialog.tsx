@@ -6,10 +6,6 @@ import { FieldLabel, TextField, toast } from '../../components/ui';
 import { ensureScheme, getHost, looksLikeUrl } from '../../lib/url';
 import { useBrowser, type QuickAccessItem } from '../../store/useBrowser';
 
-/**
- * Thêm/sửa lối tắt Truy cập nhanh (Bookmark › Truy cập nhanh và Tuỳ chỉnh
- * trang chủ). `item` undefined = thêm mới.
- */
 export function ShortcutDialog({
   visible,
   item,
@@ -36,7 +32,6 @@ export function ShortcutDialog({
       return;
     }
     const fixed = ensureScheme(target);
-    // Không nhập tên thì lấy tên miền.
     const value = { title: title.trim() || getHost(fixed) || fixed, url: fixed };
     const store = useBrowser.getState();
     if (item) {

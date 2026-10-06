@@ -11,14 +11,8 @@ import { getCachedGenres, loadGenres } from './genreCache';
 import { RecentSearches } from './RecentSearches';
 import { useRequestToken } from './useRequestToken';
 
-/** Nhiều thể loại thì hiện ô lọc cho dễ tìm. */
 const FILTER_THRESHOLD = 24;
 
-/**
- * Nút lọc trên thanh tab catalog: tìm theo tên (kèm tìm gần đây) và
- * "Filter by Genre". Tìm kiếm và thể loại loại trừ nhau vì site không lọc
- * kết quả tìm theo thể loại.
- */
 export function CatalogFilterSheet({
   visible,
   onClose,

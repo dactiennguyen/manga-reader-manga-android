@@ -29,16 +29,7 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * MangaTown (m.mangatown.com, cùng dữ liệu với www./w.mangatown.com). Danh
- * sách là /directory/<bộ lọc>/<trang>.html?<thứ tự>, bộ lọc gồm 6 ô
- * "đối tượng-thể loại-?-trạng thái-chữ cái-?" (0 là bỏ qua).
- *
- * Chương kiểu webtoon có đủ ảnh trong một trang, còn chương manga thường chỉ
- * hiện một ảnh mỗi trang (/c001/2.html…) — khi đó tải từng trang song song.
- */
 
-/** Tham số thứ tự của /directory/. Site không có thứ tự "truyện mới". */
 const ORDER: Partial<Record<ListSort, string>> = {
   latest: 'last_chapter_time.za',
   popular: 'views.za',
@@ -48,14 +39,12 @@ const ORDER: Partial<Record<ListSort, string>> = {
 
 const ALL = '0-0-0-0-0-0';
 
-/** Đoạn path đầu của các trang danh sách. */
 const LIST_ROOTS = new Set(['directory', 'latest', 'hot', 'search', 'completed', 'new']);
 
 const CHAPTER_SEGMENT = /^c\d+(?:\.\d+)?$/i;
 
 const NSFW_GENRES = /adult|mature|smut|hentai|ecchi|lolicon|shotacon/i;
 
-/** Số trang tải cùng lúc khi chương hiện mỗi trang một ảnh. */
 const PAGE_CONCURRENCY = 4;
 
 const mangaUrl = (src: SourceConfig, slug: string) => `${src.baseUrl}/manga/${encodeURIComponent(slug)}`;
@@ -65,7 +54,6 @@ function slugOf(url: string): string | undefined {
   return root === 'manga' && slug ? slug : undefined;
 }
 
-/** "/manga/abc/v01/c003/2.html" → slug "abc", parts ["v01", "c003"]. */
 function chapterPath(url: string): { slug: string; parts: string[] } | undefined {
   const slug = slugOf(url);
   if (!slug) {
@@ -76,20 +64,17 @@ function chapterPath(url: string): { slug: string; parts: string[] } | undefined
   return index >= 0 ? { slug, parts: rest.slice(0, index + 1) } : undefined;
 }
 
-/** URL trang đầu của chương trên host của nguồn (luôn có "/" cuối). */
 function chapterBase(src: SourceConfig, url: string): string | undefined {
   const path = chapterPath(url);
   return path ? `${src.baseUrl}/manga/${encodeURIComponent(path.slug)}/${path.parts.join('/')}/` : undefined;
 }
 
-/** Bộ lọc thể loại trong "/directory/0-action-0-0-0-0/" → "0-action-0-0-0-0". */
 function genreFilter(href: string | undefined): string | undefined {
   const [root, filter] = pathSegments(href ?? '');
   if (root !== 'directory' || !filter) {
     return undefined;
   }
   const cells = filter.split('-');
-  // Chỉ nhận lọc theo đối tượng (ô 1) hoặc thể loại (ô 2), các ô còn lại là 0.
   const set = cells.map((cell, i) => (cell !== '0' ? i : -1)).filter(i => i >= 0);
   return cells.length === 6 && set.length === 1 && set[0] <= 1 ? filter : undefined;
 }
@@ -104,7 +89,6 @@ function parseListing($: CheerioAPI, base: string): ListPage {
     const $el = $(el);
     const $cover = $el.find('a.manga-cover').first();
     const slug = slugOf(resolveUrl($cover.attr('href') ?? $el.find('a[href*="/manga/"]').first().attr('href'), base));
-    // Chữ trong .title bị cắt "...", rel của ảnh bìa thì đủ.
     const title = cleanText($cover.attr('rel')) || textOf($el.find('.title'));
     if (!slug || !title) {
       return;
@@ -126,7 +110,6 @@ function parseListing($: CheerioAPI, base: string): ListPage {
   };
 }
 
-/** Ảnh trong khung đọc của một trang chương. */
 function viewerImages($: CheerioAPI, base: string): string[] {
   return $('#viewer img')
     .toArray()
@@ -134,7 +117,6 @@ function viewerImages($: CheerioAPI, base: string): string[] {
     .filter((uri): uri is string => !!uri && !uri.startsWith('data:') && !uri.includes('/images/manga_cover'));
 }
 
-/** Tải một trang lẻ của chương; thử lại một lần vì CDN hay rớt khi tải dồn. */
 async function pageImages(url: string, base: string): Promise<string[]> {
   try {
     return viewerImages(parseHtml(await getText(url)), base);
@@ -143,7 +125,6 @@ async function pageImages(url: string, base: string): Promise<string[]> {
   }
 }
 
-/** Các dòng "Nhãn: giá trị" trong phần thông tin truyện. */
 function infoRows($: CheerioAPI): Map<string, Cheerio<AnyNode>> {
   const rows = new Map<string, Cheerio<AnyNode>>();
   $('.detail-info p, .detail-info-middle p').each((_, el) => {
@@ -164,11 +145,9 @@ function findRow(rows: Map<string, Cheerio<AnyNode>>, pattern: RegExp): Cheerio<
   return undefined;
 }
 
-/** Giá trị của dòng, bỏ phần nhãn. */
 const rowValue = ($row: Cheerio<AnyNode> | undefined) => ($row ? cleanText($row.text()).replace(/^[^:]*:\s*/, '') : '');
 
 function normalizeStatus(value: string): string | undefined {
-  // Site cắt chữ: "Ongoin", "Complete".
   if (/^ongoin/i.test(value)) {
     return 'Ongoing';
   }
@@ -178,7 +157,6 @@ function normalizeStatus(value: string): string | undefined {
   return value || undefined;
 }
 
-/** Trang truyện của bản mobile: host khác (www./w.) hoặc URL chương thì đổi về trang truyện mobile. */
 function detailPageUrl(src: SourceConfig, url: string): string {
   const slug = slugOf(url);
   if (!slug) {
@@ -197,7 +175,6 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
       const path = chapterPath(chapterUrl);
       const segment = path?.parts[path.parts.length - 1];
       const number = segment ? parseFloat(segment.slice(1)) : NaN;
-      // Chữ trực tiếp của thẻ a ("C.60"); tên chương nằm trong span.vol.
       let label = cleanText(
         $a
           .contents()
@@ -211,7 +188,6 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
       }
       const name = [label, textOf($a.find('.vol'))].filter(Boolean).join(' - ');
       const date = textOf($a.find('.time'));
-      // "Yesterday Oct 04,2026": lấy ngày cụ thể phía sau nếu có.
       const exact = date.replace(/^(today|yesterday)\s+(?=[a-z]{3}\s*\d)/i, '');
       return {
         url: chapterUrl,
@@ -225,9 +201,7 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
   return uniqBy(chapters, ch => ch.url);
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Danh sách, thể loại và tìm kiếm cùng một khung .post-list. */
 async function loadList(site: SourceConfig, url: string): Promise<ListPage> {
   return parseListing(parseHtml(await getText(url)), site.baseUrl);
 }
@@ -304,8 +278,6 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
   const $ = parseHtml(await getText(first));
   let pages = viewerImages($, site.baseUrl);
 
-  // Ô chọn trang liệt kê /cNNN/ (trang 1) và /cNNN/<n>.html; chương đã hiện
-  // đủ ảnh trong một trang thì không có ô này.
   const pageUrls = uniqBy(
     $('select option')
       .toArray()
@@ -323,7 +295,6 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
     throw new Error('Không tìm thấy ảnh trong chương này.');
   }
   const headers = imageHeaders(site);
-  // "Regression of the Yong Clan Heir 057.0 Page 1" → bỏ số trang.
   const title = textOf($('.title a').first()).replace(/\s+Page\s+\d+$/i, '');
   return {
     kind: 'images',
@@ -340,21 +311,18 @@ async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: st
   if (!html) {
     return undefined;
   }
-  // Tiêu đề trang chương: "<tên> 057.0 Page 1 / <tên> Manga" — link thứ hai là trang truyện.
   const $ = parseHtml(html);
   const href = $('.title a').last().attr('href');
   const fromTitle = href ? slugOf(resolveUrl(href, site.baseUrl)) : undefined;
   return fromTitle ? mangaUrl(site, fromTitle) : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
 export function getURL({ site, params }: GetURLInput): string {
   switch (params.method) {
     case 'list':
       return directoryUrl(site, ALL, params.sort, params.page);
     case 'search': {
-      // Trang 1 là /search?name=…, các trang sau là /search/<n>.htm?name=…
       const q = encodeURIComponent(params.query.trim());
       return params.page > 1
         ? `${site.baseUrl}/search/${params.page}.htm?name=${q}`
@@ -387,7 +355,6 @@ export async function get({ site, method, url, html }: GetInput): Promise<Widget
     case 'genre':
       return { widget: 'genre', genres: await loadGenres(site) };
     case 'chapter': {
-      // HTML có sẵn chỉ dùng được khi chính là trang truyện của bản mobile.
       const pageUrl = detailPageUrl(site, url ?? '');
       const $ = parseHtml(html && pageUrl === url ? html : await getText(pageUrl));
       return { widget: 'chapter', chapters: parseChapters($, site.baseUrl) };
@@ -412,6 +379,5 @@ export function match({ url }: MatchInput): UrlKind | null {
 }
 
 export function imageHeaders(site: SourceConfig): Record<string, string> {
-  // CDN ảnh (mangahere.org/.com) trả 403 nếu thiếu Referer của site.
   return refererHeaders(site);
 }

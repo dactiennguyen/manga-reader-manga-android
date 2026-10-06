@@ -4,7 +4,6 @@ import { ArrowDownUp, ChartPie, Info } from '../../components/icons';
 import { Chip, ChipRow } from '../../components/ui';
 import { font, radius, space, useTheme } from '../../theme';
 
-/** Thanh trên danh sách chương: đếm, đảo thứ tự, lọc theo nhóm dịch. */
 export function ChapterToolbar({
   count,
   unread,
@@ -22,7 +21,6 @@ export function ChapterToolbar({
   groups: { name: string; count: number }[];
   activeGroup: string | null;
   onSelectGroup: (group: string | null) => void;
-  /** Mở hộp thoại tóm tắt chương. */
   onSummary: () => void;
 }) {
   const { c } = useTheme();

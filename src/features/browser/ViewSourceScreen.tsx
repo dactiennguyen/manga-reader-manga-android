@@ -12,12 +12,9 @@ import { getText } from '../../lib/http';
 import { displayUrl } from '../../lib/url';
 import { space, useTheme } from '../../theme';
 
-/** Dòng quá dài (HTML đã nén) được cắt thành nhiều hàng để cuộn và hiển thị mượt. */
 const MAX_COLS = 300;
 const FONT_SIZE = 12;
-/** Bề rộng ước lượng của một ký tự monospace. */
 const CHAR_WIDTH = FONT_SIZE * 0.62;
-/** Clipboard Android giới hạn dữ liệu qua Binder (~1MB). */
 const MAX_COPY = 400000;
 const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
@@ -39,7 +36,6 @@ function splitRows(html: string): Row[] {
   return rows;
 }
 
-/** "Xem mã nguồn" trang web. */
 export function ViewSourceScreen() {
   const { c } = useTheme();
   const { params } = useRoute<RouteProp<RootStackParamList, 'ViewSource'>>();
@@ -76,7 +72,6 @@ export function ViewSourceScreen() {
   const gutter = Math.max(3, String(lineCount).length) * CHAR_WIDTH + space.md;
   const maxCols = useMemo(() => rows.reduce((n, r) => Math.max(n, r.text.length), 0), [rows]);
 
-  // Vị trí các hàng khớp từ khoá (theo chỉ số trong `rows`).
   const matches = useMemo(
     () => (term ? rows.filter(r => r.text.toLowerCase().includes(term)).map(r => r.key) : []),
     [rows, term],
@@ -92,7 +87,6 @@ export function ViewSourceScreen() {
 
   useEffect(() => setCursor(0), [term]);
 
-  // Nhảy tới hàng khớp đang chọn.
   useEffect(() => {
     if (current < 0) {
       return;

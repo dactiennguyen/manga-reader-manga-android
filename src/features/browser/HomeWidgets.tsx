@@ -18,7 +18,6 @@ import { font, radius, space, useTheme } from '../../theme';
 import { Favicon } from '../../components/Favicon';
 import type { ViewRef } from './Tour';
 
-// ─── Khung widget ───────────────────────────────────────────────────────────
 
 export function WidgetSection({
   title,
@@ -73,7 +72,6 @@ function EmptyHint({ text, action }: { text: string; action?: { label: string; o
 
 type SourceInfo = { name: string; headers: Record<string, string> };
 
-/** Tên site (nhãn cam trên bìa) và header ảnh bìa theo nguồn (Referer chống hotlink). */
 function useSourceInfo(): (sourceId: string) => SourceInfo | undefined {
   const sources = useSources(s => s.sources);
   return useMemo(() => {
@@ -85,10 +83,8 @@ function useSourceInfo(): (sourceId: string) => SourceInfo | undefined {
   }, [sources]);
 }
 
-/** Ô chữ loại truyện ở góc bìa như app gốc. */
 const typeLabelOf = (content: ContentType) => (content === 'novel' ? 'N' : 'M');
 
-// ─── Truy cập nhanh ─────────────────────────────────────────────────────────
 
 export function QuickAccessWidget({ limit, onOpenUrl }: { limit: number; onOpenUrl: (url: string) => void }) {
   const { c } = useTheme();
@@ -206,7 +202,6 @@ function QuickAccessDialog({ item, onClose }: { item?: QuickAccessItem; onClose:
   );
 }
 
-// ─── Đọc tiếp ───────────────────────────────────────────────────────────────
 
 export function ContinueReadingWidget({ limit }: { limit: number }) {
   const navigation = useAppNavigation();
@@ -276,7 +271,6 @@ export function ContinueReadingWidget({ limit }: { limit: number }) {
   );
 }
 
-// ─── Site truyện đã lưu ─────────────────────────────────────────────────────
 
 export function MediaSitesWidget({ limit, tourRef }: { limit: number; tourRef?: Ref<ViewRef> }) {
   const { c } = useTheme();
@@ -329,7 +323,6 @@ export function MediaSitesWidget({ limit, tourRef }: { limit: number; tourRef?: 
   );
 }
 
-// ─── Truyện đã bookmark ─────────────────────────────────────────────────────
 
 export function BookmarksWidget({ content, limit }: { content: ContentType; limit: number }) {
   const navigation = useAppNavigation();
@@ -356,7 +349,6 @@ export function BookmarksWidget({ content, limit }: { content: ContentType; limi
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
           {list.map(b => {
             const info = sourceInfo(b.sourceId);
-            // Góc tam giác như app gốc: xanh dương = có chương mới, xanh ngọc = còn chương chưa đọc.
             const ribbon: CoverRibbon | undefined = b.newChapters ? 'new' : b.unread ? 'unread' : undefined;
             return (
               <View key={b.key} style={styles.coverCard}>
@@ -390,7 +382,6 @@ export function BookmarksWidget({ content, limit }: { content: ContentType; limi
   );
 }
 
-// ─── Trang web đã đánh dấu ──────────────────────────────────────────────────
 
 export function WebBookmarksWidget({ limit, onOpenUrl }: { limit: number; onOpenUrl: (url: string) => void }) {
   const { c } = useTheme();

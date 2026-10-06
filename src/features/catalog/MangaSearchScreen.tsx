@@ -26,7 +26,6 @@ import { Favicon } from '../../components/Favicon';
 import { RecentSearches } from './RecentSearches';
 import { useRequestToken } from './useRequestToken';
 
-/** Số nguồn tìm song song — đủ nhanh mà không dồn quá nhiều request một lúc. */
 const CONCURRENCY = 4;
 
 type BlockState =
@@ -34,7 +33,6 @@ type BlockState =
   | { status: 'done'; items: MangaItem[] }
   | { status: 'error'; error: unknown };
 
-/** Khối có kết quả lên trước, rồi đang tìm, lỗi, cuối cùng là không có kết quả. */
 function rank(state: BlockState | undefined): number {
   if (!state) {
     return 3;
@@ -49,7 +47,6 @@ function rank(state: BlockState | undefined): number {
   }
 }
 
-/** "Manga Search": tìm truyện trên mọi nguồn đang bật. */
 export function MangaSearchScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'MangaSearch'>>();
   const initialQuery = route.params?.query?.trim() ?? '';
@@ -100,9 +97,7 @@ export function MangaSearchScreen() {
       setInput(q);
       setQuery(q);
       setEditing(false);
-      // Lượt mới: kết quả của từ khoá cũ về muộn sẽ bị bỏ.
       const t = token.next();
-      // Đọc store lúc bấm tìm để hàm này ổn định (không chạy lại tìm tự động khi danh sách nguồn đổi).
       const { showNsfw, ageConfirmed } = useSettings.getState();
       const list = useSources
         .getState()

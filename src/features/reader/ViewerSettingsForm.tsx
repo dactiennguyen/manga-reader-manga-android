@@ -15,16 +15,10 @@ import {
 } from './viewerPrefs';
 
 type Props = {
-  /** Chế độ xem/hướng/khoảng cách đang áp dụng (mặc định chung hoặc riêng truyện). */
   prefs: ViewerPrefs;
   onPrefsChange: (patch: Partial<ViewerPrefs>) => void;
 };
 
-/**
- * Nội dung "Viewer settings" (ViewerSettingDialog), dùng cả trong sheet của
- * reader lẫn màn cài đặt mặc định. Các tuỳ chọn ngoài ViewerPrefs luôn là
- * cài đặt chung.
- */
 export function ViewerSettingsForm({ prefs, onPrefsChange }: Props) {
   const { c } = useTheme();
   const s = useReaderSettings(

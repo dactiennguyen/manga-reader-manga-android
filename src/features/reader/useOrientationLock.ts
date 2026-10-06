@@ -6,10 +6,6 @@ import { toast } from '../../components/ui';
 import { orientationSupported, setOrientationLock } from '../../lib/screen';
 import { useReaderSettings } from '../../store/useReaderSettings';
 
-/**
- * Nút khoá xoay của reader (manga và novel): khoá theo hướng đang cầm máy,
- * bấm lần nữa thì trả về tự xoay. Chỉ áp dụng khi màn reader đang hiện.
- */
 export function useOrientationLock() {
   const lock = useReaderSettings(s => s.orientationLock);
   const focused = useIsFocused();

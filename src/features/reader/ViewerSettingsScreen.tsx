@@ -11,14 +11,12 @@ import {
 import { space } from '../../theme';
 import { ViewerSettingsForm } from './ViewerSettingsForm';
 
-/** Mặc định của mọi tuỳ chọn trình xem, giữ nguyên cài đặt riêng từng truyện. */
 function defaultsWithoutOverrides(): Partial<Omit<ReaderSettings, 'overrides'>> {
   const defaults: Partial<ReaderSettings> = { ...DEFAULT_READER_SETTINGS };
   delete defaults.overrides;
   return defaults;
 }
 
-/** Cài đặt viewer mặc định (/viewersetting), mở từ Cài đặt. */
 export function ViewerSettingsScreen() {
   const prefs = useReaderSettings(
     useShallow(state => ({ viewMode: state.viewMode, direction: state.direction, pageGap: state.pageGap })),

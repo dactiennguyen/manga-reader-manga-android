@@ -2,11 +2,6 @@ import { readJSON, removeKeysWithPrefix, storage, writeJSON } from '../lib/stora
 import { getEngine, mangaKey } from './index';
 import type { Chapter, MangaDetail, SourceConfig } from './types';
 
-/**
- * Cache chi tiết truyện: bộ nhớ cho phiên hiện tại, MMKV cho bản lưu lại
- * (để mở lại nhanh, đọc offline, và đếm chương chưa đọc của bookmark).
- * Mỗi truyện một khoá riêng để không phải ghi lại cả khối dữ liệu lớn.
- */
 
 const PREFIX = 'detail:';
 const memory = new Map<string, MangaDetail>();
@@ -43,7 +38,6 @@ export function clearDetailCache(): void {
   removeKeysWithPrefix(PREFIX);
 }
 
-/** Tải chi tiết truyện qua engine, gộp các lời gọi trùng nhau đang chạy. */
 export async function fetchDetail(src: SourceConfig, url: string): Promise<MangaDetail> {
   const key = mangaKey(src.id, url);
   const running = inflight.get(key);

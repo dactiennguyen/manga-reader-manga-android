@@ -1,10 +1,3 @@
-/**
- * Render lần lượt mọi màn trong navigation với dữ liệu giả lập để bắt lỗi
- * crash lúc render (app không chạy được trên máy trong môi trường test).
- *
- * @format
- */
-
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -135,7 +128,6 @@ async function visitAll(label: string) {
   const spy = jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
     errors.push(args);
   });
-  // React 19 báo lỗi render chưa bắt qua console.warn ("An error occurred in the <X> component").
   const warnSpy = jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
     if (/error occurred/i.test(String(args[0]))) {
       errors.push(args);
@@ -157,7 +149,6 @@ async function visitAll(label: string) {
     await ReactTestRenderer.act(async () => {
       (navigation.navigate as (n: string, p?: object) => void)(name, params ?? undefined);
     });
-    // Cho các promise (fetch giả) chạy xong và render lại.
     await ReactTestRenderer.act(async () => {
       await Promise.resolve();
       jest.advanceTimersByTime(50);
@@ -178,7 +169,6 @@ async function visitAll(label: string) {
   });
   spy.mockRestore();
   warnSpy.mockRestore();
-  // Lỗi render thật thì báo ra; cảnh báo act(...) là của môi trường test.
   const fatal = errors.filter(args => !/\bact\(/.test(String(args[0])));
   expect(fatal.map(args => String(args[0]).slice(0, 300))).toEqual([]);
 }

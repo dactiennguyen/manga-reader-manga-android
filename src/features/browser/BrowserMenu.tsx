@@ -78,10 +78,6 @@ const APP_ITEMS: { action: MenuAction; label: string; icon: LucideIcon }[] = [
   { action: 'settings', label: 'Cài đặt', icon: Settings },
 ];
 
-/**
- * Menu ⋮ kiểu Chrome: bật ra ở góc trên phải, hàng đầu là các nút điều hướng
- * (thay cho thanh công cụ dưới), tiếp theo là danh sách hành động Material 3.
- */
 export function BrowserMenu({
   visible,
   onClose,
@@ -96,7 +92,6 @@ export function BrowserMenu({
 }: {
   visible: boolean;
   onClose: () => void;
-  /** Trang web đang xem, null khi ở trang chủ. */
   page: { url: string; title: string } | null;
   nav: MenuNav;
   bookmarked: boolean;

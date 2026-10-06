@@ -4,7 +4,6 @@ import type { AnyNode } from 'domhandler';
 
 import { getHost, pathSegments, resolveUrl } from '../lib/url';
 
-/** Dùng bản slim (chỉ htmlparser2) — nhẹ và chạy được trong Hermes. */
 export function parseHtml(html: string): CheerioAPI {
   return load(html);
 }
@@ -29,7 +28,6 @@ const IMAGE_ATTRS = [
   'src',
 ];
 
-/** Lấy URL ảnh thật, bỏ qua placeholder lazy-load. */
 export function imageSrc($img: Cheerio<AnyNode>, base: string): string | undefined {
   const el = $img.first();
   if (!el.length) {
@@ -56,7 +54,6 @@ export function imageSrc($img: Cheerio<AnyNode>, base: string): string | undefin
   return fallback;
 }
 
-/** Chọn ảnh lớn nhất trong srcset. */
 function pickFromSrcset(srcset: string): string | undefined {
   let best: { url: string; size: number } | undefined;
   for (const candidate of srcset.split(',')) {
@@ -84,10 +81,6 @@ export function parseChapterNumber(name: string): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
-/**
- * 3 chữ cái đầu (đã bỏ dấu) của tên tháng trong các ngôn ngữ site hay dùng:
- * Anh, Tây Ban Nha, Bồ Đào Nha, Pháp, Indonesia, Thổ Nhĩ Kỳ, Đức, Ý, Nga.
- */
 const MONTH_PREFIXES: Record<string, number> = {
   jan: 0, ene: 0, gen: 0, oca: 0, янв: 0,
   feb: 1, fev: 1, sub: 1, фев: 1,
@@ -103,7 +96,6 @@ const MONTH_PREFIXES: Record<string, number> = {
   dec: 11, dic: 11, dez: 11, des: 11, ara: 11, дек: 11,
 };
 
-/** Tên tháng đầy đủ của chữ không phải Latin (Thái, Ả Rập). */
 const MONTH_NAMES: string[][] = [
   ['มกราคม', 'يناير'],
   ['กุมภาพันธ์', 'فبراير'],
@@ -129,7 +121,6 @@ function monthOf(text: string): number | undefined {
     return index;
   }
   for (const word of stripDiacritics(text).match(/\p{L}{3,}/gu) ?? []) {
-    // Tiếng Pháp: juin/juillet trùng 3 chữ đầu.
     if (word.startsWith('jui')) {
       return word.startsWith('juil') ? 6 : 5;
     }
@@ -141,7 +132,6 @@ function monthOf(text: string): number | undefined {
   return undefined;
 }
 
-/** "October 3, 2026", "3 de outubro de 2026", "23 Ekim 2025", "3 ตุลาคม 2569". */
 function parseNamedDate(text: string): number | undefined {
   const month = monthOf(text);
   const yearMatch = text.match(/(?:^|\D)(\d{4})(?!\d)/);
@@ -149,7 +139,6 @@ function parseNamedDate(text: string): number | undefined {
     return undefined;
   }
   let year = Number(yearMatch[1]);
-  // Lịch Phật giáo của Thái lớn hơn 543 năm.
   if (year > 2400) {
     year -= 543;
   }
@@ -170,7 +159,6 @@ const RELATIVE_UNITS: [RegExp, number][] = [
 
 const AGO = /ago|trước|hace|lalu|atrás|il y a|önce|แล้ว|назад|منذ/;
 
-/** Parse ngày kiểu "2 days ago", "October 3, 2026", "03/10/2026". Không chắc thì trả undefined. */
 export function parseDate(value: string | undefined, now = Date.now()): number | undefined {
   const text = cleanText(value).toLowerCase();
   if (!text) {
@@ -205,7 +193,6 @@ export function parseDate(value: string | undefined, now = Date.now()): number |
   if (numeric) {
     const year = Number(numeric[3]) < 100 ? 2000 + Number(numeric[3]) : Number(numeric[3]);
     let [a, b] = [Number(numeric[1]), Number(numeric[2])];
-    // Ưu tiên dd/mm; nếu ô thứ hai > 12 thì chắc chắn là mm/dd.
     if (b > 12) {
       [a, b] = [b, a];
     }
@@ -214,7 +201,6 @@ export function parseDate(value: string | undefined, now = Date.now()): number |
   return undefined;
 }
 
-/** Tách đoạn văn của chương novel: ưu tiên thẻ <p>, không có thì tách theo <br>. */
 export function paragraphsOf($: CheerioAPI, $root: Cheerio<AnyNode>): string[] {
   $root.find('script, style, noscript, ins, iframe, .adsbygoogle, [class*="ads"]').remove();
   const fromP = $root
@@ -232,10 +218,6 @@ export function paragraphsOf($: CheerioAPI, $root: Cheerio<AnyNode>): string[] {
     .filter(Boolean);
 }
 
-/**
- * Phương án cuối cho trang danh sách mà child theme tự chế lại markup: gom mọi
- * link dạng /<dir>/<slug>/ cùng host, lấy tên từ chữ của link hoặc alt của ảnh.
- */
 export function harvestMangaLinks(
   $: CheerioAPI,
   base: string,

@@ -15,11 +15,9 @@ import type { ViewerProps } from './viewerTypes';
 
 type Props = ViewerProps & {
   mode: Exclude<ViewMode, 'vertical'>;
-  /** Đọc phải → trái (chỉ có tác dụng khi lật ngang). */
   rtl: boolean;
 };
 
-/** Một màn lật: 1–2 trang, hoặc khối "Hết chương" (pages rỗng). */
 type Slot = { key: string; pages: number[] };
 
 function buildSlots(count: number, perSlot: number): Slot[] {
@@ -34,11 +32,6 @@ function buildSlots(count: number, perSlot: number): Slot[] {
 
 const keyExtractor = (slot: Slot) => slot.key;
 
-/**
- * Lật trang: `horizontal` (vuốt ngang từng trang), `single` (vuốt dọc từng
- * trang), `double` (hai trang một màn, vuốt ngang). RTL đảo thứ tự dữ liệu để
- * trang đầu nằm bên phải.
- */
 export const PagedViewer = memo(function PagedViewerView({
   ref,
   pages,
@@ -102,7 +95,6 @@ export const PagedViewer = memo(function PagedViewerView({
     [horizontal, size, reversed, lastSlot, showSlot],
   );
 
-  // Xoay màn hình: kích thước trang đổi nên offset cũ không còn đúng.
   const sizeRef = useRef(size);
   useEffect(() => {
     if (sizeRef.current === size) {

@@ -8,11 +8,6 @@ import { font, space, useTheme } from '../theme';
 import { CloudOff, Globe, RotateCw, ShieldAlert } from './icons';
 import { Button } from './ui';
 
-/**
- * Màn lỗi chung. Lỗi Cloudflare/chống bot thì mở màn Verify để người dùng
- * vượt trang thử thách ("Error loading image or page, the website need you
- * to verify that you are not a bot to continue.") — quay lại là tự thử lại.
- */
 export function ErrorView({
   error,
   onRetry,
@@ -21,7 +16,6 @@ export function ErrorView({
 }: {
   error: unknown;
   onRetry?: () => void;
-  /** URL để mở trên web; mặc định lấy từ lỗi HTTP. */
   url?: string;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -81,7 +75,6 @@ export function ErrorView({
   );
 }
 
-/** Mở màn xác minh từ chỗ khác (footer phân trang, reader…). */
 export function useVerify(): (url: string) => void {
   const navigation = useAppNavigation();
   return useCallback((url: string) => navigation.push('Verify', { url }), [navigation]);

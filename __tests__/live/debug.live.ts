@@ -1,9 +1,3 @@
-/**
- * Soi nhanh một site khi sửa engine:
- *   SITE=cocomic.co ENGINE=madara npx jest -c jest.live.config.js debug
- *   SITE=… ENGINE=… DETAIL=<url> | CHAPTER=<url> | SEARCH=<từ khoá> | GENRES=1
- * Thiếu SITE thì bỏ qua.
- */
 import { probeSite } from '../../src/features/addons/siteProbe';
 import { errorMessage } from '../../src/lib/http';
 import * as fs from 'fs';
@@ -19,7 +13,6 @@ const log = (...args: unknown[]) => process.stdout.write(`${args.map(a => (typeo
 
 (env.SITE ? test : test.skip)('debug site', async () => {
   configureSources({ allowNsfw: true });
-  // Có mã nguồn addon thì chạy thẳng mã nguồn (đang sửa), không thì bản đang dùng trong app.
   const id = env.ENGINE as EngineId;
   const engine = fs.existsSync(path.resolve(__dirname, '../../addons', id, 'main.ts')) ? sourceEngine(id) : getEngine(id);
   let baseUrl = `https://${env.SITE}`;

@@ -68,9 +68,7 @@ const TOUR_STEPS: TourStep[] = [
   { key: 'mediaSites', text: 'Các site truyện bạn đã thêm nằm ở đây. Bấm vào một site để mở danh sách truyện.' },
 ];
 
-/** Đã hiện gợi ý cho nút "Chạy addon" (khi tour chính chưa giới thiệu được nút này). */
 const ADDON_HINT_KEY = 'browser:addonHintShown';
-/** Giới hạn HTML gửi về để nhận diện theme — đủ để thấy dấu hiệu của theme. */
 const DETECT_LIMIT = 300000;
 const RUN_TIMEOUT = 15000;
 
@@ -78,7 +76,6 @@ const ZERO_STATS: BlockStats = { ads: 0, trackers: 0 };
 const EMPTY_NAV = { tabId: '', canGoBack: false, canGoForward: false, loading: false, progress: 1 };
 const EMPTY_FIND: FindResult = { count: 0, index: -1 };
 
-/** Mở app lần đầu trong phiên: áp dụng trang khởi động và link mở từ app khác. */
 let bootHandled = false;
 
 function cleanTitle(title: string, url: string): string {
@@ -90,7 +87,6 @@ export function BrowserScreen() {
   const { c } = useTheme();
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
-  // Tablet: thanh địa chỉ có ← → ⟳ và bookmark, dải tab ngang như app gốc.
   const wide = useIsWide();
   const isFocused = useIsFocused();
   const tab = useActiveTab();
@@ -122,7 +118,6 @@ export function BrowserScreen() {
   const pageHost = getHost(pageUrl);
   const adblockActive = settings.adblock && !tab.adblockOff;
 
-  // Trạng thái của WebView đang mở; gắn tab id để bỏ qua dữ liệu của tab trước.
   const [nav, setNav] = useState(EMPTY_NAV);
   const navState = nav.tabId === tab.id ? nav : EMPTY_NAV;
   const [crashKey, setCrashKey] = useState(0);
@@ -137,7 +132,6 @@ export function BrowserScreen() {
   const [adblockSheet, setAdblockSheet] = useState(false);
   const [bookmarkDialog, setBookmarkDialog] = useState(false);
   const [mediaFound, setMediaFound] = useState<MediaFound | null>(null);
-  /** Đang chờ trang trả danh sách media (bấm "Tải video trên trang"). */
   const mediaPending = useRef(false);
   const [saveDialog, setSaveDialog] = useState<{ saving: boolean } | null>(null);
   const [linkTarget, setLinkTarget] = useState<LinkTarget | null>(null);
@@ -151,14 +145,12 @@ export function BrowserScreen() {
 
   const pendingRun = useRef(false);
   const autoRan = useRef(new Set<string>());
-  /** host → engine nhận diện được, hoặc số lần nhận diện thất bại. */
   const detectCache = useRef(new Map<string, EngineId | number>());
   const saveName = useRef<string | null>(null);
   const homeViaButton = useRef(false);
   const runTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Nguồn đã thêm ứng với trang đang xem (cập nhật khi danh sách nguồn đổi).
   const source = useSources(() => (pageUrl ? findSourceForUrl(pageUrl) : undefined));
   const addonState: AddonState = !pageUrl
     ? null
@@ -187,7 +179,6 @@ export function BrowserScreen() {
     [],
   );
 
-  // Đổi tab: huỷ thao tác đang dở của tab cũ.
   useEffect(() => {
     pendingRun.current = false;
     homeViaButton.current = false;
@@ -195,7 +186,6 @@ export function BrowserScreen() {
     setAddonBusy(false);
   }, [tab.id]);
 
-  // ─── Khởi động: trang chủ, link mở từ app khác ──────────────────────────
   useEffect(() => {
     if (!bootHandled) {
       bootHandled = true;
@@ -222,7 +212,6 @@ export function BrowserScreen() {
     return () => subscription.remove();
   }, [navigation]);
 
-  // Tab ẩn danh: chữ thanh trạng thái sáng trên nền tối.
   useFocusEffect(
     useCallback(() => {
       if (!tab.incognito) {
@@ -233,7 +222,6 @@ export function BrowserScreen() {
     }, [tab.incognito]),
   );
 
-  // ─── Mở URL ─────────────────────────────────────────────────────────────
   const openInTab = useEvent((url: string) => {
     homeViaButton.current = false;
     useBrowser.getState().openUrl(url, { incognito: tab.incognito });
@@ -266,11 +254,9 @@ export function BrowserScreen() {
 
   const focusAddressSoon = () => {
     clearTimeout(focusTimer.current);
-    // Đợi sheet đóng hẳn rồi mới focus, nếu không bàn phím không bật.
     focusTimer.current = setTimeout(() => addressRef.current?.focus(), 350);
   };
 
-  // ─── Addon ──────────────────────────────────────────────────────────────
   const requestHtml = (purpose: HtmlPurpose, limit = 0) => webRef.current?.inject(jsRequestHtml(purpose, limit));
 
   const startRun = () => {
@@ -295,7 +281,6 @@ export function BrowserScreen() {
     requestHtml('run');
   };
 
-  // Mảnh ghép xám (trang không được hỗ trợ / trang chủ): mở danh sách site được hỗ trợ.
   const onAddonPress = () => {
     if (addonState) {
       startRun();
@@ -339,7 +324,6 @@ export function BrowserScreen() {
     }
   };
 
-  // ─── Sự kiện từ WebView ─────────────────────────────────────────────────
   const onNavigation = useEvent((state: NavState) => {
     setNav(prev => ({
       tabId: tab.id,
@@ -441,7 +425,6 @@ export function BrowserScreen() {
   const onExternalLink = useEvent((url: string) => {
     const host = getHost(tab.url);
     const decisions = useBrowser.getState().appLinkDecisions;
-    // Lựa chọn đã ghi nhớ cho trang này được ưu tiên hơn cài đặt chung.
     const decision = host in decisions ? decisions[host] : settings.appLinks;
     if (decision === 'allow') {
       openExternal(url);
@@ -469,7 +452,6 @@ export function BrowserScreen() {
 
   const hideSnack = useEvent(() => setSnack(null));
 
-  // ─── Điều hướng ─────────────────────────────────────────────────────────
   const showHome = (show: boolean) => useBrowser.getState().showHome(tab.id, show);
 
   const goBack = () => {
@@ -549,8 +531,6 @@ export function BrowserScreen() {
     }, [handleBack]),
   );
 
-  // ─── Menu ───────────────────────────────────────────────────────────────
-  // Menu là Modal nên sẽ nổi đè lên màn khác nếu có màn được đẩy lên (vd. addon tự chạy) → đóng khi rời màn.
   useFocusEffect(useCallback(() => () => setMenuOpen(false), []));
 
   const clearSiteData = async () => {
@@ -627,7 +607,6 @@ export function BrowserScreen() {
         setFind({ tabId: tab.id, result: EMPTY_FIND });
         return;
       case 'desktop':
-        // BrowserWebView tự tải lại khi UA đổi.
         store.updateTab(tab.id, { desktop: !tab.desktop });
         return;
       case 'share':
@@ -701,7 +680,6 @@ export function BrowserScreen() {
     }
   };
 
-  // ─── Hướng dẫn lần đầu ──────────────────────────────────────────────────
   useEffect(() => {
     if (settings.tourDone || promptDismissed || !isFocused || overlayOpen || editing) {
       return;
@@ -710,7 +688,6 @@ export function BrowserScreen() {
     return () => clearTimeout(timer);
   }, [settings.tourDone, promptDismissed, isFocused, overlayOpen, editing]);
 
-  // Tour chính chưa giới thiệu được nút "Chạy addon" (lúc đó chưa có) → gợi ý khi nút xuất hiện.
   useEffect(() => {
     if (!addonState || !settings.tourDone || !isFocused || editing || overlayOpen) {
       return;
@@ -745,7 +722,6 @@ export function BrowserScreen() {
     focusAddressSoon();
   };
 
-  // ─── Giao diện ──────────────────────────────────────────────────────────
   const showProgress = !showingHome && navState.loading && navState.progress < 1;
 
   return (
@@ -848,7 +824,6 @@ export function BrowserScreen() {
           onClose={closeFind}
         />
       )}
-      {/* Vùng thanh cử chỉ: cùng màu thanh tìm trong trang khi đang mở, còn lại theo nền trang. */}
       <View style={{ height: insets.bottom, backgroundColor: !editing && findOpen ? c.surface : c.bg }} />
 
       <BrowserMenu
@@ -932,7 +907,6 @@ export function BrowserScreen() {
   );
 }
 
-/** Lớp gợi ý khi gõ ở thanh địa chỉ — đọc thẳng cài đặt tìm kiếm để đổi engine/hạng mục tại chỗ. */
 function SuggestionsPanelHost({
   query,
   pageUrl,

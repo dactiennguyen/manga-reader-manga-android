@@ -4,10 +4,6 @@ import { evaluateAddon, isCompatible } from '../src/addons/registry';
 import type { SourceConfig } from '../src/sources/types';
 import { mockFetch, urlStarts } from './helpers/mockFetch';
 
-/**
- * Bản build của addon (đoạn JS app nạp lúc chạy) — khác test từng addon ở
- * chỗ chạy đúng code đã biên dịch, qua `new Function` và SDK thật.
- */
 
 const site = (engine: string, baseUrl: string): SourceConfig => ({
   id: baseUrl.replace(/^https?:\/\//, ''),
@@ -28,7 +24,6 @@ describe('bản build của addon', () => {
     for (const name of ['getURL', 'fetch', 'run', 'get', 'match'] as const) {
       expect(typeof mod[name]).toBe('function');
     }
-    // Code addon không được dùng thứ gì ngoài SDK.
     expect(pkg.code).not.toMatch(/\brequire\(/);
     const engine = addonEngine(pkg.info, mod);
     expect(engine.id).toBe(pkg.info.uid);

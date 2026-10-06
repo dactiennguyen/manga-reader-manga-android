@@ -6,10 +6,6 @@ import { confirm, Divider, IconButton } from '../../components/ui';
 import { useHistory } from '../../store/useHistory';
 import { font, radius, space, useTheme } from '../../theme';
 
-/**
- * "Recent Searches": từ khoá tìm truyện gần đây, lọc theo chữ đang gõ.
- * `empty` hiện khi chưa có từ khoá nào.
- */
 export function RecentSearches({
   filter = '',
   onPick,
@@ -20,9 +16,7 @@ export function RecentSearches({
   filter?: string;
   onPick: (query: string) => void;
   empty?: ReactNode;
-  /** Số từ khoá tối đa hiện ra. */
   limit?: number;
-  /** Nằm trong vùng cuộn khác (sheet lọc) nên không tự cuộn. */
   embedded?: boolean;
 }) {
   const { c } = useTheme();

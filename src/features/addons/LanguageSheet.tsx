@@ -2,7 +2,6 @@ import { Sheet } from '../../components/Sheet';
 import { Radio } from '../../components/ui';
 import { languageName, SITE_LANGUAGES } from '../../sources';
 
-/** Chọn một ngôn ngữ trong các ngôn ngữ site được hỗ trợ. */
 export function LanguageSheet({
   visible,
   onClose,
@@ -17,9 +16,7 @@ export function LanguageSheet({
   value: string;
   onSelect: (code: string) => void;
   title?: string;
-  /** Chỉ liệt kê các mã này; mặc định là mọi ngôn ngữ site được hỗ trợ. */
   codes?: string[];
-  /** Thêm lựa chọn "tất cả" ở đầu danh sách; chọn nó trả về ''. */
   allLabel?: string;
 }) {
   const options = codes ?? SITE_LANGUAGES.map(l => l.code);

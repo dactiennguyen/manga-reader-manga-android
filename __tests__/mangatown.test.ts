@@ -225,7 +225,6 @@ describe('mangatown engine', () => {
         body: pagedChapter(n),
       })),
     ]);
-    // Mở từ giữa chương (trang 3, host www) vẫn đọc từ trang đầu.
     const content = await mangatown.chapter(src, 'https://www.mangatown.com/manga/black_clover/c392/3.html');
     expect(content.kind === 'images' && content.pages.map(p => p.uri.replace(/^.*\//, ''))).toEqual([
       'op_001.jpg',

@@ -11,13 +11,7 @@ import { getHost } from '../../lib/url';
 import { useBrowser } from '../../store/useBrowser';
 import { font, space, useTheme } from '../../theme';
 
-/**
- * Màn xác minh chống bot (Cloudflare…). Request của parser dùng chung cookie
- * với WebView, nên chỉ cần người dùng qua được trang thử thách ở đây; khi
- * trang thật hiện ra thì tự đóng để màn trước thử lại.
- */
 
-// Báo về RN: UA thật (cookie cf_clearance gắn với UA) và trang còn là trang thử thách không.
 const PROBE = `
 (function () {
   var html = document.documentElement ? document.documentElement.innerHTML.slice(0, 20000) : '';
@@ -58,7 +52,6 @@ export function VerifyScreen() {
         setPassed(true);
       }
     } catch {
-      // Bỏ qua tin nhắn không phải của script này.
     }
   };
 

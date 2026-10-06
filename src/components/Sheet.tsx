@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { font, radius, space, useTheme } from '../theme';
 import { Button, type ButtonVariant } from './ui';
 
-/** Bottom sheet dạng modal (BottomSheet của app gốc). */
 export function Sheet({
   visible,
   onClose,
@@ -35,13 +34,11 @@ export function Sheet({
   subtitle?: string;
   right?: ReactNode;
   children: ReactNode;
-  /** Bọc nội dung trong ScrollView. Tắt khi bên trong đã có FlatList. */
   scroll?: boolean;
   maxHeight?: `${number}%` | number;
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
-  // Nền tối mờ dần tại chỗ, chỉ phần sheet trượt lên (animationType="slide" làm trượt cả nền).
   const [mounted, setMounted] = useState(visible);
   const [height, setHeight] = useState(600);
   const progress = useRef(new Animated.Value(0)).current;
@@ -120,7 +117,6 @@ export type DialogAction = {
   loading?: boolean;
 };
 
-/** Hộp thoại giữa màn hình với nội dung tuỳ ý. */
 export function Dialog({
   visible,
   onClose,

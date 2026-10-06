@@ -8,11 +8,9 @@ type CoverProps = {
   uri?: string;
   headers?: Record<string, string>;
   style?: StyleProp<ViewStyle>;
-  /** Làm mờ ảnh bìa 18+ khi chưa cho phép nội dung người lớn. */
   blur?: boolean;
 };
 
-/** Ảnh bìa tỉ lệ 2:3, có nền chờ và icon khi lỗi. */
 function CoverView({ uri, headers, style, blur }: CoverProps) {
   const { c } = useTheme();
   const [failed, setFailed] = useState(false);
@@ -38,7 +36,6 @@ export const Cover = memo(CoverView);
 
 export type CardBadge = { text: string; color: string };
 
-/** Góc tam giác trên bìa: có chương mới / còn chương chưa đọc (cover/newch, cover/unread). */
 export type CoverRibbon = 'new' | 'unread';
 
 type CardProps = {
@@ -48,20 +45,15 @@ type CardProps = {
   headers?: Record<string, string>;
   badges?: CardBadge[];
   ribbon?: CoverRibbon;
-  /** Nhãn cam góc dưới trái: tên site của truyện. */
   siteLabel?: string;
-  /** Ô chữ góc dưới phải: "M" truyện tranh, "N" tiểu thuyết. */
   typeLabel?: string;
   onPress?: () => void;
   onLongPress?: () => void;
   selected?: boolean;
   blur?: boolean;
-  /** Mờ đi (ví dụ đã có trong thư viện). */
   dimmed?: boolean;
 };
 
-/** Ô truyện trong lưới (BookmarkGrid / catalog grid). */
-/** Lớp phủ trên bìa giống app gốc: góc tam giác, nhãn site, ô loại truyện. */
 export function CoverOverlays({
   ribbon,
   siteLabel,
@@ -145,7 +137,6 @@ function GridItem({
 
 export const MangaGridItem = memo(GridItem);
 
-/** Dòng truyện trong danh sách (chế độ List View). */
 function ListRow({
   title,
   subtitle,
@@ -207,7 +198,6 @@ function ListRow({
 
 export const MangaListItem = memo(ListRow);
 
-/** Số cột lưới theo bề rộng màn hình. */
 export function gridColumns(width: number, min = 3): number {
   return Math.max(min, Math.floor(width / 128));
 }

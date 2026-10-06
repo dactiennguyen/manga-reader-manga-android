@@ -67,13 +67,8 @@ const CONTENT_NAME: Record<ContentType, string> = {
   novel: 'tiểu thuyết',
 };
 
-/** null = tất cả nhóm, '' = không nhóm. */
 type GroupFilter = string | null;
 
-/**
- * Bookmark truyện tranh hoặc tiểu thuyết (BookmarkGrid). Tự dựng app bar vì
- * khi chọn nhiều / tìm kiếm thì app bar đổi sang dạng tương ứng.
- */
 export function MediaBookmarksTab({ content, dropdown }: { content: ContentType; dropdown: ReactNode }) {
   const navigation = useAppNavigation();
   const { c } = useTheme();
@@ -137,7 +132,6 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
     return map;
   }, [sources]);
 
-  // Bỏ các mục đã bị xoá khỏi lựa chọn.
   const selectedKeys = useMemo(() => [...selected].filter(key => bookmarks[key]), [selected, bookmarks]);
   const selecting = selectedKeys.length > 0;
   const allSelected = selectedKeys.length === items.length;
@@ -192,7 +186,6 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
 
   const onLongPress = useCallback((bookmark: Bookmark) => toggle(bookmark.key), [toggle]);
 
-  // Chỉ kiểm tra truyện thuộc loại đang xem.
   const refresh = useCallback(() => {
     runLibraryUpdateCheck(allKeys);
   }, [allKeys]);
@@ -202,7 +195,6 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
     action();
   };
 
-  // ─── Hành động trên mục đã chọn ───
   const commonGroup = useMemo(() => {
     const set = new Set(selectedKeys.map(key => bookmarks[key].group));
     return set.size === 1 ? [...set][0] : undefined;
@@ -266,7 +258,6 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
     }
   };
 
-  // ─── Trống ───
   if (!all.length) {
     return (
       <>
@@ -353,7 +344,6 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
       {header}
 
       {groups.length > 0 && (
-        // Bọc View: ScrollView ngang mặc định flexGrow nên sẽ chiếm chỗ của lưới.
         <View>
           <ChipRow>
             <Chip
@@ -478,7 +468,6 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
   );
 }
 
-/** Nút kiểm tra cập nhật trên app bar: xoay và không bấm được khi đang chạy. */
 function RefreshButton({ running, onPress }: { running: boolean; onPress: () => void }) {
   const { c } = useTheme();
   const spin = useRef(new Animated.Value(0)).current;

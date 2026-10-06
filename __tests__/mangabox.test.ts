@@ -6,7 +6,6 @@ import { mockFetch, urlIs, urlStarts } from './helpers/mockFetch';
 
 const mangabox = sourceEngine('mangabox');
 
-/** Mỗi test một domain riêng vì engine nhớ kiểu URL của site theo baseUrl. */
 const srcOf = (baseUrl: string, mangaDir?: string): SourceConfig => ({
   id: baseUrl.replace(/^https:\/\//, ''),
   engine: 'mangabox',
@@ -20,7 +19,6 @@ const srcOf = (baseUrl: string, mangaDir?: string): SourceConfig => ({
   options: mangaDir ? { mangaDir } : undefined,
 });
 
-// Đời mới (mangakakalove.com): /manga-list/…, chương qua API, ảnh trong script.
 const homeKakalot = (base: string) => `
 <nav class="menu-primary">
   <a href="${base}/manga-list/latest-manga">LATEST MANGA</a>
@@ -128,7 +126,6 @@ const CHAPTER_KAKALOT = `
   var chapterImages = ["solo-hero\\/12\\/0.webp","solo-hero\\/12\\/1.webp","solo-hero\\/12\\/2.webp"];
 </script>`;
 
-// Bản PHP cũ (manganelo.cc): /latest?p=, /series/<slug>, chương ngay trong trang.
 const HOME_NELO = `
 <nav class="menu-primary"><a href="/">HOME</a><a href="/latest">LATEST MANGA</a><a href="/newest">NEW MANGA</a></nav>
 <div class="slide"><div id="owl-demo" class="owl-carousel">
@@ -203,7 +200,6 @@ const CHAPTER_NELO = `
 <img src="https://img.test/hotel/22/0.webp" alt="page 1"><img src="https://img.test/hotel/22/1.webp" alt="page 2"><img src="https://img.test/hotel/22/0.webp" alt="dup">
 </div>`;
 
-// Manganato/MangaBat đời cũ: panel-story-info + row-content-chapter.
 const DETAIL_NATO = `
 <div class="panel-breadcrumb"><a href="https://nato.test/">Home</a> » <a href="https://chap.nato.test/manga-ab123">Classic Story</a></div>
 <div class="panel-story-info">
@@ -274,7 +270,6 @@ describe('mangabox engine', () => {
       { url: 'https://kk.test/manga/second', title: 'Second Story', cover: 'https://cdn.test/thumb/second.webp', subtitle: undefined },
     ]);
 
-    // Trang cuối không còn link số lớn hơn; trang chủ chỉ tải một lần.
     expect((await mangabox.list(src, 'popular', 40)).hasNext).toBe(false);
     await mangabox.list(src, 'new', 1);
     expect(calls.map(c => c.url).slice(2)).toEqual([
@@ -375,7 +370,6 @@ describe('mangabox engine', () => {
     (globalThis as any).fetch = jest.fn(async (url: string) => {
       calls.push(url);
       const body = url === 'https://nelo-new.test/latest' ? LIST_NELO : HOME_NELO;
-      // /newest redirect 302 về trang chủ.
       const finalUrl = url.endsWith('/newest') ? 'https://nelo-new.test/' : url;
       return { ok: true, status: 200, url: finalUrl, text: async () => body };
     });
@@ -578,7 +572,6 @@ describe('mangabox engine', () => {
     ).toBe('https://nelo.test/series/hotel');
     expect(calls).toHaveLength(0);
 
-    // Chưa biết thư mục truyện: đọc breadcrumb từ HTML có sẵn, hoặc tải trang chương.
     const nelo = srcOf('https://nelo.test');
     expect(await mangabox.resolveMangaUrl(nelo, 'https://nelo.test/chapter/2827/hotel-22', CHAPTER_NELO)).toBe(
       'https://nelo.test/series/hotel',

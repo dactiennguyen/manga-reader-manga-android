@@ -1,7 +1,6 @@
 import { createMMKV } from 'react-native-mmkv';
 import { createJSONStorage, type StateStorage } from 'zustand/middleware';
 
-/** Kho key-value đồng bộ dùng chung cho toàn app (tương đương DBKeyValue). */
 export const storage = createMMKV({ id: 'manga-reader' });
 
 const mmkvStateStorage: StateStorage = {
@@ -12,7 +11,6 @@ const mmkvStateStorage: StateStorage = {
   },
 };
 
-/** Storage cho middleware persist của Zustand. */
 export const persistStorage = createJSONStorage(() => mmkvStateStorage);
 
 export function readJSON<T>(key: string): T | undefined {

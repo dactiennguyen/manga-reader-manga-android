@@ -155,10 +155,8 @@ function main() {
   const packages = addons.map(a => ({ ...a, code: compile(path.join(a.dir, 'main.ts')) }));
 
   const lines = [
-    '// Sinh bởi scripts/build-addons.js — đừng sửa tay. Sửa addons/<uid>/ rồi chạy `npm run addons`.',
     "import type { AddonPackage } from './types';",
     '',
-    '/** Addon có sẵn trong app. `sourceHash` để test phát hiện bản build cũ. */',
     'export const BUILTIN_ADDONS: (AddonPackage & { sourceHash: string })[] = [',
   ];
   for (const p of packages) {

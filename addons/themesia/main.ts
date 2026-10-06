@@ -40,10 +40,6 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * Theme "MangaThemesia" (themesia/mangareader WordPress theme). Ảnh chương
- * thường không nằm trong HTML mà trong lời gọi ts_reader.run({...}).
- */
 
 const ORDER: Record<ListSort, string> = {
   latest: 'update',
@@ -59,7 +55,6 @@ const pagePath = (page: number) => (page > 1 ? `page/${page}/` : '');
 
 const NSFW_GENRES = /adult|mature|smut|hentai|ecchi|18\+|erotic/i;
 
-/** Giá trị trống site hay điền vào ô tác giả. */
 const PLACEHOLDER = /^(-+|n\/?a|none|unknown|updating|đang cập nhật)$/i;
 
 function parseListing($: CheerioAPI, base: string, scope?: string, harvestDir?: string): ListPage {
@@ -83,7 +78,6 @@ function parseListing($: CheerioAPI, base: string, scope?: string, harvestDir?: 
       subtitle: textOf($el.find('.epxs, .luf ul li a, .adds .epxs')) || undefined,
     });
   });
-  // Child theme tự chế markup: gom link /<dir>/<slug>/ (không dùng cho trang tìm kiếm).
   if (!items.length && harvestDir) {
     items = harvestMangaLinks($, base, harvestDir);
   }
@@ -95,7 +89,6 @@ function parseListing($: CheerioAPI, base: string, scope?: string, harvestDir?: 
 
 function readerImages(html: string): string[] {
   const scripts = [html];
-  // Một số site nhúng script dạng data:text/javascript;base64,...
   for (const found of html.matchAll(/src="data:text\/javascript;base64,([^"]+)"/g)) {
     scripts.push(decodeBase64(found[1]));
   }
@@ -111,7 +104,6 @@ function readerImages(html: string): string[] {
         return source.images;
       }
     } catch {
-      // Thử script khác.
     }
   }
   return [];
@@ -164,9 +156,7 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
   return uniqBy(chapters, ch => ch.url);
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Trang danh sách / thể loại / tìm kiếm. */
 async function loadList(site: SourceConfig, url: string, params?: ListParams): Promise<ListPage> {
   const $ = parseHtml(await getText(url));
   const isSearch = params?.method === 'search' || getQueryParam(url, 's') !== undefined;
@@ -188,7 +178,6 @@ async function loadGenres(site: SourceConfig): Promise<Genre[]> {
 async function loadDetail(site: SourceConfig, url: string): Promise<MangaDetail> {
   const $ = parseHtml(await getText(url));
   const base = site.baseUrl;
-  // Trang có thể chứa cả .mgen lẫn .seriestugenre → khử trùng.
   const genres = uniqBy(
     $('.mgen a, .seriestugenre a, .wd-full .mgen a')
       .toArray()
@@ -220,7 +209,6 @@ async function loadDetail(site: SourceConfig, url: string): Promise<MangaDetail>
     status: statusOf($),
     authors: authorsOf($),
     genres,
-    // Theme chấm thang 10, app dùng thang 5.
     rating: Number.isFinite(rating) ? Math.round(rating * 10) / 20 : undefined,
     chapters: parseChapters($, base),
     similar: parseListing($, base, '.bixbox')
@@ -236,7 +224,6 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
   let pages = readerImages(html);
   if (!pages.length) {
     const $reader = $('#readerarea');
-    // Một số site để ảnh trong <noscript> để chống bot.
     const noscript = $reader.find('noscript').text();
     const $scope: Cheerio<AnyNode> = noscript ? parseHtml(noscript).root() : $reader;
     pages = $scope
@@ -261,14 +248,12 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
 
 async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: string): Promise<string | undefined> {
   const $ = parseHtml(html ?? (await getText(chapterUrl)));
-  // Link "All chapters are in …" ngay dưới tiêu đề chương.
   const href =
     $('.allc a, .headpost .allc a').first().attr('href') ||
     $('.breadcrumb li:nth-child(2) a, ol[itemtype*="BreadcrumbList"] li:nth-child(2) a').first().attr('href');
   return href ? resolveUrl(href, site.baseUrl) : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
 export function getURL({ site, params }: GetURLInput): string {
   switch (params.method) {
@@ -277,8 +262,6 @@ export function getURL({ site, params }: GetURLInput): string {
     case 'search':
       return withQuery(`${site.baseUrl}/${pagePath(params.page)}`, { s: params.query });
     case 'genre':
-      // Bộ lọc dùng id số của checkbox; thể loại lấy từ trang truyện chỉ có
-      // slug trong link /genres/<slug>/ nên đi theo trang thể loại.
       return /^\d+$/.test(params.genre.id)
         ? withQuery(`${site.baseUrl}/${dirOf(site)}/`, {
             page: params.page,
@@ -341,7 +324,6 @@ export function match({ site, url, html }: MatchInput): UrlKind | null {
       return 'list';
     }
   }
-  // Không có HTML: đoán theo slug chương thường gặp.
   return /(chapter|chap|ch|episode|ep|capitulo|bolum|chuong)[-_]?\d/i.test(segments[segments.length - 1])
     ? 'chapter'
     : null;

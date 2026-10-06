@@ -16,7 +16,6 @@ import {
 } from './HomeWidgets';
 import type { TourRegister } from './Tour';
 
-/** Trang chủ của trình duyệt: logo, ô tìm kiếm + các widget theo "Tuỳ chỉnh trang chủ". */
 export const HomePage = memo(function BrowserHome({
   incognito,
   onOpenUrl,

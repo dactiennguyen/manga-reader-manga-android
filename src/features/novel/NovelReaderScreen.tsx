@@ -61,15 +61,11 @@ type SheetName = 'chapters' | 'settings' | 'menu' | 'fonts' | 'help';
 
 const NO_PARAGRAPHS: string[] = [];
 const NO_CHAPTERS: Chapter[] = [];
-/** Chạm trên/dưới: cuộn ~85% màn, giữ lại vài dòng để không mất mạch. */
 const STEP_RATIO = 0.85;
 const MAX_SCROLL_RETRIES = 6;
-/** Còn chừng này đoạn là tải sẵn chương sau. */
 const PREFETCH_NEXT_WITHIN = 15;
 const VIEWABILITY = { itemVisiblePercentThreshold: 10 };
-/** Thả tay có quán tính mà không nhận được sự kiện kết thúc thì vẫn chạy lại tự cuộn. */
 const MOMENTUM_FALLBACK_MS = 1500;
-/** Chiều cao thanh địa chỉ + hàng tiêu đề, để tên chương không nằm dưới thanh khi mở. */
 const TOP_CHROME = 108;
 const HELP_TIPS = [
   'Chạm vùng giữa để hiện hoặc ẩn thanh điều khiển.',
@@ -104,7 +100,6 @@ const NovelParagraph = memo(function NovelParagraphView({
   );
 });
 
-/** Reader novel (NovelPage): đọc đoạn văn, đổi phông/cỡ/màu, đọc to bằng TTS. */
 export function NovelReaderScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'NovelReader'>>();
   const navigation = useNavigation<NovelNavigation>();
@@ -152,14 +147,12 @@ export function NovelReaderScreen() {
   const bookmarkTarget = useBookmarkTarget(key, src, mangaUrl, detail, mangaTitle, cover);
   const chapterName = current?.name ?? content?.title ?? 'Chương đang đọc';
 
-  // Chương dạng ảnh → chuyển sang reader manga.
   useEffect(() => {
     if (content?.kind === 'images') {
       navigation.replace('Reader', { sourceId, mangaUrl, chapterUrl });
     }
   }, [content, navigation, sourceId, mangaUrl, chapterUrl]);
 
-  /** Đoạn mở đầu: theo tham số, hoặc đoạn đọc dở nếu mở lại đúng chương đó. */
   const startParagraph = useMemo(() => {
     if (content?.kind !== 'text') {
       return 0;
@@ -202,19 +195,16 @@ export function NovelReaderScreen() {
     footer: 0,
     firstVisible: 0,
     atEnd: false,
-    /** Đã nhảy tới đoạn mở đầu — trước đó không ghi vị trí để khỏi đè tiến độ cũ. */
     positioned: true,
     failed: false,
     retries: 0,
     timer: null as ReturnType<typeof setTimeout> | null,
   });
-  /** TTS đọc hết chương và đang chờ chương sau tải xong để đọc tiếp. */
   const ttsContinue = useRef(false);
 
   const live = useRef({ paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll, autoScrolling });
   live.current = { paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll, autoScrolling };
 
-  // ─── Đọc to ──────────────────────────────────────────────────────────────
 
   const handleTtsChapterEnd = useCallback(() => {
     const upcoming = live.current.next;
@@ -255,7 +245,6 @@ export function NovelReaderScreen() {
     }
   }, [focused, ttsStop]);
 
-  // ─── Cuộn & vị trí ───────────────────────────────────────────────────────
 
   const scrollToParagraph = useCallback((index: number, animated: boolean, viewPosition = 0) => {
     const s = scroll.current;
@@ -266,7 +255,6 @@ export function NovelReaderScreen() {
     }
   }, []);
 
-  // Đoạn chưa render nên chưa biết vị trí: nhảy theo chiều cao trung bình rồi thử lại.
   const onScrollToIndexFailed = useCallback(
     (info: { index: number; averageItemLength: number }) => {
       const s = scroll.current;
@@ -308,7 +296,6 @@ export function NovelReaderScreen() {
     s.footer = 0;
   }, [chapterUrl, positionStore]);
 
-  // Mở lại đúng đoạn đang đọc dở.
   useEffect(() => {
     if (!ready) {
       return;
@@ -324,7 +311,6 @@ export function NovelReaderScreen() {
     return () => cancelAnimationFrame(frame);
   }, [ready, chapterUrl, startParagraph, scrollToParagraph]);
 
-  // Đọc to: tô sáng và cuộn theo đoạn đang đọc.
   useEffect(() => {
     if (tts.index !== null && ready) {
       scroll.current.retries = 0;
@@ -386,7 +372,6 @@ export function NovelReaderScreen() {
     scroll.current.footer = event.nativeEvent.layout.height;
   }, []);
 
-  // Kéo tay thì tạm dừng tự cuộn, thả ra (hết quán tính) thì chạy tiếp từ vị trí mới.
   const clearMomentumTimer = useCallback(() => {
     if (momentumTimer.current) {
       clearTimeout(momentumTimer.current);
@@ -468,7 +453,6 @@ export function NovelReaderScreen() {
     [session, positionStore],
   );
 
-  // ─── Điều hướng ──────────────────────────────────────────────────────────
 
   const openChapter = useCallback(
     (chapter: Chapter) => {
@@ -518,7 +502,6 @@ export function NovelReaderScreen() {
     const max = Math.max(0, s.content - s.viewport);
     const offset = Math.min(max, Math.max(0, s.offset + (action === 'next' ? 1 : -1) * s.viewport * STEP_RATIO));
     if (l.autoScrolling) {
-      // Đang tự cuộn: nhảy thẳng để vòng tự cuộn chạy tiếp từ vị trí mới.
       autoMetrics.current.offset = offset;
       autoMetrics.current.resync = true;
       listRef.current?.scrollToOffset({ offset, animated: false });
@@ -586,7 +569,6 @@ export function NovelReaderScreen() {
     ],
   );
 
-  // ─── Hiển thị ────────────────────────────────────────────────────────────
 
   const ttsIndex = tts.index;
   const renderItem = useCallback(
@@ -701,7 +683,6 @@ export function NovelReaderScreen() {
     <View style={[styles.fill, { backgroundColor: palette.bg }]}>
       {focused && (
         <StatusBar
-          // Khi hiện thanh, thanh trạng thái nằm trên thanh địa chỉ (vàng ở theme sáng).
           barStyle={showChrome ? (dark || incognito ? 'light-content' : 'dark-content') : palette.statusBar}
           hidden={hideStatusBar || (reader.immersive && !chromeVisible)}
           showHideTransition="fade"

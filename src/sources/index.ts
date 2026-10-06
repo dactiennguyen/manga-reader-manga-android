@@ -4,7 +4,6 @@ import type { ContentType, Engine, EngineId } from './types';
 
 export * from './types';
 
-/** Thông tin addon để hiển thị, không cần nạp code. */
 export type EngineSummary = {
   id: EngineId;
   label: string;
@@ -14,7 +13,6 @@ export type EngineSummary = {
   allowCustomSites: boolean;
 };
 
-/** Theme chung (Madara, Themesia) dò sau cùng vì dấu hiệu của chúng rộng hơn. */
 const GENERIC_THEMES = new Set(['madara', 'themesia']);
 
 let summaries: { revision: number; list: EngineSummary[] } | null = null;
@@ -37,13 +35,11 @@ export function engineSummaries(): EngineSummary[] {
   return list;
 }
 
-/** Như engineSummaries, dựng lại khi cài/gỡ bản cập nhật addon. */
 export function useEngineSummaries(): EngineSummary[] {
   useAddonRevision(state => state.revision);
   return engineSummaries();
 }
 
-/** Engine thay cho addon không còn (site đã lưu của addon bị gỡ). */
 function missingEngine(id: EngineId): Engine {
   const fail = (): never => {
     throw new Error(`Addon "${id}" chưa được cài.`);
@@ -75,7 +71,6 @@ export function hasEngine(id: EngineId): boolean {
   return addonInfos().some(info => info.uid === id);
 }
 
-/** Đoán theme từ HTML trang chủ khi người dùng thêm site. */
 export function detectEngine(html: string): EngineId | null {
   for (const summary of engineSummaries()) {
     if (summary.allowCustomSites && getEngine(summary.id).detect?.(html)) {
@@ -85,12 +80,10 @@ export function detectEngine(html: string): EngineId | null {
   return null;
 }
 
-/** Khoá ổn định cho một truyện, dùng cho bookmark, tiến độ, lịch sử, tải xuống. */
 export function mangaKey(sourceId: string, url: string): string {
   return `${sourceId}|${urlIdentity(url)}`;
 }
 
-/** 15 ngôn ngữ site, giống bộ lọc supportedSiteLanguages của app gốc. */
 export const SITE_LANGUAGES: { code: string; name: string }[] = [
   { code: 'en', name: 'English' },
   { code: 'vi', name: 'Tiếng Việt' },

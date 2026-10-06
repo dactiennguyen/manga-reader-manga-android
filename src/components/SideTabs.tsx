@@ -4,11 +4,6 @@ import { space, useTheme } from '../theme';
 
 type Option<T> = { value: T; label: string };
 
-/**
- * Danh mục dọc bên trái trên màn rộng (tablet), thay cho nút thả xuống trên
- * app bar — như màn Downloads của app gốc: bấm mục bên trái, nội dung của mục
- * hiện ở bên phải.
- */
 export function SideTabs<T extends string>({
   value,
   options,

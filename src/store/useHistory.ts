@@ -4,7 +4,6 @@ import { persist } from 'zustand/middleware';
 import { persistStorage } from '../lib/storage';
 import type { ContentType } from '../sources/types';
 
-/** Lịch sử đọc: mỗi truyện một dòng, giữ chương đọc gần nhất (DBHistory). */
 export type ReadingEntry = {
   key: string;
   sourceId: string;
@@ -30,9 +29,7 @@ const MAX_SEARCHES = 20;
 type HistoryState = {
   reading: ReadingEntry[];
   web: WebEntry[];
-  /** "Recent Searches" khi tìm truyện. */
   searches: string[];
-  /** Từ khoá đã gõ ở thanh địa chỉ. */
   webSearches: string[];
   addReading: (entry: Omit<ReadingEntry, 'at'>) => void;
   removeReading: (keys: string[]) => void;
@@ -66,7 +63,6 @@ export const useHistory = create<HistoryState>()(
       addWeb: entry =>
         set(state => {
           const latest = state.web[0];
-          // Bỏ bản ghi trùng liên tiếp (reload, redirect cùng trang).
           if (latest && latest.url === entry.url) {
             return { web: [{ ...latest, title: entry.title || latest.title, at: Date.now() }, ...state.web.slice(1)] };
           }

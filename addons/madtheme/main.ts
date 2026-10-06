@@ -38,20 +38,6 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * Theme "MadTheme" của họ MangaBuddy (mangabuddy, kaliscan, mgjinx, toonily.me,
- * mangaforest…). Hai đời URL:
- *
- * - MangaBuddy: truyện /<slug>, chương /<slug>/chapter-12. Danh sách chương
- *   đầy đủ có sẵn trong trang; ảnh nằm trong biến `var chapImages = '…'`
- *   (2 ảnh đầu có trong HTML, phần còn lại do JS nạp dần).
- * - KaliScan/MgJinx: truyện /manga/<id>-<slug>. Trang chỉ có vài chục chương,
- *   phần còn lại lấy qua /service/backend/chaplist/?manga_id=<id>; ảnh lấy qua
- *   /service/backend/chapterServer/?server_id=1&chapter_id=<id>.
- *
- * Mọi đời đều có trang /search nhận q, sort, status, page và bộ lọc thể loại
- * (genre[] hoặc include[]) nên danh sách, tìm kiếm và thể loại đều đi qua đó.
- */
 
 const SORT: Record<ListSort, string> = {
   latest: 'updated_at',
@@ -63,7 +49,6 @@ const SORT: Record<ListSort, string> = {
 
 const NSFW_GENRES = /adult|mature|smut|hentai|ecchi|18\+|erotic|pornographic/i;
 
-/** Đoạn path đầu không phải trang truyện. */
 const RESERVED = new Set([
   'search',
   'genres',
@@ -89,7 +74,6 @@ const RESERVED = new Set([
   'terms-of-service',
 ]);
 
-/** Trang danh sách (không cần HTML để nhận ra). */
 const LIST_DIRS = new Set([
   'search',
   'genres',
@@ -106,14 +90,12 @@ const LIST_DIRS = new Set([
   'authors',
 ]);
 
-/** Tên tham số lọc thể loại của từng site (genre[] hoặc include[]), học từ trang /search. */
 const genreKeys = new Map<string, string>();
 
 function searchUrl(src: SourceConfig, params: Record<string, string | number | undefined>): string {
   return withQuery(`${src.baseUrl}/search`, params);
 }
 
-/** Số trang của link phân trang: ?page=3 hoặc chữ "3". */
 function pageOf(href: string | undefined, text: string): number | undefined {
   const fromQuery = Number(getQueryParam(href ?? '', 'page'));
   if (Number.isFinite(fromQuery) && fromQuery > 0) {
@@ -164,14 +146,12 @@ function parseListing($: CheerioAPI, base: string, page: number): ListPage {
   return { items: uniqBy(items, item => item.url), hasNext: hasNextPage($, page) };
 }
 
-/** Id thể loại từ link /genres/<slug>/. */
 function genreSlug(href: string | undefined): string {
   const segments = pathSegments(href ?? '');
   const idx = segments.indexOf('genres');
   return idx >= 0 ? segments[idx + 1] ?? '' : '';
 }
 
-/** Tên trong ô thông tin: bỏ dấu phẩy ngăn cách site để dính vào chữ. */
 function itemName(text: string): string {
   return cleanText(text).replace(/^[,\s]+|[,\s]+$/g, '');
 }
@@ -208,8 +188,6 @@ function ratingOf($: CheerioAPI): number | undefined {
 
 function descriptionOf($: CheerioAPI): string | undefined {
   const $summary = $('.summary').first();
-  // KaliScan để <p class="content"> rỗng rồi đặt nội dung ở các <p> ngay sau;
-  // đoạn "You are reading … at <site>" đứng trước là câu quảng cáo của site.
   const paragraphs = $summary
     .find('.content, .content ~ p')
     .toArray()
@@ -243,7 +221,6 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
         const $a = $el.find('a').first();
         const name = textOf($el.find('.chapter-title')) || cleanText($a.attr('title')) || cleanText($a.text());
         const date = textOf($el.find('.chapter-update, time')) || undefined;
-        // Có site để href "//" thừa: /slug//chapter-1.
         const href = ($a.attr('href') ?? '').replace(/([^:/])\/{2,}/g, '$1/');
         return {
           url: resolveUrl(href, base),
@@ -253,7 +230,6 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
           number: parseChapterNumber(name),
         };
       })
-      // Mẫu chưa điền của site ("Chapter {{number}}").
       .filter(ch => ch.url && ch.name && !ch.name.includes('{{')),
     ch => ch.url,
   );
@@ -264,7 +240,6 @@ function scriptVar(html: string, name: string): string | undefined {
   return found ? found[1] ?? found[2] ?? found[3] : undefined;
 }
 
-/** Chương còn thiếu (trang chỉ hiện một phần, nút "SHOW MORE" gọi API). */
 async function moreChapters(src: SourceConfig, url: string, html: string, title: string): Promise<Chapter[]> {
   const bookId = scriptVar(html, 'bookId');
   const bookSlug = scriptVar(html, 'bookSlug');
@@ -287,7 +262,6 @@ async function moreChapters(src: SourceConfig, url: string, html: string, title:
         return chapters;
       }
     } catch {
-      // Thử endpoint khác.
     }
   }
   return [];
@@ -297,13 +271,11 @@ function mergeChapters(inline: Chapter[], api: Chapter[]): Chapter[] {
   if (!api.length) {
     return inline;
   }
-  // Chương mới hơn API (nếu có) đứng đầu trang, phần sau trùng với API.
   const inApi = new Set(api.map(ch => ch.url));
   const cut = inline.findIndex(ch => inApi.has(ch.url));
   return uniqBy([...inline.slice(0, cut < 0 ? inline.length : cut), ...api], ch => ch.url);
 }
 
-/** Toàn bộ chương của trang truyện: trong trang, cộng phần còn thiếu lấy qua API. */
 async function fetchChapters(
   src: SourceConfig,
   url: string,
@@ -322,7 +294,6 @@ function isAbsolute(url: string): boolean {
   return /^(https?:)?\/\//i.test(url);
 }
 
-/** Ảnh trong biến JS; mainServer là host ảnh khi đường dẫn là tương đối. */
 function scriptImages(html: string, base: string): string[] {
   const list = scriptVar(html, 'chapImages');
   if (!list) {
@@ -349,13 +320,10 @@ function htmlImages($: CheerioAPI, base: string): string[] {
 function pagesOf(html: string, base: string): string[] {
   const fromHtml = uniqBy(htmlImages(parseHtml(html), base), u => u);
   const fromScript = uniqBy(scriptImages(html, base), u => u);
-  // Site chỉ đặt vài ảnh đầu trong HTML, phần còn lại nằm trong chapImages.
   return fromScript.length >= fromHtml.length ? fromScript : fromHtml;
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Trang /search (danh sách, tìm kiếm, thể loại). */
 async function loadList(site: SourceConfig, url: string, params?: ListParams): Promise<ListPage> {
   const page = params?.page ?? (Number(getQueryParam(url, 'page')) || 1);
   return parseListing(parseHtml(await getText(url)), site.baseUrl, page);
@@ -374,7 +342,6 @@ async function loadGenres(site: SourceConfig): Promise<Genre[]> {
       return { id: $input.attr('value') ?? '', name: textOf($(el).find('.radio__label, label')) };
     });
   if (!genres.length) {
-    // Không có bộ lọc: lấy từ menu GENRES (/genres/<slug>).
     genres = $('a[href*="/genres/"]')
       .toArray()
       .map(el => ({ id: genreSlug($(el).attr('href')), name: itemName($(el).text()) }));
@@ -402,7 +369,6 @@ async function loadDetail(site: SourceConfig, url: string): Promise<MangaDetail>
   );
 
   const altText = textOf($('.detail .name h2, .book-info h2'));
-  // MangaBuddy ngăn tên khác bằng " ; ", KaliScan bằng dấu phẩy.
   const altTitles = altText
     ? uniqBy(
         altText
@@ -436,7 +402,6 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
   let pages = pagesOf(html, base);
 
   if (!pages.length) {
-    // KaliScan: trang chương rỗng, ảnh lấy theo id chương từ server ảnh.
     const chapterId = scriptVar(html, 'chapterId');
     if (chapterId) {
       const server = await getText(
@@ -462,7 +427,6 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
 }
 
 async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: string): Promise<string | undefined> {
-  // Bỏ đoạn cuối: /<slug>/chapter-1 → /<slug>, /manga/<id>-<slug>/chapter-1 → /manga/<id>-<slug>.
   const segments = pathSegments(chapterUrl);
   const first = segments[0]?.toLowerCase() ?? '';
   if (segments.length >= (first === 'manga' ? 3 : 2) && !RESERVED.has(first)) {
@@ -473,7 +437,6 @@ async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: st
   return href ? resolveUrl(href, site.baseUrl) : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
 export function getURL({ site, params }: GetURLInput): string {
   switch (params.method) {
@@ -483,8 +446,6 @@ export function getURL({ site, params }: GetURLInput): string {
       return searchUrl(site, { q: params.query, page: params.page });
     case 'genre': {
       const key = genreKeys.get(site.baseUrl);
-      // Chưa biết site dùng genre[] (MangaBuddy) hay include[] (KaliScan): gửi cả hai,
-      // site bỏ qua tham số lạ.
       const id = params.genre.id;
       const filter = key ? { [key]: id } : { 'genre[]': id, 'include[]': id };
       return searchUrl(site, { ...filter, status: 'all', sort: SORT[params.sort], q: '', page: params.page });
@@ -537,11 +498,9 @@ export function match({ url, html }: MatchInput): UrlKind | null {
     return 'list';
   }
   if (first === 'manga') {
-    // KaliScan: /manga/<id>-<slug>[/chapter-…]; /manga trơn là trang danh sách.
     return segments.length === 1 ? 'list' : segments.length === 2 ? 'detail' : 'chapter';
   }
   if (!RESERVED.has(first) && segments.length <= 2) {
-    // MangaBuddy: /<slug> và /<slug>/<chương>.
     if (html) {
       if (/\bchapterId\s*=\s*\d+|id="chapter-images"/.test(html)) {
         return 'chapter';
@@ -562,6 +521,5 @@ export function detect(html: string): boolean {
 }
 
 export function imageHeaders(site: SourceConfig): Record<string, string> {
-  // CDN ảnh (mbcdn, 1stmangago…) chặn khi thiếu Referer của site.
   return refererHeaders(site);
 }

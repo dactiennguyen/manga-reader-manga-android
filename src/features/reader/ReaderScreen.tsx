@@ -53,10 +53,8 @@ type SheetName = 'chapters' | 'settings' | 'menu' | 'modes' | 'help';
 
 const NO_PAGES: Page[] = [];
 const NO_CHAPTERS: Chapter[] = [];
-/** Còn chừng này trang là tải sẵn nội dung chương sau (chỉ danh sách trang). */
 const PREFETCH_NEXT_WITHIN = 3;
 
-/** Reader manga: 4 chế độ xem, chạm để cuộn, tự cuộn, chọn chương, ghi tiến độ. */
 export function ReaderScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Reader'>>();
   const navigation = useNavigation<ReaderNavigation>();
@@ -104,14 +102,12 @@ export function ReaderScreen() {
   const vertical = prefs.viewMode === 'vertical';
   const rtlAxis = prefs.direction === 'rtl' && (prefs.viewMode === 'horizontal' || prefs.viewMode === 'double');
 
-  // Chương dạng chữ → chuyển sang reader novel.
   useEffect(() => {
     if (content?.kind === 'text') {
       navigation.replace('NovelReader', { sourceId, mangaUrl, chapterUrl });
     }
   }, [content, navigation, sourceId, mangaUrl, chapterUrl]);
 
-  /** Trang mở đầu: theo tham số, hoặc trang đọc dở nếu mở lại đúng chương đó. */
   const startPage = useMemo(() => {
     if (content?.kind !== 'images') {
       return 0;
@@ -141,10 +137,8 @@ export function ReaderScreen() {
   const [playing, setPlaying] = useState(false);
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
   const viewerRef = useRef<ViewerHandle>(null);
-  /** Chương mà pageStore đang phản ánh — đổi chế độ xem thì giữ trang, đổi chương thì không. */
   const pageOwner = useRef('');
 
-  // Giá trị mới nhất cho các callback ổn định (không làm viewer render lại).
   const live = useRef({
     chapterUrl,
     startPage,
@@ -187,7 +181,6 @@ export function ReaderScreen() {
     setPageMenu(null);
   }, [chapterUrl]);
 
-  // "Tự cuộn" bật trong cài đặt → chạy ngay khi mở chương ở chế độ dọc.
   useEffect(() => {
     setPlaying(ready && vertical && settings.autoScroll);
   }, [ready, vertical, settings.autoScroll, chapterUrl]);
@@ -274,7 +267,6 @@ export function ReaderScreen() {
       }
       setChromeVisible(false);
       const moved = viewerRef.current?.step(action === 'next' ? 1 : -1);
-      // Chạm tiến khi đã ở cuối chương → sang chương sau.
       if (moved === false && action === 'next' && l.next) {
         openChapter(l.next);
       }
@@ -282,7 +274,6 @@ export function ReaderScreen() {
     [openChapter],
   );
 
-  // Ảnh bị chặn chống bot: xác minh trang chương rồi thử lại các ảnh lỗi khi quay về.
   const verify = useVerify();
   const verifying = useRef(false);
   const verifyChapter = useCallback(() => {
@@ -457,7 +448,6 @@ export function ReaderScreen() {
     <View style={styles.root}>
       {focused && (
         <StatusBar
-          // Thanh địa chỉ vàng của theme sáng nằm dưới thanh trạng thái → chữ tối.
           barStyle={showChrome && !dark && !incognito ? 'dark-content' : 'light-content'}
           hidden={hideStatusBar || (settings.immersive && !chromeVisible)}
           showHideTransition="fade"

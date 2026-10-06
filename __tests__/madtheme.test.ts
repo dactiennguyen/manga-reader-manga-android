@@ -147,7 +147,6 @@ describe('madtheme engine', () => {
     await madtheme.byGenre(kali, genres[0], 'latest', 2);
     expect(calls[1].url).toBe('https://kali.test/search?include%5B%5D=action&status=all&sort=updated_at&page=2');
 
-    // Chưa biết tham số của site: gửi cả genre[] lẫn include[].
     await madtheme.byGenre(src, { id: 'action', name: 'Action' }, 'popular', 1);
     expect(calls[2].url).toBe(
       'https://buddy.test/search?genre%5B%5D=action&include%5B%5D=action&status=all&sort=views&page=1',
@@ -261,7 +260,6 @@ describe('madtheme engine', () => {
     expect(madtheme.detect?.('<script>var bookSlug = "solo-hero";</script>')).toBe(true);
     expect(madtheme.detect?.('<div class="suggestions" id=\'header-autocomplete-list\'></div>')).toBe(true);
     expect(madtheme.detect?.('<ul class="genres__wrapper clearfix"></ul>')).toBe(true);
-    // Madara, Themesia, MangaBox.
     expect(madtheme.detect?.('<link href="/wp-content/themes/madara/style.css"><div class="page-item-detail">')).toBe(
       false,
     );

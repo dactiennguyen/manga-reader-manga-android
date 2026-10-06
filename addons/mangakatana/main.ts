@@ -42,32 +42,16 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * MangaKatana (mangakatana.com) — site PHP tự viết.
- *   /manga/page/<n>?filter=1&order=…&include=<slug>   danh sách + bộ lọc
- *   /page/<n>?search=…&search_by=m_name               tìm kiếm
- *   /manga/<slug>.<id>                                trang truyện (đủ chương)
- *   /manga/<slug>.<id>/c<số>                          chương
- * Ảnh chương nằm trong mảng JS ở script nội tuyến, có thêm mảng mồi nhử.
- */
 
-/** Site chỉ có 4 kiểu sắp xếp: latest, new, az, numc (số chương). */
 const ORDER: Partial<Record<ListSort, string>> = {
   latest: 'latest',
   new: 'new',
   az: 'az',
 };
 
-/** Thể loại 18+ bị loại khỏi danh sách khi người dùng chưa cho phép. */
 const NSFW_SLUGS = ['adult', 'erotica', 'loli', 'shota', 'sexual-violence'];
 const NSFW_GENRES = /adult|erotica|hentai|smut|loli|shota|sexual.violence/i;
 
-/**
- * Site giới hạn tần suất bằng cách trả 200 với body rỗng (rất nhanh, ~250ms)
- * thay vì 429 — tìm kiếm gần như luôn bị chặn nếu cách lần trước dưới ~4 giây,
- * các trang khác thỉnh thoảng bị khi máy chủ tải nặng. Chờ lùi dần rồi thử lại
- * cho tới khi vượt cửa sổ đó.
- */
 const RETRY_DELAYS = [1500, 3000, 4000];
 
 async function load(url: string, options?: RequestOptions): Promise<{ url: string; text: string }> {
@@ -121,7 +105,6 @@ function parseListing(html: string, base: string): ListPage {
   return { items, hasNext: $('.uk-pagination a.next').length > 0 };
 }
 
-/** Danh sách theo bộ lọc; trang vượt quá trang cuối trả 404. */
 async function fetchListing(url: string, page: number): Promise<ListPage> {
   try {
     const { text, url: finalUrl } = await load(url);
@@ -138,21 +121,18 @@ function filterUrl(src: SourceConfig, sort: ListSort, page: number, include?: st
   return withQuery(`${src.baseUrl}/manga/page/${Math.max(page, 1)}`, {
     filter: 1,
     include,
-    // Bỏ truyện chưa có chương nào.
     chapters: 1,
     order: ORDER[sort] ?? 'latest',
     exclude: excludeParam(include),
   });
 }
 
-/** Số trang trong "/manga/page/<n>", "/page/<n>"…; không có là trang 1. */
 function pageOf(url: string): number {
   const segments = pathSegments(url);
   const index = segments.indexOf('page');
   return (index >= 0 && Number(segments[index + 1])) || 1;
 }
 
-/** "/manga/<slug>.<id>/c12" → "/manga/<slug>.<id>" — không cần tải trang. */
 function mangaUrlOf(src: SourceConfig, chapterUrl: string): string | undefined {
   const segments = pathSegments(chapterUrl);
   if (segments[0] === 'manga' && segments.length >= 3 && /\.\d+$/.test(segments[1])) {
@@ -194,12 +174,6 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
   );
 }
 
-/**
- * Lấy mảng URL ảnh trong script. Trang có nhiều `var x=[…]`: một mảng thật và
- * một mảng mồi nhử (thường chỉ 1 ảnh). Mảng thật là mảng được gán vào
- * `data-src` của ảnh trong vòng lặp; nếu không tìm được thì chọn mảng có số
- * phần tử khớp số trang, cuối cùng là mảng dài nhất.
- */
 function pageUrls(html: string, expected: number): string[] {
   const arrays = new Map<string, string[]>();
   const declaration = /var\s+(\w+)\s*=\s*\[([^\]]*)\]/g;
@@ -229,9 +203,7 @@ function pageUrls(html: string, expected: number): string[] {
   );
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Site không có sắp xếp theo lượt xem; "phổ biến" là khối "Hot Manga" ở trang chủ (một trang). */
 async function loadHot(site: SourceConfig, page: number): Promise<ListPage> {
   if (page > 1) {
     return { items: [], hasNext: false };
@@ -246,14 +218,12 @@ async function loadSearch(site: SourceConfig, url: string): Promise<ListPage> {
   try {
     res = await load(url);
   } catch (error) {
-    // Không có kết quả: site trả 404.
     if (error instanceof HttpError && error.status === 404) {
       return { items: [], hasNext: false };
     }
     throw error;
   }
   const $ = parseHtml(res.text);
-  // Chỉ có một kết quả: site chuyển thẳng tới trang truyện.
   if ($('#single_book').length) {
     const item = detailItem($, res.url, site.baseUrl);
     return { items: item.title ? [item] : [], hasNext: false };
@@ -261,7 +231,6 @@ async function loadSearch(site: SourceConfig, url: string): Promise<ListPage> {
   return parseListing(res.text, site.baseUrl);
 }
 
-/** Có tham số search → tìm kiếm, trang chủ → Hot Manga, còn lại là danh sách theo bộ lọc. */
 async function loadList(site: SourceConfig, url: string, params?: ListParams): Promise<ListPage> {
   const page = params?.page ?? pageOf(url);
   if (getQueryParam(url, 'search') !== undefined) {
@@ -369,12 +338,10 @@ async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: st
   return href ? resolveUrl(href, site.baseUrl) : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
 export function getURL({ site, params }: GetURLInput): string {
   switch (params.method) {
     case 'list':
-      // "Phổ biến" là khối Hot Manga ở trang chủ.
       return params.sort === 'popular' ? `${site.baseUrl}/` : filterUrl(site, params.sort, params.page);
     case 'search': {
       const text = params.query.trim();
@@ -384,7 +351,6 @@ export function getURL({ site, params }: GetURLInput): string {
       return withQuery(`${site.baseUrl}/page/${Math.max(params.page, 1)}`, { search: text, search_by: 'm_name' });
     }
     case 'genre':
-      // Không có "phổ biến" cho từng thể loại — dùng mới cập nhật.
       return filterUrl(site, params.sort === 'popular' ? 'latest' : params.sort, params.page, params.genre.id);
   }
 }
@@ -411,7 +377,6 @@ export async function get({ site, method, url, html }: GetInput): Promise<Widget
     case 'genre':
       return { widget: 'genre', genres: await loadGenres(site) };
     case 'chapter': {
-      // Trang truyện có đủ mọi chương.
       const $ = parseHtml(html ?? (await load(url ?? '')).text);
       return { widget: 'chapter', chapters: parseChapters($, site.baseUrl) };
     }

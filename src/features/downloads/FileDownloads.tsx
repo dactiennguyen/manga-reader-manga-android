@@ -13,14 +13,12 @@ import { removeFileDownloads, retryFileDownload } from './fileDownloader';
 
 const KIND_ICON: Record<FileKind, typeof File> = { image: ImageIcon, video: Film, audio: Music, file: File };
 
-/** Mở ứng dụng Tải xuống của máy — nơi xem/chia sẻ video và tệp đã tải. */
 function openSystemDownloads() {
   Linking.sendIntent('android.intent.action.VIEW_DOWNLOADS').catch(() =>
     toast('Mở ứng dụng Files/Tải xuống của máy để xem tệp trong thư mục Download'),
   );
 }
 
-/** "Files & Media": ảnh, video, tệp tải từ trình duyệt. */
 export function FileDownloads() {
   const { c } = useTheme();
   const files = useFiles(s => s.files);

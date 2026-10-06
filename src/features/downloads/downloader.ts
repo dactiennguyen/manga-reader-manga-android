@@ -17,11 +17,6 @@ import type { ChapterContent } from '../../sources/types';
 import { downloadId, useDownloads, type DownloadTask } from '../../store/useDownloads';
 import { getSource } from '../../store/useSources';
 
-/**
- * Bộ tải chương chạy nền trong phiên app (chapterDownloader).
- * Tải lần lượt từng chương, mỗi chương 3 ảnh song song; tạm dừng thì huỷ
- * ảnh đang tải, tiếp tục thì bỏ qua ảnh đã có.
- */
 
 const ROOT = `${DocumentDirectoryPath}/downloads`;
 const PARALLEL_IMAGES = 3;
@@ -157,14 +152,12 @@ async function pump(): Promise<void> {
   }
 }
 
-/** Gọi một lần khi app khởi động. */
 export function startDownloader(): void {
   if (started) {
     return;
   }
   started = true;
   useDownloads.subscribe((state, previous) => {
-    // Huỷ ảnh đang tải của chương vừa bị tạm dừng/xoá.
     for (const [id, jobs] of activeJobs) {
       if (state.tasks[id]?.status !== 'downloading' && previous.tasks[id]) {
         jobs.forEach(jobId => stopDownload(jobId));
@@ -184,7 +177,6 @@ export async function deleteTaskFiles(task: Pick<DownloadTask, 'mangaKey' | 'id'
   }
 }
 
-/** Xoá task khỏi danh sách, tuỳ chọn xoá luôn file đã tải. */
 export async function removeDownloads(tasks: DownloadTask[], deleteFiles: boolean): Promise<void> {
   useDownloads.getState().remove(tasks.map(t => t.id));
   if (deleteFiles) {
@@ -192,7 +184,6 @@ export async function removeDownloads(tasks: DownloadTask[], deleteFiles: boolea
   }
 }
 
-/** Đọc chương đã tải; null nếu chưa tải xong. */
 export async function loadOfflineChapter(
   mangaKey: string,
   chapterUrl: string,

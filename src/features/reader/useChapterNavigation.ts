@@ -3,11 +3,6 @@ import { useMemo } from 'react';
 import type { Chapter } from '../../sources/types';
 import { findChapterIndex } from './useReaderData';
 
-/**
- * Chương liền kề theo hướng `step` (−1 = mới hơn/chương sau, +1 = cũ hơn/chương trước).
- * Truyện có nhiều nhóm dịch (viewerScanlator): bỏ qua bản dịch khác của cùng số
- * chương, và trong các bản của chương kế thì ưu tiên nhóm đang đọc.
- */
 function neighbor(chapters: readonly Chapter[], index: number, step: 1 | -1): Chapter | undefined {
   const current = chapters[index];
   const inRange = (i: number) => i >= 0 && i < chapters.length;
@@ -44,13 +39,10 @@ function neighbor(chapters: readonly Chapter[], index: number, step: 1 | -1): Ch
 export type ChapterNavigation = {
   index: number;
   current?: Chapter;
-  /** Chương cũ hơn. */
   prev?: Chapter;
-  /** Chương mới hơn (đọc tiếp). */
   next?: Chapter;
 };
 
-/** Danh sách chương mới nhất trước → chương sau nằm ở index nhỏ hơn. */
 export function useChapterNavigation(
   chapters: readonly Chapter[] | undefined,
   chapterUrl: string,

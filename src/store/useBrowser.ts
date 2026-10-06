@@ -6,16 +6,12 @@ import { persistStorage } from '../lib/storage';
 
 export type BrowserTab = {
   id: string;
-  /** URL đang hiển thị (cập nhật theo điều hướng trong WebView). */
   url: string;
   title: string;
   incognito: boolean;
   desktop: boolean;
-  /** Đang hiện trang chủ của app thay vì trang web. */
   showHome: boolean;
-  /** Lệnh tải URL do app phát ra; seq tăng để tải lại cùng URL. */
   request: { url: string; seq: number };
-  /** Tắt chặn quảng cáo riêng cho tab này. */
   adblockOff?: boolean;
   createdAt: number;
   lastActiveAt: number;
@@ -27,7 +23,6 @@ export type SavedPage = {
   id: string;
   title: string;
   url: string;
-  /** Đường dẫn file HTML trong thư mục app. */
   file: string;
   size: number;
   savedAt: number;
@@ -54,13 +49,10 @@ type BrowserState = {
   quickAccess: QuickAccessItem[];
   webBookmarks: WebBookmark[];
   savedPages: SavedPage[];
-  /** UA thật của WebView, dùng cho request của parser (cookie Cloudflare gắn UA). */
   userAgent?: string;
-  /** "Remember decision for this site" khi trang muốn mở app khác. */
   appLinkDecisions: Record<string, 'allow' | 'block'>;
 
   newTab: (url?: string, options?: OpenOptions) => string;
-  /** Mở URL trong tab hiện tại (hoặc tab mới nếu newTab). */
   openUrl: (url: string, options?: OpenOptions & { newTab?: boolean }) => void;
   closeTab: (id: string) => void;
   closeAllTabs: (incognito: boolean) => void;
@@ -78,7 +70,6 @@ type BrowserState = {
   updateWebBookmark: (id: string, patch: { title?: string; url?: string }) => void;
   removeWebBookmarks: (ids: string[]) => void;
 
-  /** Trả về id của trang vừa lưu. */
   addSavedPage: (page: Omit<SavedPage, 'id' | 'savedAt'>) => string;
   removeSavedPages: (ids: string[]) => void;
 
@@ -146,7 +137,6 @@ export const useBrowser = create<BrowserState>()(
           let tabs = state.tabs.filter(t => t.id !== id);
           let activeTabId = state.activeTabId;
           if (activeTabId === id) {
-            // Ưu tiên tab cùng loại (thường/ẩn danh) bên cạnh.
             const sameKind = tabs.filter(t => t.incognito === closing.incognito);
             const neighbor =
               sameKind[Math.min(index, sameKind.length - 1)] ?? tabs[tabs.length - 1];
@@ -245,7 +235,6 @@ export const useBrowser = create<BrowserState>()(
       name: 'browser',
       storage: persistStorage,
       version: 1,
-      // Tab ẩn danh không được ghi xuống máy.
       partialize: state => {
         const tabs = state.tabs.filter(t => !t.incognito);
         const activeTabId = tabs.some(t => t.id === state.activeTabId)

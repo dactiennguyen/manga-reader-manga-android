@@ -7,7 +7,6 @@ import type { Chapter, ContentType } from '../sources/types';
 
 export type DownloadStatus = 'queued' | 'downloading' | 'paused' | 'done' | 'error';
 
-/** Một chương trong hàng đợi tải (DBDownload). */
 export type DownloadTask = {
   id: string;
   mangaKey: string;
@@ -22,7 +21,6 @@ export type DownloadTask = {
   status: DownloadStatus;
   done: number;
   total: number;
-  /** Dung lượng đã ghi, byte. */
   bytes: number;
   error?: string;
   createdAt: number;
@@ -77,7 +75,6 @@ export const useDownloads = create<DownloadsState>()(
               done: 0,
               total: 0,
               bytes: 0,
-              // Giữ thứ tự chọn để tải lần lượt.
               createdAt: now + index,
             };
           });
@@ -124,7 +121,6 @@ export const useDownloads = create<DownloadsState>()(
       name: 'downloads',
       storage: persistStorage,
       version: 1,
-      // App bị tắt giữa chừng: đưa chương đang tải về hàng đợi.
       merge: (persisted, current) => {
         const saved = (persisted as Partial<DownloadsState> | undefined)?.tasks ?? {};
         const tasks: Record<string, DownloadTask> = {};

@@ -20,13 +20,6 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * MangaDex qua API công khai (api.mangadex.org) — không cần parse HTML.
- * Theo quy định của MangaDex: tự đặt User-Agent riêng, ghi rõ nhóm dịch.
- *
- * getURL trả về trang tìm kiếm trên web MangaDex (mở được trong trình duyệt);
- * dữ liệu vẫn lấy qua API theo cùng tham số.
- */
 
 const API = 'https://api.mangadex.org';
 const SITE = 'https://mangadex.org';
@@ -69,10 +62,8 @@ const ORDER: Record<ListSort, [string, 'asc' | 'desc']> = {
   az: ['title', 'asc'],
 };
 
-/** Thứ tự "liên quan nhất" của trang tìm kiếm. */
 const RELEVANCE = 'relevance.desc';
 
-/** Trang /titles/<tên> có sẵn của web MangaDex. */
 const TITLE_PAGES: Record<string, ListSort> = { latest: 'latest', recent: 'new' };
 
 const STATUS: Record<string, string> = {
@@ -116,18 +107,15 @@ function idFrom(url: string, kind: 'title' | 'chapter'): string {
   return found[1];
 }
 
-/** Giá trị `order` trên web MangaDex: "followedCount.desc". */
 function orderParam(sort: ListSort): string {
   return ORDER[sort].join('.');
 }
 
-/** Tham số sắp xếp của API: order[followedCount]=desc. */
 function orderQuery(sort: ListSort): Record<string, string> {
   const [field, dir] = ORDER[sort];
   return { [`order[${field}]`]: dir };
 }
 
-/** Đọc lại tham số từ URL web (khi `run` trên trang danh sách đang mở, không có params). */
 function paramsFromUrl(url: string): ListParams {
   const page = Math.max(1, Number(getQueryParam(url, 'page')) || 1);
   const order = getQueryParam(url, 'order');
@@ -140,7 +128,6 @@ function paramsFromUrl(url: string): ListParams {
     (Object.keys(ORDER) as ListSort[]).find(key => orderParam(key) === order) ??
     (segments[0] === 'titles' ? TITLE_PAGES[segments[1] ?? ''] : undefined) ??
     'latest';
-  // /titles?tag=<id> hoặc trang thể loại /tag/<id>/<slug>.
   const tag = getQueryParam(url, 'tag') || (segments[0] === 'tag' ? segments[1] : undefined);
   if (tag) {
     return { method: 'genre', genre: { id: tag, name: segments[2] ?? tag }, sort, page };
@@ -185,7 +172,6 @@ function chapterName(ch: ChapterData): string {
 
 async function fetchFeed(id: string, lang: string): Promise<Chapter[]> {
   const chapters: Chapter[] = [];
-  // Giới hạn 5 lượt × 500 chương để không treo với truyện rất dài.
   for (let offset = 0, round = 0; round < 5; round++, offset += 500) {
     const url = withQuery(`${API}/manga/${id}/feed`, {
       limit: 500,
@@ -224,7 +210,6 @@ async function fetchFeed(id: string, lang: string): Promise<Chapter[]> {
   return chapters;
 }
 
-/** Bỏ cú pháp markdown/BBCode phổ biến trong mô tả của MangaDex. */
 function plainDescription(text: string): string {
   return text
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '$1')
@@ -233,9 +218,7 @@ function plainDescription(text: string): string {
     .trim();
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Danh sách / tìm kiếm / thể loại: gọi API theo params (không có thì đọc từ URL web). */
 function loadList(site: SourceConfig, url: string, params?: ListParams): Promise<ListPage> {
   const p = params ?? paramsFromUrl(url);
   switch (p.method) {
@@ -322,7 +305,6 @@ async function resolveMangaUrl(chapterUrl: string): Promise<string | undefined> 
   return manga ? `${SITE}/title/${manga.id}` : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
 export function getURL({ params }: GetURLInput): string {
   const page = params.page > 1 ? params.page : undefined;
@@ -374,7 +356,6 @@ export function match({ url }: MatchInput): UrlKind | null {
   return 'list';
 }
 
-/** Ảnh lấy từ máy chủ MangaDex@Home, không cần Referer. */
 export function imageHeaders(): Record<string, string> {
   return {};
 }

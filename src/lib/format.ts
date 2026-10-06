@@ -1,4 +1,3 @@
-/** 1536 → "1,5 KB". Dùng dấu phẩy thập phân kiểu Việt. */
 export function formatBytes(bytes: number): string {
   if (!bytes || bytes < 0) {
     return '0 B';
@@ -14,7 +13,6 @@ export function formatBytes(bytes: number): string {
   return `${value.toFixed(digits).replace('.', ',')} ${units[unit]}`;
 }
 
-/** 12345 → "12.345" (phân cách hàng nghìn kiểu Việt, không phụ thuộc Intl của Hermes). */
 export function formatCount(value: number): string {
   const n = Math.round(value);
   const sign = n < 0 ? '-' : '';

@@ -8,10 +8,6 @@ import { getSource } from '../../store/useSources';
 import { useRequestToken } from '../catalog/useRequestToken';
 import { syncBookmarkWithDetail } from '../library/updates';
 
-/**
- * Chi tiết truyện: hiện ngay bản cache (nếu có) rồi tải bản mới. Lỗi khi đã
- * có dữ liệu thì chỉ báo toast; chưa có gì thì trả lỗi để hiện màn lỗi.
- */
 export function useMangaDetail(sourceId: string, url: string, key: string, enabled: boolean) {
   const [detail, setDetail] = useState<MangaDetail | undefined>(() => getCachedDetail(key));
   const [error, setError] = useState<unknown>();
@@ -45,7 +41,6 @@ export function useMangaDetail(sourceId: string, url: string, key: string, enabl
           setDetail(result);
           setLoading(false);
           setRefreshing(false);
-          // Đang xem trang chi tiết nên xoá luôn badge chương mới của bookmark.
           syncBookmarkWithDetail(key, result, { seen: true });
         },
         e => {

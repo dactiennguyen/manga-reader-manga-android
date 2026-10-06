@@ -71,10 +71,8 @@ type Props = {
   chapterName: string;
   palette: NovelPalette;
   themeId: NovelThemeId;
-  /** Đoạn đầu tiên đang thấy (tính từ 0). */
   positionStore: ValueStore<number>;
   paragraphCount: number;
-  /** Chương đã sẵn sàng — chưa thì ẩn panel đáy và thanh công cụ dọc. */
   ready: boolean;
   hasPrev: boolean;
   hasNext: boolean;
@@ -82,14 +80,12 @@ type Props = {
   autoScrolling: boolean;
   ttsState: TtsState;
   ttsIndex: number | null;
-  /** undefined: máy không hỗ trợ khoá xoay, ẩn nút. */
   orientationLock?: OrientationLock;
   actions: NovelChromeActions;
 };
 
 const SPEED_STEP = 5;
 
-/** Biểu tượng giãn dòng: cùng chiều cao, nhiều gạch hơn = dòng sít hơn. */
 function LinesGlyph({ count, color }: { count: number; color: string }) {
   return (
     <View style={styles.glyph}>
@@ -134,7 +130,6 @@ function OutlineButton({
   );
 }
 
-/** Panel đáy: tiến độ, độ sáng, cỡ chữ, phông, giãn dòng, 7 màu theme. */
 function ReadingPanel({
   palette,
   themeId,
@@ -243,7 +238,6 @@ function ReadingPanel({
   );
 }
 
-/** Thanh nổi khi đang đọc to / tự cuộn, luôn hiện kể cả khi ẩn thanh điều khiển. */
 function FloatingBar({
   palette,
   bottom,
@@ -325,10 +319,6 @@ function AutoScrollControls({ palette, onStop }: { palette: NovelPalette; onStop
   );
 }
 
-/**
- * Thanh điều khiển reader novel theo app gốc: thanh địa chỉ + hàng tiêu đề ở
- * trên, thanh công cụ dọc bên phải, panel cài đặt đọc ở dưới.
- */
 export const NovelChrome = memo(function NovelChromeView({
   visible,
   chapterUrl,

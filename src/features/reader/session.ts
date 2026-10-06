@@ -10,10 +10,6 @@ import { useStats } from '../../store/useStats';
 import { refreshUnread } from '../library/updates';
 import { noteChapterFinished } from './BookmarkPrompt';
 
-/**
- * Ghi nhận việc đọc dùng chung cho reader manga và novel: lịch sử, vị trí
- * đọc dở, đánh dấu đã đọc, thống kê thời gian & chuỗi ngày.
- */
 
 export type ReadingManga = {
   source: SourceConfig;
@@ -44,7 +40,6 @@ export function recordChapterOpened(manga: ReadingManga, chapter: ReadingChapter
   }
 }
 
-/** Lưu vị trí đang đọc. Gọi thưa (khi đổi trang), không gọi mỗi frame cuộn. */
 export function recordPosition(
   manga: ReadingManga,
   chapter: ReadingChapter,
@@ -59,7 +54,6 @@ export function recordPosition(
   });
 }
 
-/** Đọc tới cuối chương: đánh dấu đã đọc và cộng thống kê (một lần mỗi chương). */
 export function recordChapterFinished(manga: ReadingManga, chapter: ReadingChapter): void {
   const key = mangaKey(manga.source.id, manga.mangaUrl);
   if (getProgress(key).read[chapter.url]) {
@@ -71,9 +65,6 @@ export function recordChapterFinished(manga: ReadingManga, chapter: ReadingChapt
   noteChapterFinished(key);
 }
 
-/**
- * Đếm thời gian đọc khi app ở foreground; ghi thành một phiên khi rời reader.
- */
 export function useReadingTimer(): void {
   const accumulated = useRef(0);
   const startedAt = useRef<number | null>(Date.now());

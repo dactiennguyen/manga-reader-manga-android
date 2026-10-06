@@ -44,30 +44,11 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * Họ theme "MangaBox": Mangakakalot / Manganelo / Manganato / MangaBat và các
- * bản sao. Markup gần như giống nhau (itemupdate, list-truyen-item-wrap,
- * manga-info-top, container-chapter-reader) nhưng mỗi đời site đặt URL khác:
- *
- * - "mangalist" — Mangakakalot.gg/Natomanga/Nelomanga đời 2025 và site vệ
- *   tinh (mangakakalove.com): /manga-list/hot-manga?page=2,
- *   /genre/<slug>?filter=7&page=2, truyện /manga/<slug>, chương lấy qua
- *   /api/manga/<slug>/chapters, ảnh nằm trong biến cdns + chapterImages.
- * - "short" — bản PHP cũ (manganelo.cc): /latest?p=2, /newest, /genre/<slug>?p=2,
- *   truyện /series/<slug>, chương /chapter/<id>/<slug>-<số>, không có trang
- *   "xem nhiều" (lấy khối POPULAR MANGA ở trang chủ).
- * - "genreall" — Manganato/MangaBat cũ: /genre-all/2?type=topview, /genre-<id>/2.
- * - "mangalistq" — Mangakakalot cũ: /manga_list?type=topview&category=all&state=all&page=2.
- *
- * Chỉ từ baseUrl thì không biết site thuộc đời nào, nên đọc link menu ở trang
- * chủ một lần rồi nhớ lại (kèm danh sách thể loại ở khối GENRES).
- */
 
 type Layout = 'mangalist' | 'short' | 'genreall' | 'mangalistq';
 
 type SiteInfo = { layout: Layout; genres: Genre[] };
 
-/** Đường dẫn /manga-list/<…> của đời "mangalist". */
 const MANGA_LIST: Record<ListSort, string> = {
   latest: 'latest-manga',
   popular: 'hot-manga',
@@ -76,7 +57,6 @@ const MANGA_LIST: Record<ListSort, string> = {
   az: 'latest-manga',
 };
 
-/** ?filter= ở trang thể loại đời "mangalist": 1 truyện mới, 4 mới cập nhật (mặc định), 7 xem nhiều. */
 const FILTER: Record<ListSort, number | undefined> = {
   latest: undefined,
   popular: 7,
@@ -85,7 +65,6 @@ const FILTER: Record<ListSort, number | undefined> = {
   az: undefined,
 };
 
-/** ?type= của Manganato/Mangakakalot đời cũ. */
 const TYPE: Record<ListSort, string> = {
   latest: 'latest',
   popular: 'topview',
@@ -94,7 +73,6 @@ const TYPE: Record<ListSort, string> = {
   az: 'latest',
 };
 
-/** Đời "short" chỉ có trang mới cập nhật và truyện mới. */
 const SHORT: Partial<Record<ListSort, string>> = {
   latest: 'latest',
   new: 'newest',
@@ -103,10 +81,8 @@ const SHORT: Partial<Record<ListSort, string>> = {
 
 const ITEM = '.list-truyen-item-wrap, .list-comic-item-wrap, .story_item, .content-genres-item, .search-story-item';
 
-/** Thư mục trang truyện hay gặp: /manga/<slug>, /series/<slug>. */
 const MANGA_DIRS = new Set(['manga', 'series', 'comic', 'comics']);
 
-/** Trang truyện Manganato/Mangakakalot cũ: /manga-aa123456, /read-ab123. */
 const DETAIL_ID = /^(?:manga|read)-[a-z0-9]+$/i;
 
 const LIST_PATHS =
@@ -114,10 +90,8 @@ const LIST_PATHS =
 
 const NSFW_GENRES = /adult|mature|smut|hentai|ecchi|18\+|erotic|pornographic/i;
 
-/** Giá trị trống site hay điền vào ô tác giả. */
 const PLACEHOLDER = /^(-+|n\/?a|none|unknown|updating|đang cập nhật)$/i;
 
-/** Đoạn quảng cáo site vệ tinh chèn trước phần tóm tắt thật. */
 const BOILERPLATE = /^you are reading\b.*\b(bookmark|enjoy)\b/i;
 
 const dirOf = (src: SourceConfig) => src.options?.mangaDir || 'manga';
@@ -137,7 +111,6 @@ function layoutOf(html: string): Layout {
   if (/href="(?:https?:\/\/[^"/]+)?\/(?:latest|newest)\/?"/.test(html)) {
     return 'short';
   }
-  // Không nhận ra: đời mới nhất là kiểu phổ biến của bản sao hiện nay.
   return 'mangalist';
 }
 
@@ -151,12 +124,10 @@ function siteInfo(src: SourceConfig): Promise<SiteInfo> {
     genres: genresIn(parseHtml(html)),
   }));
   sites.set(src.baseUrl, info);
-  // Lỗi mạng/Cloudflare: không nhớ để lần sau tải lại.
   info.catch(() => sites.delete(src.baseUrl));
   return info;
 }
 
-/** Id thể loại từ link: /genre/action → "action", /genre-2 → "2", manga_list?category=2 → "2". */
 function genreIdOf(href: string): string | undefined {
   const path = getPath(href);
   let id =
@@ -169,7 +140,6 @@ function genreIdOf(href: string): string | undefined {
   try {
     id = decodeURIComponent(id);
   } catch {
-    // Giữ nguyên.
   }
   return id;
 }
@@ -198,7 +168,6 @@ function genreUrl(base: string, layout: Layout, id: string, sort: ListSort, page
   const slug = encodeURIComponent(id);
   switch (layout) {
     case 'short':
-      // Trang thể loại không nhận tham số sắp xếp (redirect sang http://).
       return withQuery(`${base}/genre/${slug}`, pageQuery(layout, page));
     case 'genreall':
       return withQuery(`${base}/genre-${slug}/${page}`, {
@@ -216,7 +185,6 @@ function genreUrl(base: string, layout: Layout, id: string, sort: ListSort, page
   }
 }
 
-/** undefined: site không có trang danh sách cho kiểu sắp xếp này. */
 function listUrl(base: string, layout: Layout, sort: ListSort, page: number): string | undefined {
   switch (layout) {
     case 'short': {
@@ -231,7 +199,6 @@ function listUrl(base: string, layout: Layout, sort: ListSort, page: number): st
   }
 }
 
-/** "one piece!" → "one_piece" như ô tìm kiếm của site. */
 function searchSlug(query: string): string {
   return query
     .normalize('NFD')
@@ -242,7 +209,6 @@ function searchSlug(query: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
-/** manganelo.cc để trống tên ở trang /latest — dựng lại từ slug. */
 function titleFromSlug(url: string): string {
   const slug = pathSegments(url).pop() ?? '';
   return slug
@@ -260,13 +226,11 @@ function hasNextPage($: CheerioAPI, page: number): boolean {
       if (/^(next|›|»|>)/i.test(text)) {
         return true;
       }
-      // "3", "Last(674)", "LAST(674)".
       const last = Number(text.match(/(\d+)\)?$/)?.[1]);
       return last > page;
     });
 }
 
-/** Số trang đọc từ URL (?page=, ?p=, /genre-all/2) — khi chạy trên trang đang mở, không có params. */
 function pageOf(url: string): number {
   const value = Number(getQueryParam(url, 'page') ?? getQueryParam(url, 'p') ?? getPath(url).match(/\/(\d+)\/?$/)?.[1]);
   return Number.isFinite(value) && value > 0 ? value : 1;
@@ -298,7 +262,6 @@ function parseListing($: CheerioAPI, base: string, page: number): ListPage {
   return { items: uniqBy(items, item => item.url), hasNext: hasNextPage($, page) };
 }
 
-/** Khối POPULAR MANGA (carousel) và "Most Popular" ở trang chủ (`base`). */
 async function homePopular(base: string): Promise<ListPage> {
   const $ = parseHtml(await getText(base));
   const items: MangaItem[] = [];
@@ -331,7 +294,6 @@ async function homePopular(base: string): Promise<ListPage> {
 
 type InfoRow = { label: string; value: string; $el: Cheerio<AnyNode> };
 
-/** Các dòng "Nhãn : giá trị" của trang truyện (cả bảng variations-tableInfo của Manganato). */
 function infoRows($: CheerioAPI): InfoRow[] {
   const rows: InfoRow[] = [];
   $('.manga-info-text li').each((_, el) => {
@@ -421,7 +383,6 @@ function descriptionOf($: CheerioAPI): string | undefined {
   if (!$desc.length) {
     return undefined;
   }
-  // Bỏ tiêu đề "X summary:" / "Description :" và giữ xuống dòng của <br>.
   $desc.find('h2, h3, script, style').remove();
   $desc.find('br').replaceWith('\n');
   const paragraphs = $desc
@@ -433,7 +394,6 @@ function descriptionOf($: CheerioAPI): string | undefined {
 }
 
 function ratingOf($: CheerioAPI): number | undefined {
-  // "mangakakalove.com rate : 4.40 / 5 - 36 votes"
   const rate = textOf($('#rate_row_cmd')).match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
   const value = rate
     ? (parseFloat(rate[1]) / parseFloat(rate[2])) * 5
@@ -441,7 +401,6 @@ function ratingOf($: CheerioAPI): number | undefined {
   return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : undefined;
 }
 
-/** Site vệ tinh trỏ link chương về "site chính" (window.mainSiteUrl, thường đã chết) — đổi về site đang đọc. */
 function onSite(url: string, src: SourceConfig): string {
   return src.baseUrl + url.slice(getOrigin(url).length);
 }
@@ -453,7 +412,6 @@ function inlineChapters($: CheerioAPI, base: string, fix: (url: string) => strin
       const $el = $(el);
       const $a = $el.find('a[href]').first();
       const name = cleanText($a.text()) || cleanText($a.attr('title'));
-      // Ngày đầy đủ nằm trong title, chữ hiển thị chỉ là "March 2025".
       const $time = $el.find('span.chapter-time, span[title]').last();
       const exact = cleanText($time.attr('title'));
       const shown = cleanText($time.text()) || textOf($el.find('span').not(':has(a)').last());
@@ -481,7 +439,6 @@ type ChapterApi = {
   };
 };
 
-/** "2025-12-22T19:57:22.000000Z" — Hermes chỉ nhận tối đa 3 chữ số phần nghìn giây. */
 function isoTime(value: string): number | undefined {
   const time = Date.parse(value.replace(/(\.\d{3})\d+/, '$1'));
   return Number.isFinite(time) ? time : parseDate(value);
@@ -489,7 +446,6 @@ function isoTime(value: string): number | undefined {
 
 const API_BATCH = 1000;
 
-/** Đời "mangalist": danh sách chương tải bằng JS từ /api/manga/<slug>/chapters?limit=&offset=. */
 async function apiChapters(src: SourceConfig, $: CheerioAPI, pageUrl: string): Promise<Chapter[]> {
   const $box = $('#chapter-list-container[data-api-url], #chapter-page-data[data-api-url]').first();
   const slug = $box.attr('data-comic-slug');
@@ -500,7 +456,6 @@ async function apiChapters(src: SourceConfig, $: CheerioAPI, pageUrl: string): P
   const endpoint = resolveUrl(api.replace('__SLUG__', encodeURIComponent(slug)), pageUrl);
   const template = $box.attr('data-chapter-url-template') || `${src.baseUrl}/manga/__MANGA__/__CHAPTER__`;
   const chapters: Chapter[] = [];
-  // Giới hạn số vòng phòng API trả has_more sai.
   for (let round = 0, offset = 0; round < 50; round++) {
     const res = await getJson<ChapterApi>(withQuery(endpoint, { limit: API_BATCH, offset }), {
       referer: pageUrl,
@@ -528,7 +483,6 @@ async function apiChapters(src: SourceConfig, $: CheerioAPI, pageUrl: string): P
   return uniqBy(chapters, ch => ch.url);
 }
 
-/** Toàn bộ chương của trang truyện: ngay trong trang (đời cũ) hoặc qua API (đời "mangalist"). */
 async function chaptersOf(src: SourceConfig, url: string, html: string, $: CheerioAPI): Promise<Chapter[]> {
   const mainSite = html.match(/mainSiteUrl\s*=\s*['"]([^'"]+)['"]/)?.[1];
   const mainHost = mainSite ? getHost(mainSite) : undefined;
@@ -539,7 +493,6 @@ async function chaptersOf(src: SourceConfig, url: string, html: string, $: Cheer
   return chapters.length ? chapters : apiChapters(src, $, url);
 }
 
-/** Mảng JSON trong script: `var chapterImages = [...];`. */
 function scriptArray(html: string, name: string): string[] {
   const found = html.match(new RegExp(`\\b${name}\\s*=\\s*(\\[[\\s\\S]*?\\])\\s*;`));
   if (!found) {
@@ -559,14 +512,11 @@ function joinUrl(server: string, path: string): string {
   return `${server.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
 }
 
-/** Thử tải (HEAD) một ảnh — không tải cả ảnh về. */
 async function serves(url: string, headers: Record<string, string>): Promise<boolean> {
   const res = await head(url, { headers, timeoutMs: 8000 });
-  // Server hỏng thường trả 429 JSON / 503 HTML thay vì ảnh.
   return !!res?.ok && !/json|html/i.test(res.contentType);
 }
 
-/** Đời "mangalist": ảnh = server (cdns) + đường dẫn (chapterImages). */
 async function scriptPages(html: string, $: CheerioAPI, headers: Record<string, string>): Promise<string[]> {
   const paths = scriptArray(html, 'chapterImages');
   if (!paths.length) {
@@ -576,7 +526,6 @@ async function scriptPages(html: string, $: CheerioAPI, headers: Record<string, 
     return paths;
   }
   const servers = uniqBy([...scriptArray(html, 'cdns'), ...scriptArray(html, 'backupImage')], s => s);
-  // Đưa server site đang chọn (nút IMAGES SERVER .isactive) lên đầu.
   const active = Number($('.pn-op-sv-img-btn.isactive').attr('data-cdn')) - 1;
   if (active > 0 && servers[active]) {
     servers.unshift(...servers.splice(active, 1));
@@ -584,7 +533,6 @@ async function scriptPages(html: string, $: CheerioAPI, headers: Record<string, 
   if (!servers.length) {
     return [];
   }
-  // Nhiều server thì lấy server đầu tiên thực sự trả ảnh (vd. imgs-2 hay trả 429).
   let server = servers[0];
   if (servers.length > 1) {
     for (const candidate of servers) {
@@ -598,17 +546,11 @@ async function scriptPages(html: string, $: CheerioAPI, headers: Record<string, 
 }
 
 function breadcrumbManga($: CheerioAPI, base: string): string | undefined {
-  // [Trang chủ, Truyện, Chương]
   const crumbs = $('.breadcrumb a[href], .panel-breadcrumb a[href]').toArray();
   return crumbs.length >= 2 ? resolveUrl($(crumbs[1]).attr('href'), base) : undefined;
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/**
- * Kiểu sắp xếp khi URL là trang danh sách chung (từ khoá rỗng = mới cập nhật,
- * xem getURL); undefined với tìm kiếm và thể loại.
- */
 function listSortOf(params: ListParams | undefined): ListSort | undefined {
   if (params?.method === 'list') {
     return params.sort;
@@ -616,18 +558,14 @@ function listSortOf(params: ListParams | undefined): ListSort | undefined {
   return params?.method === 'search' && !searchSlug(params.query) ? 'latest' : undefined;
 }
 
-/** Trang danh sách / thể loại / tìm kiếm. */
 async function loadList(site: SourceConfig, url: string, params?: ListParams): Promise<ListPage> {
   const page = params?.page ?? pageOf(url);
   const sort = listSortOf(params);
   if (getPath(url) === '/' && (sort || !params)) {
-    // getURL trả trang chủ khi site không có trang danh sách cho kiểu sắp xếp
-    // này (đời "short" với xem nhiều): lấy khối POPULAR MANGA, chỉ một trang.
     return page > 1 ? { items: [], hasNext: false } : homePopular(url);
   }
   const res = await request(url);
   if (sort && getPath(res.url) === '/') {
-    // Site không có trang này và chuyển về trang chủ (manganelo.cc với /newest).
     if (sort === 'latest') {
       return { items: [], hasNext: false };
     }
@@ -642,7 +580,6 @@ async function loadGenres(site: SourceConfig): Promise<Genre[]> {
   if (genres.length) {
     return genres;
   }
-  // Trang chủ không có khối GENRES: lấy ở bộ lọc của trang danh sách.
   const url = listUrl(site.baseUrl, layout, 'latest', 1);
   return url ? genresIn(parseHtml(await getText(url))) : [];
 }
@@ -697,15 +634,12 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
 async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: string): Promise<string | undefined> {
   const segments = pathSegments(chapterUrl);
   const [first = '', second = '', third = ''] = segments;
-  // /manga/<slug>/chapter-<n>
   if (segments.length === 3 && first !== 'chapter' && (MANGA_DIRS.has(first) || first === dirOf(site))) {
     return `${site.baseUrl}/${first}/${encodeURIComponent(second)}`;
   }
-  // Manganato cũ: /manga-<id>/chapter-<n>, trang truyện cùng host với chương.
   if (segments.length === 2 && DETAIL_ID.test(first)) {
     return `${getOrigin(chapterUrl) || site.baseUrl}/${first}`;
   }
-  // Mangakakalot cũ: /chapter/<id>/chapter_<n> → /manga/<id>
   if (first === 'chapter' && segments.length === 3 && /^chapter_/i.test(third)) {
     return `${site.baseUrl}/manga/${encodeURIComponent(second)}`;
   }
@@ -715,8 +649,6 @@ async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: st
       return crumb;
     }
   }
-  // manganelo.cc: /chapter/<id>/<slug>-<số chương> → /<thư mục>/<slug>; chỉ
-  // đoán khi đã biết thư mục truyện của site (siteProbe điền sẵn).
   const slug = third.match(/^(.+)-\d+(?:\.\d+)?$/)?.[1];
   if (first === 'chapter' && segments.length === 3 && slug && site.options?.mangaDir) {
     return `${site.baseUrl}/${site.options.mangaDir}/${encodeURIComponent(slug)}`;
@@ -724,19 +656,15 @@ async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: st
   return html ? undefined : breadcrumbManga(parseHtml(await getText(chapterUrl)), chapterUrl);
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
-/** Cần biết đời site (đọc trang chủ một lần) mới dựng được URL. */
 export async function getURL({ site, params }: GetURLInput): Promise<string> {
   const { layout } = await siteInfo(site);
   switch (params.method) {
     case 'list':
-      // Không có trang danh sách cho kiểu sắp xếp này: trang chủ (khối POPULAR MANGA).
       return listUrl(site.baseUrl, layout, params.sort, params.page) ?? `${site.baseUrl}/`;
     case 'search': {
       const slug = searchSlug(params.query);
       if (!slug) {
-        // Từ khoá rỗng: danh sách mới cập nhật.
         return getURL({ site, params: { method: 'list', sort: 'latest', page: params.page } });
       }
       return withQuery(`${site.baseUrl}/search/story/${encodeURIComponent(slug)}`, pageQuery(layout, params.page));
@@ -816,6 +744,5 @@ export function detect(html: string): boolean {
 }
 
 export function imageHeaders(site: SourceConfig): Record<string, string> {
-  // CDN (2xstorage…) chặn khi thiếu Referer hoặc Referer khác domain site.
   return refererHeaders(site);
 }

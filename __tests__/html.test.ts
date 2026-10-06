@@ -63,7 +63,6 @@ describe('html helpers', () => {
   });
 
   test('decodeBase64 giải được UTF-8', () => {
-    // "ts_reader.run({}); Việt"
     expect(decodeBase64('dHNfcmVhZGVyLnJ1bih7fSk7IFZp4buHdA==')).toBe('ts_reader.run({}); Việt');
   });
 });

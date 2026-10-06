@@ -5,10 +5,6 @@ import type { MangaItem, SourceConfig } from '../../sources/types';
 import { useLibrary } from '../../store/useLibrary';
 import { countUnread } from '../library/updates';
 
-/**
- * Nhấn giữ truyện trong catalog: thêm/bỏ bookmark nhanh. Đã từng mở chi tiết
- * thì lấy luôn số chương từ cache để badge chưa đọc đúng ngay.
- */
 export function toggleQuickBookmark(source: SourceConfig, item: MangaItem): void {
   const key = mangaKey(source.id, item.url);
   const library = useLibrary.getState();

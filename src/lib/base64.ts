@@ -1,7 +1,5 @@
-/* eslint-disable no-bitwise -- giải mã byte cần thao tác bit */
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-/** Giải base64 ra chuỗi UTF-8 — không phụ thuộc atob của môi trường. */
 export function decodeBase64(input: string): string {
   const clean = input.replace(/[^A-Za-z0-9+/]/g, '');
   const bytes: number[] = [];

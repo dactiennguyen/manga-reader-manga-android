@@ -24,7 +24,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { font, radius, space, useTheme } from '../theme';
 import type { LucideIcon } from './icons';
 
-/** Thông báo ngắn. Android dùng Toast hệ thống. */
 export function toast(message: string): void {
   if (Platform.OS === 'android') {
     ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -33,7 +32,6 @@ export function toast(message: string): void {
   }
 }
 
-/** Hộp thoại xác nhận dạng promise. */
 export function confirm(
   title: string,
   message?: string,
@@ -56,7 +54,6 @@ export function confirm(
   });
 }
 
-// ─── Khung màn hình ─────────────────────────────────────────────────────────
 
 export function Screen({
   children,
@@ -78,7 +75,6 @@ export function Screen({
         style,
       ]}
     >
-      {/* Vùng thanh trạng thái cùng màu app bar như app gốc. */}
       {edges.includes('top') && <View style={{ height: insets.top, backgroundColor: c.appBar }} />}
       {children}
     </View>
@@ -95,11 +91,9 @@ export function Header({
 }: {
   title?: string;
   subtitle?: string;
-  /** Mặc định navigation.goBack(). */
   onBack?: () => void;
   hideBack?: boolean;
   right?: ReactNode;
-  /** Nội dung thay cho tiêu đề (ô tìm kiếm…). */
   children?: ReactNode;
 }) {
   const { c } = useTheme();
@@ -133,7 +127,6 @@ export function Header({
   );
 }
 
-// ─── Nút ────────────────────────────────────────────────────────────────────
 
 export function IconButton({
   icon: Icon,
@@ -154,7 +147,6 @@ export function IconButton({
   color?: string;
   badge?: string | number;
   disabled?: boolean;
-  /** Tô nền nhạt khi đang bật. */
   active?: boolean;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -208,7 +200,6 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
-  // Filled / tonal / outlined theo Material 3.
   const palette = {
     primary: { bg: c.accent, fg: c.onAccent, border: c.accent },
     secondary: { bg: c.primaryContainer, fg: c.onPrimaryContainer, border: c.primaryContainer },
@@ -273,7 +264,6 @@ export function Fab({
   );
 }
 
-// ─── Lựa chọn ───────────────────────────────────────────────────────────────
 
 export function Chip({
   label,
@@ -314,7 +304,6 @@ export function Chip({
   );
 }
 
-/** Hàng chip cuộn ngang. */
 export function ChipRow({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
     <ScrollView
@@ -368,11 +357,6 @@ export function Segmented<T extends string | number>({
   );
 }
 
-/**
- * Thanh tab gạch chân kiểu app gốc ("Latest | Popular | Newest",
- * "Descriptions | Chapters"): tab căn trái, vạch chỉ báo vàng dưới chữ,
- * nút hành động ở bên phải.
- */
 export function TabBar<T extends string>({
   tabs,
   value,
@@ -383,9 +367,7 @@ export function TabBar<T extends string>({
   tabs: readonly { key: T; label: string; badge?: number }[];
   value: T;
   onChange: (key: T) => void;
-  /** Nút bên phải (bookmark, đổi lưới/danh sách, lọc…). */
   right?: ReactNode;
-  /** Chia đều bề ngang cho các tab. */
   stretch?: boolean;
 }) {
   const { c } = useTheme();
@@ -511,7 +493,6 @@ export function Stepper({
   );
 }
 
-/** Thanh trượt tự viết (RN core không có Slider). */
 export function Slider({
   value,
   min,
@@ -589,7 +570,6 @@ export function Slider({
   );
 }
 
-// ─── Danh sách & cài đặt ────────────────────────────────────────────────────
 
 export function Section({
   title,
@@ -709,7 +689,6 @@ export function SwitchRow({
   );
 }
 
-/** Thanh tiến độ mảnh (tải xuống, kiểm tra cập nhật). value 0–1. */
 export function ProgressBar({ value, color }: { value: number; color?: string }) {
   const { c } = useTheme();
   const pct = `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%` as const;
@@ -734,7 +713,6 @@ export function Badge({ text, color, style }: { text: string; color?: string; st
   );
 }
 
-// ─── Trạng thái ─────────────────────────────────────────────────────────────
 
 export function EmptyState({
   icon: Icon,
@@ -774,7 +752,6 @@ export function LoadingView({ label, style }: { label?: string; style?: StylePro
   );
 }
 
-// ─── Nhập liệu ──────────────────────────────────────────────────────────────
 
 type TextFieldProps = TextInputProps & {
   ref?: Ref<ComponentRef<typeof TextInput>>;

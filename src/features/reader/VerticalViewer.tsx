@@ -17,17 +17,13 @@ import type { ViewerProps } from './viewerTypes';
 type Props = ViewerProps & {
   pageGap: boolean;
   autoScroll: boolean;
-  /** px/giây. */
   autoScrollSpeed: number;
   onAutoScrollEnd: () => void;
 };
 
-/** "Dòng đọc" tính từ mép trên khung nhìn — trang chứa dòng này là trang đang xem. */
 const READING_LINE = 0.35;
-/** Chạm để cuộn: dịch ~85% chiều cao màn, giữ lại một đoạn để không mất mạch. */
 const STEP_RATIO = 0.85;
 const FOOTER_MIN_RATIO = 0.6;
-/** Thả tay có quán tính mà không nhận được sự kiện kết thúc thì vẫn chạy lại tự cuộn. */
 const MOMENTUM_FALLBACK_MS = 1500;
 
 function PageGap() {
@@ -36,7 +32,6 @@ function PageGap() {
 
 const keyExtractor = (page: Page, index: number) => `${index}:${page.uri}`;
 
-/** Trang cuối cùng có mép trên nằm trên `y` (layout các trang liền nhau, tăng dần). */
 function pageAt(list: FlashListRef<Page>, count: number, y: number): number {
   let lo = 0;
   let hi = count - 1;
@@ -57,7 +52,6 @@ function pageAt(list: FlashListRef<Page>, count: number, y: number): number {
   return found;
 }
 
-/** Webtoon: cuộn dọc liên tục, ảnh rộng full khung, cao theo tỉ lệ ảnh. */
 export const VerticalViewer = memo(function VerticalViewerView({
   ref,
   pages,
@@ -87,7 +81,6 @@ export const VerticalViewer = memo(function VerticalViewerView({
     resync: false,
   });
   metrics.current.viewport = height;
-  // `settled`: đã nhận sự kiện cuộn đầu tiên (sau khi nhảy tới trang mở đầu).
   const tracking = useRef({ page: initialPage, atEnd: false, footerHeight: 0, settled: initialPage === 0 });
   const momentumTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoScrollRef = useRef(autoScroll);
@@ -194,7 +187,6 @@ export const VerticalViewer = memo(function VerticalViewerView({
         }
         const target = Math.min(max, Math.max(0, m.offset + direction * m.viewport * STEP_RATIO));
         if (autoScrollRef.current) {
-          // Đang tự cuộn: nhảy thẳng để vòng tự cuộn chạy tiếp từ vị trí mới.
           m.offset = target;
           m.resync = true;
           listRef.current?.scrollToOffset({ offset: target, animated: false });

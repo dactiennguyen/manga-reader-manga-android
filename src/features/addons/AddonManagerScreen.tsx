@@ -27,7 +27,6 @@ import { font, radius, space, useTheme } from '../../theme';
 
 const CONTENT_NAME = { manga: 'truyện tranh', novel: 'tiểu thuyết' } as const;
 
-/** Tóm tắt kết quả cập nhật thành một câu. */
 export function describeReport(report: UpdateReport): string {
   const parts: string[] = [];
   if (report.installed.length) {
@@ -42,7 +41,6 @@ export function describeReport(report: UpdateReport): string {
   return parts.join('. ') || 'Mọi addon đều đã là bản mới nhất';
 }
 
-/** "Add-ons" (AddOnPage của app gốc): addon đang dùng và cập nhật từ kho addon. */
 export function AddonManagerScreen() {
   const navigation = useAppNavigation();
   const { c } = useTheme();

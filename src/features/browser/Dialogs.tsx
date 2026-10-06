@@ -7,7 +7,6 @@ import { ensureScheme } from '../../lib/url';
 import { useBrowser, type WebBookmark } from '../../store/useBrowser';
 import { font, useTheme } from '../../theme';
 
-/** Thêm/sửa bookmark trang web (AddWebBookmarkDialog). */
 export function BookmarkDialog({
   page,
   existing,
@@ -69,7 +68,6 @@ export function BookmarkDialog({
   );
 }
 
-/** "Lưu trang": nhập tên rồi lưu HTML để xem offline. */
 export function SavePageDialog({
   defaultName,
   saving,
@@ -106,7 +104,6 @@ export function SavePageDialog({
   );
 }
 
-/** Trang web muốn mở app khác (intent:, market:, tel:…). */
 export function AppLinkDialog({
   url,
   host,

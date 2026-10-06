@@ -1,11 +1,3 @@
-/**
- * SDK cấp cho addon — tương đương common.js + bridge nativeFetch của app gốc.
- * Addon (addons/<uid>/main.ts) chỉ được import từ file này; lúc build, mọi
- * import tới đây được thay bằng tham số `__sdk` mà app truyền vào khi nạp addon.
- *
- * Đổi chữ ký hay bỏ một hàm là phá addon cũ: khi đó tăng SDK_VERSION, và addon
- * dùng tính năng mới phải khai `sdk` trong info.json tương ứng.
- */
 import { handOffHtml } from '../lib/http';
 import type { SourceConfig, UrlKind } from '../sources/types';
 import type { AddonModule } from './types';
@@ -52,11 +44,6 @@ export { sourcesRuntime } from '../sources/runtime';
 
 export const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-/**
- * Cài đặt chung cho `run` của addon: HTML lấy từ WebView được đưa vào bộ đệm
- * của http để `fetch` của addon dùng lại thay vì tải lần nữa (vượt được
- * Cloudflare), rồi đọc như bình thường.
- */
 export function runFromHtml(
   addon: Pick<AddonModule, 'fetch' | 'match'>,
   input: Parameters<AddonModule['run']>[0],
@@ -69,7 +56,6 @@ export function runFromHtml(
   return addon.fetch({ site: input.site, url: input.url, method: kind });
 }
 
-/** Header ảnh mặc định: Referer là trang chủ site (chống hotlink). */
 export function refererHeaders(site: SourceConfig): Record<string, string> {
   return { Referer: `${site.baseUrl}/` };
 }

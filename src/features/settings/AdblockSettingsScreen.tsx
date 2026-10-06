@@ -265,7 +265,6 @@ export function AdblockSettingsScreen() {
   );
 }
 
-/** Cột chồng quảng cáo + tracker theo ngày trong 30 ngày. */
 function BlockChart({
   daily,
   totals,
@@ -289,7 +288,6 @@ function BlockChart({
       const [, m, d] = key.split('-');
       return {
         key,
-        // Nhãn mỗi 7 ngày tính lùi từ hôm nay để không chồng nhau.
         axisLabel: (29 - i) % 7 === 0 ? `${d}/${m}` : '',
         values: [day.ads, day.trackers],
         a11yLabel: `${formatDate(dayKeyToDate(key).getTime())}: ${day.ads} quảng cáo, ${day.trackers} tracker`,

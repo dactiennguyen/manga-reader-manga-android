@@ -52,7 +52,6 @@ import { CatalogFilterSheet } from './CatalogFilterSheet';
 import { toggleQuickBookmark } from './quickBookmark';
 import { usePagedList } from './usePagedList';
 
-/** Nhãn tab ngắn như "Latest | Popular | Newest" của app gốc. */
 const SORT_LABEL: Record<ListSort, string> = {
   latest: 'Mới nhất',
   popular: 'Phổ biến',
@@ -61,10 +60,8 @@ const SORT_LABEL: Record<ListSort, string> = {
   az: 'A-Z',
 };
 
-/** Đang xem kết quả tìm thì không tab sắp xếp nào được chọn. */
 type CatalogTab = ListSort | 'search';
 
-/** Truyện đã bookmark: góc "có chương mới" hoặc góc sách như bìa trong Bookmark. */
 function ribbonOf(bookmark: LibraryBookmark | undefined): CoverRibbon | undefined {
   if (!bookmark) {
     return undefined;
@@ -72,7 +69,6 @@ function ribbonOf(bookmark: LibraryBookmark | undefined): CoverRibbon | undefine
   return bookmark.newChapters ? 'new' : 'unread';
 }
 
-/** Trang chủ catalog của một nguồn (widget cataloghome/cataloglist). */
 export function CatalogScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Catalog'>>();
   const { sourceId, query, genre } = route.params;
@@ -101,7 +97,6 @@ export function CatalogScreen() {
       />
     );
   }
-  // Đổi tham số tại chỗ (cùng màn) thì dựng lại từ đầu thay vì giữ trạng thái cũ.
   return (
     <CatalogBody
       key={`${source.id}|${query ?? ''}|${genre?.id ?? ''}`}
@@ -119,7 +114,6 @@ function Gate({
   message,
   action,
 }: {
-  /** Có nguồn thì giữ thanh địa chỉ như các màn addon khác. */
   url?: string;
   icon: LucideIcon;
   heading: string;
@@ -155,11 +149,9 @@ function CatalogBody({
   const [sort, setSort] = useState<ListSort>(engine.sorts[0]?.id ?? 'latest');
   const [genre, setGenre] = useState<Genre | undefined>(initialGenre);
   const [query, setQuery] = useState(initialQuery?.trim() ?? '');
-  // seq dựng lại sheet mỗi lần mở để ô tìm bắt đầu từ từ khoá hiện tại.
   const [filter, setFilter] = useState({ visible: false, seq: 0 });
   const filtered = !!query || !!genre;
 
-  // Khoá danh sách: đổi nguồn/sắp xếp/thể loại/từ khoá thì tải lại từ trang 1.
   const listKey = JSON.stringify([
     source.id,
     source.engine,
@@ -198,7 +190,6 @@ function CatalogBody({
     setQuery('');
   }, []);
 
-  // Phím back khi đang xem kết quả tìm thì bỏ tìm trước (trừ khi mở sẵn với từ khoá).
   useFocusEffect(
     useCallback(() => {
       if (!query || initialQuery) {
@@ -400,7 +391,6 @@ function CatalogBody({
   );
 }
 
-/** Chip bộ lọc đang áp dụng; bấm để bỏ. */
 function FilterChip({
   icon: Icon,
   label,
@@ -467,7 +457,6 @@ const CatalogCell = memo(function CatalogCellItem({
   );
 });
 
-/** Dòng chế độ danh sách như app gốc: bìa nhỏ, tên đậm, dòng phụ. */
 function CatalogRow({
   item,
   headers,

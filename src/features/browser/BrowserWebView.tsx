@@ -27,10 +27,8 @@ import { buildBridgeScript, jsBlockHosts, jsNavigate, parseBridgeMessage, type B
 export const DESKTOP_USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
 
-/** Cho mọi scheme đi qua onShouldStartLoadWithRequest — mặc định thư viện tự mở app ngoài. */
 const ORIGIN_ALL = ['*'];
 
-/** Scheme WebView tự xử lý được; còn lại (intent:, tel:…) là link mở app khác. */
 const IN_PAGE_SCHEME = /^(https?|about|data|blob|javascript):/i;
 
 export type BlockStats = { ads: number; trackers: number };
@@ -55,26 +53,20 @@ export type BrowserWebViewHandle = {
 
 type Props = {
   tab: BrowserTab;
-  /** Chặn quảng cáo đang bật cho tab này. */
   adblock: boolean;
   trackingProtection: boolean;
   longPress: boolean;
   onNavigation: (state: NavState) => void;
   onProgress: (progress: number) => void;
-  /** Trang tải xong (spa: đổi URL bằng history API, không tải lại trang). */
   onPageReady: (url: string, title: string, spa: boolean) => void;
   onMessage: (message: PageMessage) => void;
   onBlockStats: (tabId: string, stats: BlockStats) => void;
-  /** Link dành cho app khác (intent:, market:, tel:…). */
   onExternalLink: (url: string) => void;
-  /** Trang mở cửa sổ mới (target=_blank, window.open). */
   onPopup: (url: string) => void;
-  /** Tiến trình render của WebView bị hệ thống dừng — cần tạo lại WebView. */
   onCrash: () => void;
   ref?: Ref<BrowserWebViewHandle>;
 };
 
-/** WebView của một tab + bridge script, chặn quảng cáo và xử lý lệnh tải URL. */
 export const BrowserWebView = memo(function TabWebView({
   tab,
   adblock,
@@ -92,7 +84,6 @@ export const BrowserWebView = memo(function TabWebView({
 }: Props) {
   const { c } = useTheme();
   const webRef = useRef<WebViewRef>(null);
-  // URL lúc mount: tab khôi phục sau khi mở lại app thì tải trang cuối cùng đã xem.
   const [source, setSource] = useState(() => ({ uri: tab.url || tab.request.url }));
   const sourceRef = useRef(source.uri);
   const lastRequest = useRef(tab.request);
@@ -113,7 +104,6 @@ export const BrowserWebView = memo(function TabWebView({
     [],
   );
 
-  // Lệnh tải URL từ app (thanh địa chỉ, link ngoài…): tab.request đổi seq/url.
   useEffect(() => {
     const prev = lastRequest.current;
     const next = tab.request;
@@ -134,7 +124,6 @@ export const BrowserWebView = memo(function TabWebView({
     }
   }, [tab.request]);
 
-  // Đổi UA (trang cho máy tính) hoặc bật/tắt chặn quảng cáo → tải lại để áp dụng.
   const applied = useRef({ desktop: tab.desktop, adblock });
   useEffect(() => {
     if (applied.current.desktop !== tab.desktop || applied.current.adblock !== adblock) {
@@ -158,7 +147,6 @@ export const BrowserWebView = memo(function TabWebView({
   useEffect(() => () => clearTimeout(readyTimer.current), []);
   const scheduleReady = (url: string, title: string, spa: boolean) => {
     clearTimeout(readyTimer.current);
-    // Trang SPA cần thêm thời gian để vẽ nội dung mới sau khi đổi URL.
     readyTimer.current = setTimeout(() => onPageReady(url, title, spa), spa ? 1200 : 300);
   };
 
@@ -179,7 +167,6 @@ export const BrowserWebView = memo(function TabWebView({
       stats.current = { ads: 0, trackers: 0 };
       onBlockStats(tab.id, stats.current);
     }
-    // Android báo đổi URL kiểu pushState qua loadingStart với loading=false.
     if (!loading) {
       scheduleReady(url, title, true);
     }
@@ -218,7 +205,6 @@ export const BrowserWebView = memo(function TabWebView({
     if (IN_PAGE_SCHEME.test(url)) {
       return true;
     }
-    // Iframe tự mở app khác thường là quảng cáo — chặn im lặng.
     if (request.isTopFrame !== false) {
       onExternalLink(url);
     }
@@ -251,7 +237,6 @@ export const BrowserWebView = memo(function TabWebView({
     }
     switch (message.type) {
       case 'ua':
-        // UA thật của WebView dùng cho request của parser (cookie Cloudflare gắn với UA).
         if (!tab.desktop) {
           useBrowser.getState().setUserAgent(message.ua);
         }
@@ -317,7 +302,6 @@ export const BrowserWebView = memo(function TabWebView({
       style={{ backgroundColor: c.bg }}
       originWhitelist={ORIGIN_ALL}
       userAgent={tab.desktop ? DESKTOP_USER_AGENT : undefined}
-      // Không dùng prop incognito: trên Android nó xoá cookie của cả app.
       cacheEnabled={!tab.incognito}
       saveFormDataDisabled={tab.incognito}
       injectedJavaScriptBeforeContentLoaded={script}

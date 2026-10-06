@@ -46,7 +46,6 @@ describe('danh mục site (siteInfo của addon)', () => {
     const site = verified();
     const source = getSource(site.id);
     expect(source).toMatchObject({ id: site.id, engine: site.engine, enabled: false });
-    // Cùng một object mỗi lần gọi để an toàn khi làm deps của hook.
     expect(getSource(site.id)).toBe(source);
     expect(catalogSources()).toContain(source);
   });
@@ -69,7 +68,6 @@ describe('danh mục site (siteInfo của addon)', () => {
     expect(getSource(site.id)?.name).toBe('Tên mới');
     expect(findSourceForUrl(catalogSource(site.id)!.baseUrl)?.name).toBe('Tên mới');
 
-    // Khôi phục: bỏ bản lưu, quay về danh mục.
     useSources.getState().removeSource(site.id);
     expect(getSource(site.id)).toBe(catalogSource(site.id));
   });

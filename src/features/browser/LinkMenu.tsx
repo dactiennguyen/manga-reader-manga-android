@@ -11,7 +11,6 @@ import { startFileDownload } from '../downloads/fileDownloader';
 
 export type LinkTarget = { href: string; text: string; src: string };
 
-/** Menu nhấn giữ link/ảnh trong trang. */
 export function LinkMenu({
   target,
   pageUrl,
@@ -48,7 +47,6 @@ export function LinkMenu({
     Share.share({ message: value }).catch(() => {});
   };
 
-  /** Tải vào thư mục Download, theo dõi ở Tải xuống › Tệp & media. */
   const download = async (url: string, image: boolean) => {
     try {
       await startFileDownload(url, { pageUrl, kind: image ? 'image' : undefined });

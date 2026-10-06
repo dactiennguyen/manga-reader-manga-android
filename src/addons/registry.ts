@@ -8,11 +8,6 @@ import * as sdk from './sdk';
 import { SDK_VERSION } from './sdk';
 import type { AddonInfo, AddonModule, AddonPackage } from './types';
 
-/**
- * Danh sách addon đang dùng: bản có sẵn trong app (builtin.generated.ts),
- * bị thay bởi bản tải về từ kho addon nếu bản đó mới hơn và hợp SDK.
- * Code addon chỉ được nạp (eval) khi cần tới lần đầu.
- */
 
 const PACKAGE_KEY = (uid: string) => `addon:pkg:${uid}`;
 const INSTALLED_KEY = 'addon:installed';
@@ -22,18 +17,15 @@ export type AddonOrigin = 'builtin' | 'update';
 export type AddonEntry = {
   info: AddonInfo;
   origin: AddonOrigin;
-  /** Version của bản có sẵn trong app (nếu có) — để biết đang chạy bản cập nhật nào. */
   builtinVersion?: number;
 };
 
-/** Tăng mỗi khi cài/gỡ bản cập nhật để màn hình dựng lại. */
 export const useAddonRevision = create<{ revision: number }>(() => ({ revision: 0 }));
 
 type Loaded = { pkg: AddonPackage; origin: AddonOrigin; builtinVersion?: number };
 
 let entries: Map<string, Loaded> | null = null;
 const engines = new Map<string, Engine>();
-/** Bản cập nhật nạp lỗi trong lần chạy này — tạm dùng bản có sẵn. */
 const broken = new Set<string>();
 
 function installedUids(): string[] {
@@ -69,10 +61,7 @@ function load(): Map<string, Loaded> {
   return map;
 }
 
-/** Chạy code addon, kiểm tra đủ các hàm bắt buộc. Ném lỗi nếu addon hỏng. */
 export function evaluateAddon(pkg: AddonPackage): AddonModule {
-  // Addon là code JS rời (giống main.js của app gốc) nên phải nạp lúc chạy.
-  // eslint-disable-next-line no-new-func
   const factory = new Function('__sdk', pkg.code) as (api: typeof sdk) => Partial<AddonModule>;
   const mod = factory(sdk);
   for (const name of ['getURL', 'fetch', 'run', 'get', 'match'] as const) {
@@ -95,7 +84,6 @@ export function addonInfo(uid: string): AddonInfo | undefined {
   return load().get(uid)?.pkg.info;
 }
 
-/** Engine của addon (nạp code lần đầu). Bản cập nhật hỏng thì quay về bản có sẵn. */
 export function addonEngineFor(uid: string): Engine | undefined {
   const cached = engines.get(uid);
   if (cached) {
@@ -130,7 +118,6 @@ function invalidate(): void {
   useAddonRevision.setState(state => ({ revision: state.revision + 1 }));
 }
 
-/** Cài bản cập nhật (đã kiểm tra chạy được). */
 export function installAddon(pkg: AddonPackage): void {
   if (!isCompatible(pkg.info)) {
     throw new Error(`Addon ${pkg.info.label} cần bản app mới hơn.`);
@@ -144,7 +131,6 @@ export function installAddon(pkg: AddonPackage): void {
   invalidate();
 }
 
-/** Gỡ bản cập nhật, quay về bản có sẵn trong app. */
 export function uninstallAddon(uid: string): void {
   storage.remove(PACKAGE_KEY(uid));
   writeJSON(

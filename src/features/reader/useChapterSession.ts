@@ -12,19 +12,12 @@ import {
 export type SessionTarget = { manga: ReadingManga; chapter: ReadingChapter };
 
 export type ChapterSession = {
-  /** Trang (manga) hoặc đoạn văn (novel) đang xem. Ghi xuống bộ nhớ tối đa mỗi giây một lần. */
   reportPosition: (page: number, total: number) => void;
-  /** Đã tới trang cuối / khối hết chương. */
   reportFinished: () => void;
 };
 
 const POSITION_THROTTLE_MS = 1000;
 
-/**
- * Nối reader với session.ts. `target` = null khi chương chưa sẵn sàng (đang tải
- * nội dung hoặc chi tiết truyện); vị trí báo về trong lúc đó được giữ lại và
- * dùng khi ghi nhận mở chương.
- */
 export function useChapterSession(target: SessionTarget | null, startPage: number): ChapterSession {
   useReadingTimer();
 

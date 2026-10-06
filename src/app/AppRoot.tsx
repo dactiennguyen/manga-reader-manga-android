@@ -24,12 +24,10 @@ const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000;
 
 const TAB_MAX_AGE = { never: 0, day: DAY_MS, week: 7 * DAY_MS, month: 30 * DAY_MS } as const;
 
-/** Việc chạy một lần khi mở app. */
 function useBootstrap() {
   useEffect(() => {
     startDownloader();
 
-    // Engine đọc cấu hình NSFW và UA từ đây thay vì import store.
     let secure: boolean | undefined;
     let notify: boolean | undefined;
     const applySettings = () => {
@@ -39,7 +37,6 @@ function useBootstrap() {
         notify = s.notifyUpdates;
         applyUpdateSchedule(notify);
       }
-      // "Chặn chụp màn hình" (screen_protector của app gốc).
       if (s.preventCapture !== secure) {
         secure = s.preventCapture;
         setSecureScreen(secure);
@@ -60,11 +57,9 @@ function useBootstrap() {
     const hasBookmarks = Object.keys(useLibrary.getState().bookmarks).length > 0;
     if (checkUpdatesOnLaunch && hasBookmarks && Date.now() - lastRun > UPDATE_CHECK_INTERVAL) {
       storage.set(LAST_UPDATE_CHECK, Date.now());
-      // Đợi giao diện ổn định rồi mới chạy để không tranh mạng với trang đầu tiên.
       timers.push(setTimeout(() => checkLibraryUpdates(), 4000));
     }
 
-    // Cập nhật addon từ kho addon, tối đa mỗi ngày một lần.
     const { addonRepoUrl, autoUpdateAddons } = useSettings.getState();
     const lastAddonCheck = storage.getNumber(ADDON_CHECK_KEY) ?? 0;
     if (autoUpdateAddons && addonRepoUrl && Date.now() - lastAddonCheck > DAY_MS) {

@@ -1,6 +1,5 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Khoá ngày theo giờ máy: "2026-10-04". */
 export function dayKey(time: number = Date.now()): string {
   const d = new Date(time);
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -19,7 +18,6 @@ export function addDays(key: string, days: number): string {
   return dayKey(date.getTime());
 }
 
-/** Tiêu đề nhóm cho lịch sử: Hôm nay / Hôm qua / Thứ…, dd/mm/yyyy. */
 export function dayLabel(time: number, now: number = Date.now()): string {
   const key = dayKey(time);
   if (key === dayKey(now)) {
@@ -68,7 +66,6 @@ export function formatRelative(time: number, now: number = Date.now()): string {
   return formatDate(time);
 }
 
-/** 3725 → "1 giờ 2 phút". */
 export function formatDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
   const h = Math.floor(s / 3600);

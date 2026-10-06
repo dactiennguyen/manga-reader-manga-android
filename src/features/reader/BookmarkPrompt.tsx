@@ -8,12 +8,7 @@ import { useLibrary } from '../../store/useLibrary';
 import { useSettings } from '../../store/useSettings';
 import { BookmarkDialog, type BookmarkTarget } from '../detail/BookmarkDialog';
 
-/**
- * "Prompt bookmark" của app gốc: đọc xong vài chương của một truyện chưa
- * bookmark thì hỏi có muốn bookmark để theo dõi chương mới không.
- */
 
-/** Hỏi khi đọc xong chương thứ mấy (tính trong lần mở app này). */
 const PROMPT_AFTER_CHAPTERS = 2;
 const neverKey = (key: string) => `bookmarkPrompt:never:${key}`;
 
@@ -21,7 +16,6 @@ const finishedThisSession = new Map<string, number>();
 
 const usePromptState = create<{ key: string | null }>(() => ({ key: null }));
 
-/** Gọi mỗi khi đọc xong một chương lần đầu. */
 export function noteChapterFinished(key: string): void {
   const count = (finishedThisSession.get(key) ?? 0) + 1;
   finishedThisSession.set(key, count);
@@ -35,7 +29,6 @@ export function noteChapterFinished(key: string): void {
   }
 }
 
-/** Dữ liệu cho BookmarkDialog từ thông tin truyện reader đã có; chưa tải xong thì null. */
 export function useBookmarkTarget(
   key: string,
   source: SourceConfig | undefined,
@@ -62,7 +55,6 @@ export function useBookmarkTarget(
   );
 }
 
-/** Hộp thoại gợi ý, đặt trong màn reader; chỉ hiện cho đúng truyện đang đọc. */
 export function BookmarkPrompt({ target }: { target: BookmarkTarget | null }) {
   const pendingKey = usePromptState(s => s.key);
   const [picking, setPicking] = useState(false);

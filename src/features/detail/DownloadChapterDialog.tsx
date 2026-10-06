@@ -14,10 +14,6 @@ type Mode = 'all' | 'unread' | 'missing' | 'range';
 
 const ROW_HEIGHT = 56;
 
-/**
- * "Download Chapters": chọn nhanh tất cả / chưa đọc / chưa tải, hoặc một
- * khoảng chương. Chương đã tải hoặc đang trong hàng đợi được bỏ qua.
- */
 export function DownloadChapterDialog({
   visible,
   onClose,
@@ -27,14 +23,12 @@ export function DownloadChapterDialog({
   visible: boolean;
   onClose: () => void;
   manga: DownloadManga;
-  /** Mới nhất trước, như MangaDetail.chapters. */
   chapters: Chapter[];
 }) {
   const { c } = useTheme();
   const { height } = useWindowDimensions();
   const tasks = useDownloads(s => s.tasks);
   const progress = useProgress(manga.mangaKey);
-  // Tải theo thứ tự đọc: cũ trước.
   const ordered = useMemo(() => [...chapters].reverse(), [chapters]);
   const [mode, setMode] = useState<Mode>('all');
   const [from, setFrom] = useState(0);

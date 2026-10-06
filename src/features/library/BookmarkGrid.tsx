@@ -17,7 +17,6 @@ export type BookmarkSourceInfo = {
   headers: Record<string, string>;
   name: string;
   nsfw: boolean;
-  /** Tên miền của site, hiện ở nhãn cam trên bìa. */
   host: string;
 };
 
@@ -33,7 +32,6 @@ type ItemProps = {
   onLongPress: (bookmark: Bookmark) => void;
 };
 
-/** Góc bìa như app gốc: "có chương mới" ưu tiên hơn "còn chương chưa đọc". */
 function ribbonOf(bookmark: Bookmark): CoverRibbon | undefined {
   if (bookmark.newChapters) {
     return 'new';
@@ -64,7 +62,6 @@ function BookmarkItemBase({
     onLongPress: () => onLongPress(bookmark),
   };
 
-  // Dạng danh sách còn chỗ nên giữ số chương mới/chưa đọc dưới tên truyện.
   const badges = useMemo(() => {
     const list: CardBadge[] = [];
     if (bookmark.newChapters) {
@@ -91,7 +88,6 @@ function BookmarkItemBase({
 
 const BookmarkItem = memo(BookmarkItemBase);
 
-/** Lưới/danh sách bookmark truyện (BookmarkGrid), có kéo để kiểm tra cập nhật. */
 export function BookmarkGrid({
   items,
   layout,
@@ -119,7 +115,6 @@ export function BookmarkGrid({
 
   return (
     <FlashList
-      // Đổi số cột cần dựng lại list.
       key={`${layout}-${columns}`}
       data={items}
       numColumns={columns}

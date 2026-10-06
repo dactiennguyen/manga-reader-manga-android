@@ -1,11 +1,6 @@
 import type { Engine, SourceConfig } from '../sources/types';
 import type { AddonInfo, AddonModule, ListParams, Widget, WidgetOf } from './types';
 
-/**
- * Bọc một addon (getURL / fetch / run / get / match) thành `Engine` — giao
- * diện các màn của app dùng. Màn hình không biết addon chạy từ bản có sẵn hay
- * bản tải về.
- */
 export function addonEngine(info: AddonInfo, addon: AddonModule): Engine {
   const expect = <K extends Widget['widget']>(result: Widget, kind: K): WidgetOf<K> => {
     if (!result || result.widget !== kind) {

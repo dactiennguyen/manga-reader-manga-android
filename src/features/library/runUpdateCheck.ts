@@ -2,7 +2,6 @@ import { toast } from '../../components/ui';
 import { useLibrary } from '../../store/useLibrary';
 import { checkLibraryUpdates, useUpdateCheck } from './updates';
 
-/** Kiểm tra chương mới do người dùng bấm, kèm thông báo kết quả. */
 export async function runLibraryUpdateCheck(keys?: string[]): Promise<void> {
   if (useUpdateCheck.getState().running) {
     toast('Đang kiểm tra cập nhật, vui lòng chờ…');

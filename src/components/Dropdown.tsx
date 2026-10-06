@@ -6,10 +6,6 @@ import { Check, ChevronDown } from './icons';
 
 type Option<T> = { value: T; label: string };
 
-/**
- * Nút thả xuống trên app bar ("Manga ▾" ở Bookmark/Downloads của app gốc):
- * bấm mở menu Material 3 ngay dưới nút.
- */
 export function DropdownButton<T extends string>({
   value,
   options,

@@ -9,7 +9,6 @@ export type BlockKind = 'ad' | 'tracker';
 type DayStats = { ads: number; trackers: number };
 
 type AdblockState = {
-  /** Thống kê chặn theo ngày ("Total block in last 30 days"). */
   daily: Record<string, DayStats>;
   adsListUrl: string;
   trackersListUrl: string;
@@ -45,7 +44,6 @@ export const useAdblock = create<AdblockState>()(
               trackers: today.trackers + (kind === 'tracker' ? count : 0),
             },
           };
-          // Chỉ giữ 30 ngày gần nhất.
           const cutoff = addDays(key, -30);
           for (const day of Object.keys(daily)) {
             if (day < cutoff) {

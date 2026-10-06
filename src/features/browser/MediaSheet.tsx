@@ -8,7 +8,6 @@ import type { MediaItem } from './scripts';
 
 export type MediaFound = { pageUrl: string; items: MediaItem[] };
 
-/** Danh sách video/âm thanh tìm được trên trang để chọn tải (addon "videodownloader"). */
 export function MediaSheet({ found, onClose }: { found: MediaFound | null; onClose: () => void }) {
   const download = async (item: MediaItem) => {
     onClose();

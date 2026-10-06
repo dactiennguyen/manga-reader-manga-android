@@ -34,10 +34,6 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * Theme WordPress "Madara" (plugin WP-Manga). Chiếm ~2/3 số site chạy được
- * trong bài test của docs, cả manga lẫn novel.
- */
 
 const ORDER_BY: Record<ListSort, string> = {
   latest: 'latest',
@@ -53,10 +49,6 @@ const pagePath = (page: number) => (page > 1 ? `page/${page}/` : '');
 
 const NSFW_GENRES = /adult|mature|smut|hentai|ecchi|18\+|erotic/i;
 
-/**
- * `harvestDir`: thư mục truyện để gom link khi child theme đổi markup. Không
- * truyền cho trang tìm kiếm — trang không có kết quả vẫn có link ở sidebar.
- */
 function parseListing($: CheerioAPI, base: string, harvestDir?: string): ListPage {
   let items: MangaItem[] = [];
   $(
@@ -97,7 +89,6 @@ function parseListing($: CheerioAPI, base: string, harvestDir?: string): ListPag
   };
 }
 
-/** Trang tìm kiếm của WP-Manga; luôn có tham số s (kể cả rỗng) thì mới ra kết quả. */
 function searchUrl(src: SourceConfig, query: string, page: number, extra: Record<string, string> = {}): string {
   return withQuery(`${src.baseUrl}/${pagePath(page)}?s=${encodeURIComponent(query)}`, {
     post_type: 'wp-manga',
@@ -116,12 +107,10 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
       .toArray()
       .map(el => {
         const $el = $(el);
-        // Bỏ link ảnh thumbnail (có ở theme "has-thumb") — lấy link có chữ.
         const $links = $el.find('a').not('.c-new-tag');
         const named = $links.toArray().find(a => cleanText($(a).text()));
         const $a = named ? $(named) : $links.first();
         const name = cleanText($a.text()) || cleanText($a.attr('title'));
-        // Chương mới có nhãn "new" kèm ngày thật trong title của thẻ a.
         const date =
           textOf($el.find('.chapter-release-date i')) ||
           cleanText($el.find('.chapter-release-date a, a.c-new-tag').attr('title')) ||
@@ -149,8 +138,6 @@ async function fetchChapters(
     return inline;
   }
 
-  // Madara mới: POST {manga-url}/ajax/chapters/. Body rỗng nhưng phải khai
-  // báo kiểu form — body text/plain bị tường lửa của nhiều site chặn 403.
   try {
     const html = await getText(`${trimTrailingSlash(url)}/ajax/chapters/`, {
       form: {},
@@ -162,10 +149,8 @@ async function fetchChapters(
       return chapters;
     }
   } catch {
-    // Rơi xuống cách cũ bên dưới.
   }
 
-  // Madara cũ: admin-ajax.php?action=manga_get_chapters&manga=<id>
   const mangaId =
     $('#manga-chapters-holder').attr('data-id') ||
     $('.rating-post-id').attr('value') ||
@@ -182,7 +167,6 @@ async function fetchChapters(
     });
     return parseChapters(parseHtml(html), src.baseUrl);
   } catch {
-    // Site tắt cả hai đường: vẫn hiện thông tin truyện, chỉ không có chương.
     return [];
   }
 }
@@ -214,9 +198,7 @@ function genreSlug(href: string | undefined): string {
   return idx >= 0 ? segments[idx + 1] ?? '' : segments[segments.length - 1] ?? '';
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Trang danh sách / thể loại / tìm kiếm. */
 async function loadList(site: SourceConfig, url: string, params?: ListParams): Promise<ListPage> {
   if (params?.method === 'search' || getQueryParam(url, 's') !== undefined) {
     return parseListing(parseHtml(await getText(url)), site.baseUrl);
@@ -231,8 +213,6 @@ async function loadList(site: SourceConfig, url: string, params?: ListParams): P
       throw error;
     }
   }
-  // Thư mục sai hoặc trang lưu trữ bị site tự chế lại: trang tìm kiếm của
-  // WP-Manga luôn có và nhận cùng tham số sắp xếp.
   return listViaSearch(site, params.sort, params.page);
 }
 
@@ -340,20 +320,16 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
   )
     .toArray()
     .map(el => imageSrc($(el), site.baseUrl))
-    // Ảnh nằm trong thư mục theme là banner của site chèn vào, không phải trang truyện.
     .filter((uri): uri is string => !!uri && !uri.startsWith('data:') && !uri.includes('/wp-content/themes/'));
 
   if (!pages.length) {
-    // Mảng chuỗi, hoặc mảng {src} ở bản Madara mới.
     const preloaded = html.match(/chapter_preloaded_images\s*=\s*(\[[\s\S]*?\])\s*(?:[;,]|<\/script>)/);
     if (preloaded) {
       try {
-        // Có site để dấu phẩy thừa trước "]" — JSON.parse không chịu.
         pages = (JSON.parse(preloaded[1].replace(/,\s*\]$/, ']')) as (string | { src?: string })[])
           .map(item => resolveUrl(typeof item === 'string' ? item : item.src, site.baseUrl))
           .filter(Boolean);
       } catch {
-        // Bỏ qua, báo lỗi bên dưới.
       }
     }
   }
@@ -379,7 +355,6 @@ async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: st
   return href ? resolveUrl(href, site.baseUrl) : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
 export function getURL({ site, params }: GetURLInput): string {
   switch (params.method) {

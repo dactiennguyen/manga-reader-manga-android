@@ -5,10 +5,6 @@ import { ShieldAlert } from '../../components/icons';
 import { useSettings } from '../../store/useSettings';
 import { font, useTheme } from '../../theme';
 
-/**
- * Xác nhận đủ tuổi trước khi bật nội dung 18+ (AdultContentDialog,
- * CONFIRM_AGE18). Xác nhận thì lưu ageConfirmed và bật showNsfw luôn.
- */
 export function AdultContentDialog({
   visible,
   onClose,

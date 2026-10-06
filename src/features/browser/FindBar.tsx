@@ -7,7 +7,6 @@ import { radius, space, useTheme } from '../../theme';
 
 export type FindResult = { count: number; index: number };
 
-/** "Tìm trong trang": thanh dưới cùng, kết quả do script trong trang đánh dấu. */
 export function FindBar({
   result,
   onQuery,
@@ -23,7 +22,6 @@ export function FindBar({
   const [text, setText] = useState('');
   const inputRef = useRef<TextInputInstance>(null);
 
-  // Thanh mở từ menu: đợi sheet đóng hẳn rồi mới focus để bàn phím bật lên.
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current?.focus(), 350);
     return () => clearTimeout(timer);

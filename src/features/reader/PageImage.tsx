@@ -16,7 +16,6 @@ import type { Page } from '../../sources/types';
 import { space } from '../../theme';
 import { getPageRatio, rememberPageRatio, usePageReload } from './pageImageCache';
 
-/** Tỉ lệ cao/rộng tạm khi chưa biết kích thước ảnh. */
 export const PLACEHOLDER_RATIO = 1.4;
 
 type Status = 'loading' | 'loaded' | 'error';
@@ -25,19 +24,13 @@ type Props = {
   page: Page;
   index: number;
   width: number;
-  /** Khung cố định (chế độ lật, ảnh vừa khung). Bỏ trống: cao theo tỉ lệ ảnh (chế độ dọc). */
   height?: number;
   highRes: boolean;
   onPress: (event: GestureResponderEvent) => void;
   onLongPress?: (index: number) => void;
-  /** Mở màn xác minh chống bot của trang chương (ảnh lỗi có thể do Cloudflare). */
   onVerify?: () => void;
 };
 
-/**
- * Một trang truyện. State dùng useRecyclingState vì FlashList tái sử dụng
- * component cho trang khác — đổi uri là state tự về ban đầu.
- */
 export const PageImage = memo(function PageImageView({
   page,
   index,

@@ -223,7 +223,6 @@ describe('weebcentral engine', () => {
       },
       expect.objectContaining({ name: 'Chapter 1', number: 1 }),
     ]);
-    // Truyện liên quan trước, gợi ý sau; bỏ chính truyện đang xem.
     expect(detail.similar).toEqual([
       {
         url: 'https://weebcentral.com/series/01J76XY8NPW1EH8SFZEXX8ZCRT',
@@ -295,14 +294,12 @@ describe('weebcentral engine', () => {
     expect(weebcentral.classifyUrl(src, 'https://weebcentral.com/series/not-an-id')).toBeNull();
     expect(weebcentral.classifyUrl(src, 'https://weebcentral.com/faq')).toBeNull();
 
-    // Có HTML từ WebView thì không cần tải lại.
     expect(await weebcentral.resolveMangaUrl(src, `https://weebcentral.com/chapters/${cid(3)}`, CHAPTER_PAGE)).toBe(
       SERIES_URL,
     );
     const { calls } = mockFetch([{ match: urlIs(`https://weebcentral.com/chapters/${cid(3)}`), body: CHAPTER_PAGE }]);
     expect(await weebcentral.resolveMangaUrl(src, `https://weebcentral.com/chapters/${cid(3)}`)).toBe(SERIES_URL);
     expect(calls).toHaveLength(1);
-    // Mất link tên truyện: lấy id từ endpoint chọn chương.
     const bare = CHAPTER_PAGE.replace(`href="${SERIES_URL}"`, 'href="#"');
     expect(await weebcentral.resolveMangaUrl(src, `https://weebcentral.com/chapters/${cid(3)}`, bare)).toBe(
       `https://weebcentral.com/series/${SID}`,

@@ -1,4 +1,3 @@
-
 import { Sheet } from '../../components/Sheet';
 import { CheckCheck, Download, Eye, EyeOff, Globe, Undo2 } from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
@@ -18,10 +17,6 @@ const DOWNLOAD_LABEL: Record<DownloadTask['status'], string> = {
   error: 'Tải lỗi — bấm để tải lại',
 };
 
-/**
- * MarkChapterDialog: nhấn giữ một chương để đánh dấu đã đọc/chưa đọc (cả
- * loạt trước/sau), tải riêng chương đó hoặc mở trên web.
- */
 export function MarkChapterDialog({
   visible,
   onClose,
@@ -34,7 +29,6 @@ export function MarkChapterDialog({
   visible: boolean;
   onClose: () => void;
   target?: ChapterTarget;
-  /** Toàn bộ chương, mới nhất trước. */
   chapters: Chapter[];
   mangaKey: string;
   onDownload: (chapter: Chapter) => void;
@@ -47,7 +41,6 @@ export function MarkChapterDialog({
   }
   const { chapter, index } = target;
   const read = !!progress.read[chapter.url];
-  // Danh sách mới nhất trước: chương cũ hơn nằm sau index, mới hơn nằm trước.
   const older = chapters.slice(index + 1);
   const newer = chapters.slice(0, index);
 

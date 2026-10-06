@@ -16,14 +16,12 @@ const ROW_HEIGHT = 60;
 type Props = {
   visible: boolean;
   onClose: () => void;
-  /** Mới nhất trước. */
   chapters: readonly Chapter[];
   currentUrl: string;
   mangaKey: string;
   onPick: (chapter: Chapter) => void;
 };
 
-/** "Pick chapter" (SelectChapterDialog) — dùng chung cho reader manga và novel. */
 export function ChapterPickerSheet({ visible, onClose, chapters, currentUrl, mangaKey, onPick }: Props) {
   return (
     <Sheet
@@ -53,7 +51,6 @@ function downloadedUrls(tasks: Record<string, DownloadTask>, mangaKey: string): 
     .map(task => task.chapterUrl);
 }
 
-/** Tách riêng để chỉ đăng ký tiến độ/tải xuống khi sheet đang mở. */
 function ChapterList({
   chapters,
   currentUrl,
@@ -68,7 +65,6 @@ function ChapterList({
 
   const listHeight = Math.min(chapters.length * ROW_HEIGHT, height * 0.65);
   const visibleRows = Math.max(1, Math.floor(listHeight / ROW_HEIGHT));
-  // Đưa chương đang đọc vào giữa danh sách.
   const initialIndex =
     currentIndex > 0
       ? Math.max(0, Math.min(currentIndex - Math.floor(visibleRows / 2), chapters.length - visibleRows))

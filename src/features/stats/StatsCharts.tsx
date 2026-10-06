@@ -4,18 +4,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { font, radius, space, useTheme } from '../../theme';
 import { niceTicks } from './format';
 
-/**
- * Biểu đồ vẽ bằng View (không cần thư viện chart).
- *
- * Màu mark lấy từ token chart/chartAlt của theme (vàng sẫm + xanh dương)
- * thay vì accent, để mark giữ cùng sắc độ ở cả theme sáng lẫn tối.
- */
 export function useChartColors(): { primary: string; onPrimary: string; secondary: string } {
   const { c } = useTheme();
   return { primary: c.chart, onPrimary: c.onChart, secondary: c.chartAlt };
 }
 
-/** "#RRGGBB" + alpha → "rgba(...)" để dựng thang tuần tự một màu. */
 export function withAlpha(hex: string, alpha: number): string {
   const value = hex.replace('#', '');
   const r = parseInt(value.slice(0, 2), 16);
@@ -24,17 +17,13 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// ─── Biểu đồ cột ────────────────────────────────────────────────────────────
 
 export type ChartSeries = { name: string; color: string };
 
 export type BarDatum = {
   key: string;
-  /** Nhãn trục x; chuỗi rỗng = không hiện (tránh chồng nhãn khi nhiều cột). */
   axisLabel: string;
-  /** Mỗi phần tử ứng với một series, xếp chồng từ dưới lên. */
   values: number[];
-  /** Mô tả đầy đủ cho trình đọc màn hình. */
   a11yLabel: string;
 };
 
@@ -55,7 +44,6 @@ function BarChartBase({
   series: ChartSeries[];
   height?: number;
   formatTick?: (value: number) => string;
-  /** Dòng số liệu phía trên biểu đồ; nhận undefined khi chưa chọn cột nào. */
   readout: (selected: BarDatum | undefined) => string;
 }) {
   const { c } = useTheme();
@@ -176,7 +164,6 @@ function BarBase({
   active: boolean;
   onPress: () => void;
 }) {
-  // Đoạn dưới cùng là series 0; đoạn khác 0 nhỏ nhất vẫn cao 2px để không biến mất.
   const segments = datum.values
     .map((value, i) => ({
       color: series[i]?.color,
@@ -201,7 +188,6 @@ function BarBase({
               key={i}
               style={[
                 { width, height: s.h, backgroundColor: s.color },
-                // Khe 2px màu nền tách các đoạn chồng nhau thay vì kẻ viền.
                 i < topIndex && styles.segmentGap,
                 i === topIndex && { borderTopLeftRadius: capRadius, borderTopRightRadius: capRadius },
               ]}
@@ -215,13 +201,10 @@ function BarBase({
 
 const Bar = memo(BarBase);
 
-// ─── Lịch nhiệt ─────────────────────────────────────────────────────────────
 
 export type HeatCell = {
   key: string;
-  /** 0 = không đọc, 1–4 = cường độ tăng dần. */
   level: number;
-  /** Ngày chưa tới — vẽ ô trống. */
   future: boolean;
   today: boolean;
   a11yLabel: string;
@@ -230,7 +213,6 @@ export type HeatCell = {
 const LEVEL_ALPHA = [0, 0.3, 0.52, 0.76, 1];
 const WEEKDAY_HEADER = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
-/** Lịch nhiệt theo tuần (hàng = tuần, cột = thứ), thang tuần tự một màu. */
 function CalendarHeatmapBase({
   weeks,
   readout,

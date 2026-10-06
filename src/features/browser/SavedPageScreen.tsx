@@ -19,7 +19,6 @@ function formatSize(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-/** Xem trang web đã lưu offline ("Save page as"). */
 export function SavedPageScreen() {
   const { c } = useTheme();
   const navigation = useAppNavigation();
@@ -66,7 +65,6 @@ export function SavedPageScreen() {
     navigation.goBack();
   };
 
-  // Bản lưu tĩnh: bấm link thì mở bản trực tuyến trong trình duyệt.
   const onShouldStart = (request: ShouldStartLoadRequest) => {
     const { url } = request;
     if (!request.isTopFrame || url === page.url || /^(about|data|blob):/i.test(url)) {
@@ -106,7 +104,6 @@ export function SavedPageScreen() {
           <WebView
             source={source}
             originWhitelist={ORIGIN_ALL}
-            // Script trong bản lưu có thể chạy lại và phá bố cục đã chụp — chỉ hiển thị tĩnh.
             javaScriptEnabled={false}
             onShouldStartLoadWithRequest={onShouldStart}
             setSupportMultipleWindows={false}

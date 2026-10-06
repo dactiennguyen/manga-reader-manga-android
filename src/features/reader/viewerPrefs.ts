@@ -56,10 +56,6 @@ function pickPrefs(prefs: ViewerPrefs): ViewerPrefs {
   return { viewMode: prefs.viewMode, direction: prefs.direction, pageGap: prefs.pageGap };
 }
 
-/**
- * Đổi chế độ xem/hướng/khoảng cách cho truyện đang đọc: truyện đã có cài đặt
- * riêng thì sửa cài đặt riêng, không thì sửa mặc định chung.
- */
 export function updateViewerPrefs(mangaKey: string, patch: Partial<ViewerPrefs>): void {
   const state = useReaderSettings.getState();
   const current = resolveViewerPrefs(state, mangaKey);
@@ -71,10 +67,6 @@ export function updateViewerPrefs(mangaKey: string, patch: Partial<ViewerPrefs>)
   }
 }
 
-/**
- * "Apply to all pages": chọn → cài đặt hiện tại thành mặc định chung và bỏ
- * cài đặt riêng; bỏ chọn → ghim cài đặt hiện tại cho riêng truyện này.
- */
 export function setApplyToAll(mangaKey: string, applyAll: boolean): void {
   const state = useReaderSettings.getState();
   const current = resolveViewerPrefs(state, mangaKey);

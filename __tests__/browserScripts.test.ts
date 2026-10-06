@@ -32,7 +32,6 @@ function fakeDoc(title: string, nodes: FakeEl[]): FakeDoc {
   };
 }
 
-/** Chạy script như WebView: có document/location/window giả, trả về các message đã post. */
 function runInPage(script: string, doc: FakeDoc, href: string): unknown[] {
   const posted: unknown[] = [];
   const withDom = (node: FakeEl) => ({
@@ -46,7 +45,6 @@ function runInPage(script: string, doc: FakeDoc, href: string): unknown[] {
     querySelectorAll: (selector: string) => doc.querySelectorAll(selector).map(withDom),
   };
   const window = { ReactNativeWebView: { postMessage: (data: string) => posted.push(JSON.parse(data)) } };
-  // eslint-disable-next-line no-new-func
   new Function('document', 'location', 'window', 'URL', script)(document, { href }, window, URL);
   return posted;
 }
@@ -55,7 +53,6 @@ describe('script chèn vào trang', () => {
   test('các script đều là JavaScript hợp lệ', () => {
     const bridge = buildBridgeScript({ adblock: true, longPress: true, findColor: '#ff0', findCurrentColor: '#f80' });
     for (const script of [bridge, JS_FIND_MEDIA, jsRequestHtml('run', 1000)]) {
-      // eslint-disable-next-line no-new-func
       expect(() => new Function(script)).not.toThrow();
     }
   });
@@ -87,7 +84,6 @@ describe('script chèn vào trang', () => {
       JSON.stringify({
         type: 'media',
         url: 'https://a.com',
-        // eslint-disable-next-line no-script-url -- dữ liệu độc hại giả lập, phải bị lọc bỏ
         items: [{ url: 'javascript:alert(1)' }, { url: 'https://a.com/x.mp4', kind: 'weird' }, null],
       }),
     );

@@ -198,7 +198,6 @@ describe('mangakatana engine', () => {
     expect(calls[1].url).toBe(
       `https://mangakatana.com/manga/page/3?filter=1&include=action&chapters=1&order=az&${EXCLUDE}`,
     );
-    // Duyệt chính thể loại 18+ thì không tự loại nó đi; "phổ biến" rơi về mới cập nhật.
     await mangakatana.byGenre(src, { id: 'adult', name: 'Adult' }, 'popular', 1);
     expect(calls[2].url).toBe(
       'https://mangakatana.com/manga/page/1?filter=1&include=adult&chapters=1&order=latest&exclude=erotica_loli_shota_sexual-violence',
@@ -312,11 +311,9 @@ describe('mangakatana engine', () => {
     expect(mangakatana.classifyUrl(src, 'https://mangakatana.com/manga/no-id-here')).toBeNull();
     expect(mangakatana.classifyUrl(src, 'https://mangakatana.com/profile')).toBeNull();
 
-    // Suy ra từ URL, không gửi request.
     const { calls } = mockFetch([]);
     expect(await mangakatana.resolveMangaUrl(src, `${MANGA_URL}/c56`)).toBe(MANGA_URL);
     expect(calls).toHaveLength(0);
-    // URL lạ: đọc breadcrumb.
     expect(await mangakatana.resolveMangaUrl(src, 'https://mangakatana.com/read?id=1', CHAPTER_PAGE)).toBe(MANGA_URL);
   });
 });

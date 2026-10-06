@@ -3,11 +3,6 @@ import { Image } from 'react-native';
 
 import type { Page } from '../../sources/types';
 
-/**
- * Bộ nhớ phụ cho ảnh trang (mangaPagePreloader): tỉ lệ cao/rộng đã biết để
- * khung ảnh ở chế độ dọc không nhảy khi cuộn lại, tải trước trang kế, và tín
- * hiệu "tải lại ảnh" từ menu nhấn giữ.
- */
 
 const MAX_RATIOS = 3000;
 const MAX_PREFETCHED = 500;
@@ -40,11 +35,6 @@ function hasHeaders(page: Page): boolean {
   return !!page.headers && Object.keys(page.headers).length > 0;
 }
 
-/**
- * Tải trước `count` trang từ `from`. Image.prefetch không gửi được header nên
- * bỏ qua ảnh cần Referer; riêng chế độ dọc thì đo kích thước kèm header — vừa
- * biết trước chiều cao khung, vừa nạp sẵn ảnh vào cache.
- */
 export function preloadPages(pages: readonly Page[], from: number, count: number, measure: boolean): void {
   const end = Math.min(pages.length, from + count);
   for (let i = Math.max(0, from); i < end; i++) {
@@ -72,12 +62,10 @@ export function preloadPages(pages: readonly Page[], from: number, count: number
   }
 }
 
-/** "Tải lại ảnh" từ menu nhấn giữ: tải lại kể cả khi ảnh đang hiển thị bình thường. */
 export function requestPageReload(uri: string): void {
   reloadListeners.get(uri)?.forEach(listener => listener(false));
 }
 
-/** Sau khi xác minh chống bot: thử lại mọi ảnh đang lỗi trên màn. */
 export function retryFailedPages(): void {
   reloadListeners.forEach(listeners => listeners.forEach(listener => listener(true)));
 }

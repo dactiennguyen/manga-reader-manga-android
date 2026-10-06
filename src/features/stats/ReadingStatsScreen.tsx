@@ -47,7 +47,6 @@ const RANGE_OPTIONS = [
 const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const HEAT_WEEKS = 5;
 
-/** dd/mm cho nhãn trục. */
 function shortDate(key: string): string {
   const [, m, d] = key.split('-');
   return `${d}/${m}`;
@@ -66,7 +65,6 @@ function describeDay(key: string, stats: DailyStats): string {
   return parts.join(' · ');
 }
 
-/** Mức đậm của ô lịch nhiệt theo phút đọc trong ngày. */
 function heatLevel(stats: DailyStats | undefined): number {
   if (!stats || (stats.seconds < 60 && stats.chapters === 0)) {
     return 0;
@@ -206,7 +204,6 @@ export function ReadingStatsScreen() {
   );
 }
 
-// ─── Chuỗi ngày đọc ─────────────────────────────────────────────────────────
 
 function StreakCard({
   current,
@@ -297,7 +294,6 @@ function StatTile({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
   );
 }
 
-// ─── Biểu đồ ────────────────────────────────────────────────────────────────
 
 function ReadingChart({ daily, days }: { daily: Record<string, DailyStats>; days: 7 | 30 }) {
   const { primary } = useChartColors();
@@ -308,7 +304,6 @@ function ReadingChart({ daily, days }: { daily: Record<string, DailyStats>; days
     () =>
       range.map(({ key, stats }, i) => ({
         key,
-        // 30 cột: chỉ ghi nhãn mỗi 7 ngày và ngày cuối để nhãn không chồng nhau.
         axisLabel:
           days === 7 ? weekdayOf(key) : (range.length - 1 - i) % 7 === 0 ? shortDate(key) : '',
         values: [stats.seconds / 60],
@@ -339,7 +334,6 @@ function ReadingChart({ daily, days }: { daily: Record<string, DailyStats>; days
 function ReadingHeatmap({ daily }: { daily: Record<string, DailyStats> }) {
   const weeks = useMemo(() => {
     const today = dayKey();
-    // Tuần bắt đầu từ thứ Hai; getDay(): CN = 0.
     const offset = (dayKeyToDate(today).getDay() + 6) % 7;
     const start = addDays(today, -offset - (HEAT_WEEKS - 1) * 7);
     return Array.from({ length: HEAT_WEEKS }, (_, w) => {
@@ -367,7 +361,6 @@ function ReadingHeatmap({ daily }: { daily: Record<string, DailyStats> }) {
   return <CalendarHeatmap weeks={weeks} readout={readout} />;
 }
 
-// ─── Hoạt động gần đây ──────────────────────────────────────────────────────
 
 function RecentItemBase({ entry }: { entry: ReadingEntry }) {
   const navigation = useAppNavigation();

@@ -7,7 +7,6 @@ import { Button, Divider, Radio, TextField, confirm, toast } from '../../compone
 import { useLibrary } from '../../store/useLibrary';
 import { space } from '../../theme';
 
-/** Chọn (hoặc tạo) nhóm để chuyển các bookmark đã chọn vào. */
 export function GroupSheet({
   visible,
   onClose,
@@ -16,7 +15,6 @@ export function GroupSheet({
 }: {
   visible: boolean;
   onClose: () => void;
-  /** Nhóm chung của các mục đang chọn, undefined nếu khác nhau. */
   current?: string;
   onSelect: (group: string) => void;
 }) {
@@ -65,7 +63,6 @@ export function GroupSheet({
   );
 }
 
-/** Tạo nhóm mới (chip "+ Nhóm mới"). */
 export function NewGroupDialog({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const addGroup = useLibrary(s => s.addGroup);
   const groups = useLibrary(s => s.groups);
@@ -106,7 +103,6 @@ export function NewGroupDialog({ visible, onClose }: { visible: boolean; onClose
   );
 }
 
-/** Đổi tên / xoá nhóm (nhấn giữ chip nhóm). */
 export function EditGroupDialog({
   group,
   onClose,

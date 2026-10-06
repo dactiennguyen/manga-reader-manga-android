@@ -16,7 +16,6 @@ const mk = (host: string): SourceConfig => ({
   addedAt: 0,
 });
 
-/** Trang chủ kiểu NovelFull/NovGo: menu sắp xếp, thể loại, form tìm kiếm GET. */
 const FULL_HOME = `
   <ul class="dropdown-menu">
     <li><a href="/latest-release-novel" title="Latest Release">Latest Release</a></li>
@@ -92,12 +91,10 @@ describe('novelfull engine', () => {
     });
     expect(page.items).toHaveLength(2);
 
-    // Trang chủ chỉ tải một lần; trang 3 theo mẫu ?page= học từ trang 1.
     const last = await novelfull.list(src, 'popular', 3);
     expect(calls.map(c => c.url).slice(2)).toEqual(['https://full.test/most-popular?page=3']);
     expect(last.hasNext).toBe(false);
 
-    // Link truyện có chữ "newest" trong slug không bị nhầm là trang "truyện mới".
     await novelfull.list(src, 'new', 1);
     expect(calls[calls.length - 1].url).toBe('https://full.test/new-novel');
   });
@@ -132,7 +129,6 @@ describe('novelfull engine', () => {
     ]);
     expect(page.hasNext).toBe(true);
 
-    // Form tìm kiếm POST (FreeWebNovel): gửi searchkey, kết quả một trang.
     const { calls: searchCalls } = mockFetch([
       { match: (url, init) => url === 'https://live.test/search/' && init?.method === 'POST', body: pager(1) },
     ]);
@@ -305,7 +301,6 @@ describe('novelfull engine', () => {
       paragraphs: ['“Understanding abilities?”', 'Bathesia tilted her head.', 'Karos licked his lips.'],
     });
 
-    // NovGo: khung .txt bọc ngoài #chapter-content, tách đoạn theo <br>.
     const go = mk('novgo.test');
     mockFetch([
       {
@@ -354,7 +349,6 @@ describe('novelfull engine', () => {
     expect(novelfull.detect?.('<div class="list list-novel col-xs-12 col-sm-12 col-md-8 col-novel-main">')).toBe(true);
     expect(novelfull.detect?.('<div class="ul-list1 ul-list1-1 home-shelf-card">')).toBe(true);
     expect(novelfull.detect?.("<script>var ajaxChapterOptionUrl = '/ajax-chapter-option'</script>")).toBe(true);
-    // Madara (cả bản novel), Themesia, MangaBox, MadTheme.
     expect(
       novelfull.detect?.('<link href="/wp-content/themes/madara/style.css"><div class="page-item-detail text">'),
     ).toBe(false);

@@ -6,7 +6,6 @@ import { useSettings } from '../../store/useSettings';
 import { space, useTheme } from '../../theme';
 import { NOVEL_FONTS, novelFontFamily } from './novelThemes';
 
-/** Danh sách phông mở từ nút "Hệ thống ›" của panel đáy; mỗi dòng viết bằng chính phông đó. */
 export function NovelFontSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { c } = useTheme();
   const current = useSettings(state => state.novel.font);

@@ -1,13 +1,5 @@
 import { getOrigin } from './url';
 
-/**
- * Lớp tải HTML/JSON cho parser (tương đương handler nativeFetch của app gốc).
- *
- * Trên Android, fetch của React Native dùng chung CookieManager với WebView,
- * nên sau khi người dùng vượt Cloudflare trong tab trình duyệt thì request ở
- * đây cũng mang cookie cf_clearance. Cookie đó gắn với User-Agent, vì vậy mọi
- * request phải gửi đúng UA của WebView — xem setWebUserAgent.
- */
 
 export const DEFAULT_USER_AGENT =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36';
@@ -29,7 +21,6 @@ export class HttpError extends Error {
     message: string,
     readonly status: number,
     readonly url: string,
-    /** Trang chặn bot (Cloudflare…) — cần mở trong trình duyệt để xác minh. */
     readonly challenge = false,
   ) {
     super(message);
@@ -44,12 +35,10 @@ export function isChallengeError(error: unknown): error is HttpError {
 export type RequestOptions = {
   method?: 'GET' | 'POST';
   headers?: Record<string, string>;
-  /** Body dạng form (x-www-form-urlencoded) hoặc chuỗi thô. */
   form?: Record<string, string | number | (string | number)[]>;
   body?: string;
   referer?: string;
   timeoutMs?: number;
-  /** Gửi header X-Requested-With như request AJAX của jQuery. */
   ajax?: boolean;
 };
 
@@ -85,14 +74,11 @@ export function formEncode(
   return parts.join('&');
 }
 
-/** HTML do WebView chuyển sang khi người dùng bấm "Chạy addon" — dùng lại, khỏi tải lần nữa. */
 const handedOff = new Map<string, { html: string; at: number }>();
 const HANDOFF_TTL = 2 * 60 * 1000;
 
 export function handOffHtml(url: string, html: string): void {
   const now = Date.now();
-  // Addon có thể tải URL khác với URL được giao (vd. trang tìm kiếm → API) nên
-  // dọn bản hết hạn ở đây, không chỉ khi lấy ra.
   for (const [key, entry] of handedOff) {
     if (now - entry.at >= HANDOFF_TTL) {
       handedOff.delete(key);
@@ -175,10 +161,6 @@ export async function request(
   return { status: response.status, url: response.url || url, text };
 }
 
-/**
- * Request HEAD — kiểm tra một URL (ảnh, file) có phục vụ được không mà không
- * tải nội dung. Lỗi mạng/hết giờ trả về null.
- */
 export async function head(
   url: string,
   options: { headers?: Record<string, string>; timeoutMs?: number } = {},

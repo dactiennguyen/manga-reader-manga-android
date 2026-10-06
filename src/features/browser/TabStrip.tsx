@@ -18,11 +18,6 @@ function tabLabel(tab: BrowserTab): string {
   return tab.title || displayUrl(tab.url);
 }
 
-/**
- * Dải tab ngang dưới thanh địa chỉ trên màn rộng (tablet), như app gốc:
- * mỗi tab [× tiêu đề], tab đang mở liền màu với trang, nút + ở cuối.
- * Chỉ hiện tab cùng loại (thường/ẩn danh) với tab đang mở.
- */
 export function TabStrip({ activeTab, onNewTab }: { activeTab: BrowserTab; onNewTab: () => void }) {
   const { c } = useTheme();
   const tabs = useBrowser(s => s.tabs);
@@ -33,7 +28,6 @@ export function TabStrip({ activeTab, onNewTab }: { activeTab: BrowserTab; onNew
   const bg = activeTab.incognito ? c.incognito : c.appBar;
   const fg = activeTab.incognito ? c.onIncognito : c.onAppBar;
 
-  // Tab mới/đổi tab: cuộn cho tab đang mở lọt vào khung nhìn.
   useEffect(() => {
     if (activeIndex >= 0) {
       scrollRef.current?.scrollTo({

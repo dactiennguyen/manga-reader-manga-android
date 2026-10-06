@@ -38,7 +38,6 @@ import { font, radius, space, useTheme } from '../../theme';
 import { LanguageSheet } from './LanguageSheet';
 import { Favicon } from '../../components/Favicon';
 
-/** Bỏ "/" thừa ở hai đầu; để trống thì về mặc định "manga". */
 function cleanDir(value: string): string {
   return value.trim().replace(/^\/+|\/+$/g, '') || 'manga';
 }
@@ -48,7 +47,6 @@ const CONTENT_OPTIONS: { value: ContentType; label: string }[] = [
   { value: 'novel', label: 'Tiểu thuyết' },
 ];
 
-/** Cài đặt một nguồn (trang settings.html của addon gốc). */
 export function SourceSettingsScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'SourceSettings'>>();
   const source = useSource(route.params.sourceId);
@@ -78,14 +76,12 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
   const newTab = useSettings(s => s.openNativeLinksInNewTab);
   const engine = getEngine(source.engine);
   const [langOpen, setLangOpen] = useState(false);
-  // Giữ loại đang chọn cả lúc sheet đóng để tiêu đề không đổi giữa chừng hiệu ứng.
   const [langTarget, setLangTarget] = useState<'site' | 'chapter'>('site');
   const openLang = (target: 'site' | 'chapter') => {
     setLangTarget(target);
     setLangOpen(true);
   };
 
-  // Ô nhập lưu khi rời ô để không ghi store theo từng phím.
   const [name, setName] = useState(source.name);
   const [mangaDir, setMangaDir] = useState(source.options?.mangaDir ?? 'manga');
   const pending = useRef({ id: source.id, name, mangaDir });
@@ -110,7 +106,6 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
     }
   };
 
-  // Rời màn khi ô nhập còn focus thì onEndEditing có thể không chạy — lưu nốt ở đây.
   const allowDir = engine.allowCustomSites;
   useEffect(
     () => () => {
@@ -135,7 +130,6 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
     [allowDir],
   );
 
-  // Site của danh mục: "xoá" chỉ bỏ ghim và bỏ chỉnh sửa, site vẫn trong danh sách hỗ trợ.
   const inCatalog = !!catalogSite(source.id);
   const customized = useSources(s => s.sources.some(src => src.id === source.id));
   const remove = async () => {
@@ -153,7 +147,6 @@ function SourceSettingsBody({ source }: { source: SourceConfig }) {
     if (!ok) {
       return;
     }
-    // Rời màn trước để không nhấp nháy trạng thái "không tìm thấy nguồn".
     navigation.goBack();
     removeSource(source.id);
     toast(inCatalog ? `Đã khôi phục ${source.name}` : `Đã xoá ${source.name}`);

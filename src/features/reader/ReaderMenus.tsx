@@ -35,7 +35,6 @@ type MenuProps = {
   manga: DownloadManga;
   chapter: Chapter;
   onOpenManga: () => void;
-  /** Mục cài đặt của reader ("Cài đặt trình xem" / "Cài đặt đọc"). */
   settings?: { label: string; onPress: () => void };
 };
 
@@ -47,10 +46,6 @@ const DOWNLOAD_STATUS: Record<DownloadStatus, string> = {
   error: 'Lần tải trước bị lỗi — bấm để thử lại',
 };
 
-/**
- * Menu "⋮" trên thanh địa chỉ của reader (dùng chung manga và novel): thao tác
- * với chương, rồi các mục của menu trình duyệt.
- */
 export function ReaderMenuSheet({ visible, onClose, manga, chapter, onOpenManga, settings }: MenuProps) {
   const navigation = useAppNavigation();
   const task = useChapterDownload(manga.mangaKey, chapter.url);
@@ -103,7 +98,6 @@ type PageMenuProps = {
   onClose: () => void;
 };
 
-/** Menu nhấn giữ ảnh trang. */
 export function PageMenuSheet({ page, index, onClose }: PageMenuProps) {
   const navigation = useAppNavigation();
   const local = !!page?.uri.startsWith('file://');

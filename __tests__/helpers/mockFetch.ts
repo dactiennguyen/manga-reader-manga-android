@@ -4,7 +4,6 @@ type Route = {
   body: string | object;
 };
 
-/** Thay global fetch bằng bảng route cố định; trả về danh sách request đã gọi. */
 export function mockFetch(routes: Route[]): { calls: { url: string; init?: RequestInit }[] } {
   const calls: { url: string; init?: RequestInit }[] = [];
   (globalThis as any).fetch = jest.fn(async (url: string, init?: RequestInit) => {

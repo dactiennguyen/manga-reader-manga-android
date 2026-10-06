@@ -4,7 +4,6 @@ import { persist } from 'zustand/middleware';
 import { persistStorage } from '../lib/storage';
 import type { ContentType } from '../sources/types';
 
-/** Truyện đã bookmark (DBBookmark). */
 export type Bookmark = {
   key: string;
   sourceId: string;
@@ -12,19 +11,14 @@ export type Bookmark = {
   title: string;
   cover?: string;
   content: ContentType;
-  /** Tên nhóm bookmark; '' = không nhóm. */
   group: string;
   addedAt: number;
   nsfw?: boolean;
-  /** Lần kiểm tra chương mới gần nhất. */
   checkedAt?: number;
   chapterCount?: number;
   latestChapter?: string;
-  /** Số chương mới phát hiện từ lần mở truyện gần nhất (badge "NEW"). */
   newChapters?: number;
-  /** Số chương chưa đọc (badge "UNREAD"). */
   unread?: number;
-  /** Lần cuối có chương mới — để sắp xếp "mới cập nhật". */
   updatedAt?: number;
 };
 

@@ -8,7 +8,6 @@ import { useLibrary } from '../../store/useLibrary';
 import { getSource } from '../../store/useSources';
 import { dropChapter, loadChapter } from './chapterCache';
 
-/** Dữ liệu dùng chung cho reader manga và novel. */
 
 export function findChapterIndex(chapters: readonly Chapter[], url: string): number {
   const exact = chapters.findIndex(chapter => chapter.url === url);
@@ -19,12 +18,6 @@ function hasChapter(detail: MangaDetail | undefined, chapterUrl: string): boolea
   return !!detail && findChapterIndex(detail.chapters, chapterUrl) >= 0;
 }
 
-/**
- * Chi tiết truyện (tên, bìa, danh sách chương). Lấy từ cache; chỉ tải lại khi
- * chưa có hoặc chương đang mở chưa nằm trong danh sách. Lỗi được bỏ qua —
- * reader vẫn đọc được chương, chỉ thiếu chuyển chương.
- * `settled` = đã có kết quả cuối cùng (thành công hoặc thất bại).
- */
 export function useMangaDetail(
   sourceId: string,
   mangaUrl: string,
@@ -71,7 +64,6 @@ export type ChapterState =
   | { status: 'error'; error: unknown }
   | { status: 'ready'; chapterUrl: string; content: ChapterContent };
 
-/** Nội dung chương: bản offline trước, không có thì tải từ nguồn. */
 export function useChapterContent(
   sourceId: string,
   key: string,
@@ -113,7 +105,6 @@ export function useChapterContent(
   return [state, retry];
 }
 
-/** Tên/bìa đã biết từ thư viện hoặc lịch sử, khi chưa tải được chi tiết truyện. */
 export function knownManga(key: string): { title?: string; cover?: string } {
   const bookmark = useLibrary.getState().bookmarks[key];
   if (bookmark) {

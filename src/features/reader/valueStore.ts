@@ -1,9 +1,5 @@
 import { useSyncExternalStore } from 'react';
 
-/**
- * Giá trị đổi liên tục (trang đang xem, % tiến độ…) mà chỉ vài component con
- * cần hiển thị. Để ngoài state của màn để đổi trang không render lại cả reader.
- */
 export type ValueStore<T> = {
   get: () => T;
   set: (value: T) => void;

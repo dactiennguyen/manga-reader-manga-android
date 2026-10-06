@@ -13,7 +13,6 @@ import { Favicon } from '../../components/Favicon';
 
 type Mode = 'normal' | 'incognito';
 
-/** Danh sách tab (thường + ẩn danh). */
 export function TabsScreen() {
   const { c } = useTheme();
   const navigation = useAppNavigation();
@@ -136,7 +135,6 @@ export function TabsScreen() {
   );
 }
 
-/** Thẻ một tab trong lưới. */
 function TabCard({
   tab,
   active,

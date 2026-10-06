@@ -39,7 +39,6 @@ function SiteRowBase({ source, onOpen }: { source: SourceConfig; onOpen: (source
 
 const SiteRow = memo(SiteRowBase);
 
-/** Site truyện đã thêm ("Bookmarked Media Sites"). */
 export function MediaSitesTab() {
   const navigation = useAppNavigation();
   const { c } = useTheme();

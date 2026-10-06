@@ -6,19 +6,15 @@ import { useTheme } from '../theme';
 
 type FaviconProps = {
   url: string;
-  /** Tên dùng lấy chữ cái khi không có icon; mặc định là host. */
   label?: string;
   size?: number;
-  /** Đặt icon trong ô nền (danh sách) thay vì icon trần (thanh địa chỉ, tab). */
   tile?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
-/** Favicon của site, tải lỗi thì hiện chữ cái đầu. */
 function FaviconView({ url, label, size = 24, tile, style }: FaviconProps) {
   const { c } = useTheme();
   const icon = faviconUrl(url);
-  // Lưu URL bị lỗi thay vì cờ boolean để ô tái sử dụng (danh sách) không mang lỗi cũ sang.
   const [failedIcon, setFailedIcon] = useState<string>();
   const letter = (label?.trim() || getHost(url) || '?').charAt(0).toUpperCase();
   const box = { width: size, height: size, borderRadius: Math.round(size * (tile ? 0.28 : 0.25)) };

@@ -20,7 +20,6 @@ export const MODE_ICONS: Record<ViewMode, LucideIcon> = {
   double: Columns2,
 };
 
-/** Menu chọn chế độ xem bật ra bên trái thanh công cụ dọc (cùng căn giữa màn). */
 export function ViewModeMenu({
   visible,
   value,

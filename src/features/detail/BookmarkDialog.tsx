@@ -22,10 +22,6 @@ export type BookmarkTarget = {
   chapters: Chapter[];
 };
 
-/**
- * BookmarkDialog: chưa lưu thì chọn nhóm rồi lưu; đã lưu thì đổi nhóm hoặc bỏ
- * khỏi bookmark. Dựng lại mỗi lần mở (key) để lựa chọn bắt đầu từ trạng thái thật.
- */
 export function BookmarkDialog({
   visible,
   onClose,
@@ -38,7 +34,6 @@ export function BookmarkDialog({
   const { c } = useTheme();
   const bookmark = useLibrary(s => s.bookmarks[target.key]);
   const groups = useLibrary(s => s.groups);
-  // Chế độ (thêm/sửa) cố định theo lúc mở để tiêu đề không đổi khi vừa bỏ bookmark xong.
   const [saved] = useState(() => !!bookmark);
   const [group, setGroup] = useState(() => bookmark?.group ?? '');
   const [newName, setNewName] = useState('');

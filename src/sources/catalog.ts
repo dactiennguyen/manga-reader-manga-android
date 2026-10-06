@@ -3,16 +3,6 @@ import type { AddonSiteInfo } from '../addons/types';
 import { getHost, stripWww } from '../lib/url';
 import type { SourceConfig } from './types';
 
-/**
- * Danh mục "Supported sites": gộp `siteInfo` của mọi addon đang dùng (như
- * info.json của app gốc). siteInfo sinh bằng scripts/gen-catalog.py từ kết quả
- * test thật — chỉ gồm site chạy được, cộng site còn sống nhưng không kiểm
- * được từ máy test (Cloudflare, nhà mạng chặn) có kèm ghi chú.
- *
- * Site trong danh mục dùng được ngay; người dùng chỉ cần "ghim" (ô chọn) để
- * nó hiện ở trang chủ và Bookmark › Site truyện. Chỉnh cài đặt một site sẽ lưu
- * bản sao vào useSources, bản đó được ưu tiên hơn danh mục.
- */
 
 export type CatalogNote = NonNullable<AddonSiteInfo['note']>;
 
@@ -28,7 +18,6 @@ type Index = {
   sites: CatalogSite[];
   byId: Map<string, CatalogSite>;
   byHost: Map<string, CatalogSite>;
-  /** Mỗi id luôn trả về cùng một object (an toàn khi dùng trong deps của hook). */
   configs: Map<string, SourceConfig>;
 };
 
@@ -70,7 +59,6 @@ function toConfig(site: CatalogSite): SourceConfig {
       content: site.content ?? 'manga',
       lang: site.lang,
       nsfw: !!site.nsfw,
-      // Site có sẵn của addon một-site được ghim từ đầu.
       enabled: !!site.builtin,
       builtin: site.builtin || undefined,
       addedAt: 0,
@@ -90,7 +78,6 @@ export function catalogSource(id: string): SourceConfig | undefined {
   return site ? toConfig(site) : undefined;
 }
 
-/** Site trong danh mục ứng với URL (bỏ qua www và subdomain m./w.). */
 export function catalogSourceForUrl(url: string): SourceConfig | undefined {
   const host = getHost(url);
   const { byHost } = currentIndex();
@@ -102,7 +89,6 @@ export function catalogSources(): SourceConfig[] {
   return currentIndex().sites.map(toConfig);
 }
 
-/** Nguồn có sẵn, ghim từ đầu (site của addon chỉ dành cho một site: MangaDex, Manga Fox…). */
 export function builtinSources(): SourceConfig[] {
   return currentIndex()
     .sites.filter(site => site.builtin)

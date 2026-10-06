@@ -54,7 +54,6 @@ export function HistoryScreen() {
     setQuery('');
   }, []);
 
-  // Màn đã mở sẵn trong stack mà được điều hướng tới với tab khác.
   useEffect(() => {
     if (tabParam) {
       changeTab(tabParam);
@@ -111,7 +110,6 @@ function NoMatch() {
   return <EmptyState icon={SearchX} title="Không tìm thấy kết quả" message="Thử từ khoá khác." />;
 }
 
-// ─── Lịch sử đọc ────────────────────────────────────────────────────────────
 
 function ReadingHistory({ query }: { query: string }) {
   const navigation = useAppNavigation();
@@ -238,7 +236,6 @@ function ClearReadingDialog({ visible, onClose }: { visible: boolean; onClose: (
   );
 }
 
-// ─── Lịch sử duyệt web ──────────────────────────────────────────────────────
 
 function WebHistory({ query }: { query: string }) {
   const navigation = useAppNavigation();

@@ -15,22 +15,14 @@ import { darkPalette, radius, space } from '../../theme';
 import { BRIGHTNESS_RANGE, useReaderBrightness } from './readerBrightness';
 import { useStoreValue, type ValueStore } from './valueStore';
 
-/**
- * Các khối giao diện dùng chung cho thanh điều khiển của reader manga và
- * novel: hàng tiêu đề, thanh công cụ dọc bên phải, slider tiến độ, độ sáng.
- */
 
-/** Thanh điều khiển manga luôn nền tối nên dùng màu nhấn của theme tối cho dễ nhìn. */
 export const CHROME_ACCENT = darkPalette.accent;
 export const CHROME_FG = '#FFFFFF';
-/** Nền mờ của hàng tiêu đề/slider nằm đè lên trang. */
 export const CHROME_SCRIM = 'rgba(0,0,0,0.55)';
-/** Thanh dưới cùng. */
 export const CHROME_BAR = '#101010';
 const CHROME_TRACK = 'rgba(255,255,255,0.28)';
 const RIPPLE = { color: 'rgba(255,255,255,0.18)', borderless: true, radius: 22 } as const;
 
-/** Hiện/ẩn thanh điều khiển: mờ dần + trượt khỏi mép màn. */
 export function useChromeAnimation(visible: boolean) {
   const [progress] = useState(() => new Animated.Value(visible ? 1 : 0));
 
@@ -61,7 +53,6 @@ export function useChromeAnimation(visible: boolean) {
   }, [progress, visible]);
 }
 
-/** Nút icon trên nền tối/nền theme đọc (IconButton chung tô nền theo theme app). */
 export function ChromeButton({
   icon: Icon,
   onPress,
@@ -95,7 +86,6 @@ export function ChromeButton({
   );
 }
 
-/** Thanh công cụ dọc nổi sát mép phải, giữa màn. */
 export function SideToolbar({
   children,
   background = CHROME_SCRIM,
@@ -120,10 +110,8 @@ export function SideToolbar({
   );
 }
 
-/** Bề rộng thanh công cụ dọc — menu bật ra từ đó đặt lệch sang trái chừng này. */
 export const SIDE_TOOLBAR_WIDTH = 52;
 
-/** Thanh trượt màu tuỳ chỉnh (Slider chung lấy màu theo theme app, không hợp nền đọc). */
 export function ChromeSlider({
   value,
   min,
@@ -200,10 +188,6 @@ export function ChromeSlider({
   );
 }
 
-/**
- * "trang/tổng" + slider kéo tới trang (manga) hoặc đoạn (novel). Tự theo dõi
- * vị trí trong `store` để reader không phải render lại khi đổi trang.
- */
 export function ProgressSlider({
   store,
   total,
@@ -212,7 +196,6 @@ export function ProgressSlider({
   textColor = CHROME_FG,
   trackColor,
 }: {
-  /** Vị trí hiện tại, tính từ 0. */
   store: ValueStore<number>;
   total: number;
   onSeek: (index: number) => void;
@@ -251,7 +234,6 @@ export function ProgressSlider({
   );
 }
 
-/** Slider độ sáng có mặt trời nhỏ/lớn hai đầu. */
 export function BrightnessSlider({
   color = CHROME_ACCENT,
   iconColor = CHROME_FG,
@@ -280,7 +262,6 @@ export function BrightnessSlider({
   );
 }
 
-/** Lớp phủ đen làm tối trang đọc theo độ sáng đã chọn. */
 export function BrightnessOverlay() {
   const value = useReaderBrightness(state => state.value);
   if (value >= BRIGHTNESS_RANGE.max) {

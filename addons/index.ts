@@ -1,8 +1,3 @@
-/**
- * Mã nguồn addon nạp trực tiếp (không qua bản build) — chỉ cho unit test và
- * để TypeScript kiểm tra mỗi addon export đúng contract AddonModule. App
- * không import file này: app chạy bản build trong src/addons/builtin.generated.ts.
- */
 import type { AddonInfo, AddonModule } from '../src/addons/types';
 import * as fanfox from './fanfox/main';
 import fanfoxInfo from './fanfox/info.json';

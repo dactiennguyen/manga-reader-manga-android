@@ -3,20 +3,16 @@ import { persist } from 'zustand/middleware';
 
 import { persistStorage } from '../lib/storage';
 
-/** Tệp tải từ trình duyệt ("Files & Media"): ảnh, video, âm thanh, tệp khác. */
 export type FileKind = 'image' | 'video' | 'audio' | 'file';
 
 export type FileDownload = {
   id: string;
   url: string;
-  /** Trang đang xem lúc tải (Referer, mở lại nguồn). */
   pageUrl?: string;
   name: string;
-  /** Đường dẫn trong thư mục Download của máy. */
   path: string;
   kind: FileKind;
   status: 'downloading' | 'done' | 'error';
-  /** Byte đã tải / tổng (0 nếu máy chủ không báo). */
   bytes: number;
   total: number;
   error?: string;
@@ -43,7 +39,6 @@ export const useFiles = create<FilesState>()(
       name: 'files',
       storage: persistStorage,
       version: 1,
-      // Tải dở khi app bị tắt thì không tiếp tục được — đánh dấu lỗi để thử lại.
       merge: (persisted, current) => {
         const saved = (persisted as Partial<FilesState> | undefined)?.files ?? [];
         return {

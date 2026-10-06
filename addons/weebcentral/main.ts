@@ -30,14 +30,6 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * Weeb Central — site viết bằng htmx: trang đầy đủ chỉ là khung, dữ liệu nằm
- * ở các endpoint trả về mảnh HTML:
- *   /search/data?…                       danh sách / tìm kiếm / lọc thể loại
- *   /series/<id>/full-chapter-list       toàn bộ chương (trang truyện chỉ có ~9)
- *   /chapters/<id>/images?…              ảnh của chương
- * ID truyện và chương là ULID 26 ký tự.
- */
 
 const PAGE_SIZE = 32;
 
@@ -45,7 +37,6 @@ type SortParams = { sort: string; order: string };
 
 const LATEST: SortParams = { sort: 'Latest Updates', order: 'Descending' };
 
-/** Site không có điểm đánh giá nên không có mục 'rating'. */
 const SORT_PARAMS: Partial<Record<ListSort, SortParams>> = {
   latest: LATEST,
   popular: { sort: 'Popularity', order: 'Descending' },
@@ -78,7 +69,6 @@ function chapterIdOf(url: string): string {
   return id;
 }
 
-/** Tắt nội dung 18+ ngay ở phía site khi người dùng chưa cho phép. */
 function adultParam(): string {
   return sourcesRuntime().allowNsfw ? 'Any' : 'False';
 }
@@ -94,10 +84,6 @@ function searchDataUrl(src: SourceConfig, page: number, params: Record<string, s
   });
 }
 
-/**
- * Trang /search mở từ trình duyệt chỉ là khung, kết quả nạp từ /search/data
- * với cùng bộ lọc trên URL — đọc thẳng endpoint đó.
- */
 function searchPageDataUrl(src: SourceConfig, url: string): string {
   const params: Record<string, string[]> = {};
   for (const pair of (url.split('#')[0].split('?')[1] ?? '').split('&').filter(Boolean)) {
@@ -108,7 +94,6 @@ function searchPageDataUrl(src: SourceConfig, url: string): string {
   return searchDataUrl(src, 1, params);
 }
 
-/** Giá trị của dòng "<strong>Nhãn:</strong> …" trong khối thông tin. */
 function labelled($: CheerioAPI, $scope: Cheerio<AnyNode>, label: RegExp): Cheerio<AnyNode> | undefined {
   const strong = $scope
     .find('strong')
@@ -155,7 +140,6 @@ function parseListing(html: string, base: string): ListPage {
         subtitle: subtitle || undefined,
       });
     });
-  // Nút "View More Results" mang sẵn URL của trang kế (offset tiếp theo).
   const hasNext = $('[hx-get*="/search/data"]').length > 0;
   return { items: uniqBy(items, item => item.url), hasNext };
 }
@@ -185,12 +169,10 @@ function parseChapters($: CheerioAPI, base: string): Chapter[] {
   );
 }
 
-/** Trang truyện chỉ hiện vài chương đầu/cuối; danh sách đủ nằm ở endpoint riêng. Lỗi thì trả undefined. */
 function fullChapterList(src: SourceConfig, id: string, mangaUrl: string): Promise<string | undefined> {
   return getText(`${src.baseUrl}/series/${id}/full-chapter-list`, { referer: mangaUrl }).catch(() => undefined);
 }
 
-/** Vài chương có sẵn trong #chapter-list của trang truyện — dùng khi full-chapter-list lỗi. */
 function pageChapters($: CheerioAPI, base: string): Chapter[] {
   return parseChapters(parseHtml($('#chapter-list').html() ?? ''), base);
 }
@@ -207,7 +189,6 @@ function parseSimilar($: CheerioAPI, base: string, selfId: string): MangaItem[] 
         cover: imageSrc($el.find('img'), base),
       };
     });
-  // "Related Series(s)": bản ngoại truyện, phần trước/sau — không có ảnh bìa.
   const $related = labelled($, $('main'), /^related series/i);
   const related = ($related?.find('a[href*="/series/"]').toArray() ?? []).map(el => {
     const $a = $(el);
@@ -224,9 +205,7 @@ function parseSimilar($: CheerioAPI, base: string, selfId: string): MangaItem[] 
   );
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Mảnh HTML của /search/data (danh sách, tìm kiếm, thể loại) hoặc trang danh sách mở từ trình duyệt. */
 async function loadList(site: SourceConfig, url: string): Promise<ListPage> {
   const segments = pathSegments(url);
   const dataUrl = segments.length === 1 && segments[0] === 'search' ? searchPageDataUrl(site, url) : url;
@@ -318,7 +297,6 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
   });
   const [fragment, page] = await Promise.all([
     getText(imagesUrl, { referer: url }),
-    // Chỉ để lấy tên chương; lỗi cũng không sao.
     getText(url).catch(() => undefined),
   ]);
   const $ = parseHtml(fragment);
@@ -332,8 +310,6 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
   if (!pages.length) {
     throw new Error('Không tìm thấy ảnh trong chương này.');
   }
-  // "<chương> | <truyện> | Weeb Central". Chương đã bị thay thế vẫn còn ảnh
-  // nhưng trang HTML chuyển sang /404 — khi đó bỏ qua tiêu đề.
   const parts = page ? cleanText(parseHtml(page)('title').text()).split(/\s+\|\s+/) : [];
   const title = parts.length >= 3 ? parts[0] : undefined;
   const headers = imageHeaders(site);
@@ -342,19 +318,16 @@ async function loadChapter(site: SourceConfig, url: string): Promise<ChapterCont
 
 async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: string): Promise<string | undefined> {
   const $ = parseHtml(html ?? (await getText(chapterUrl)));
-  // Nút tên truyện ở thanh điều hướng đầu trang chương.
   const href = $('#nav-top a[href*="/series/"], main a[href*="/series/"]').first().attr('href');
   if (href) {
     return resolveUrl(href, site.baseUrl);
   }
-  // Phòng khi đổi markup: id truyện vẫn nằm trong endpoint chọn chương.
   const id = $('[hx-get*="/chapter-select"]')
     .attr('hx-get')
     ?.match(/\/series\/([0-9A-Z]{26})\//i)?.[1];
   return id ? `${site.baseUrl}/series/${id}` : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
 export function getURL({ site, params }: GetURLInput): string {
   switch (params.method) {
@@ -403,7 +376,6 @@ export async function get({ site, method, url, html }: GetInput): Promise<Widget
       if (chapters.length) {
         return { widget: 'chapter', chapters };
       }
-      // Endpoint lỗi: dùng vài chương có sẵn trên trang truyện.
       const $ = parseHtml(html ?? (await getText(mangaUrl)));
       return { widget: 'chapter', chapters: pageChapters($, site.baseUrl) };
     }

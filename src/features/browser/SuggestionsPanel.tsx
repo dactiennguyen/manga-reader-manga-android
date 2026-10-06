@@ -20,7 +20,6 @@ const CATEGORY_OPTIONS = [
 
 const MAX_PAGE_MATCHES = 5;
 
-/** Gợi ý từ API của công cụ tìm kiếm: debounce, huỷ request cũ khi gõ tiếp. */
 function useRemoteSuggestions(engine: SearchEngineId, query: string): string[] {
   const [items, setItems] = useState<string[]>([]);
   const q = query.trim();
@@ -42,7 +41,6 @@ function useRemoteSuggestions(engine: SearchEngineId, query: string): string[] {
     };
   }, [engine, q, enabled]);
 
-  // Giữ gợi ý cũ trong lúc chờ kết quả mới để danh sách không nhấp nháy.
   return enabled ? items : [];
 }
 
@@ -65,10 +63,8 @@ export function SuggestionsPanel({
   engine: SearchEngineId;
   currentUrl: string;
   currentTitle: string;
-  /** Tìm/mở theo chữ (giống bấm Enter). */
   onSubmitText: (text: string) => void;
   onOpenUrl: (url: string) => void;
-  /** Điền gợi ý vào ô nhập để sửa tiếp. */
   onFill: (text: string) => void;
   onChangeCategory: (category: SearchCategory) => void;
   onChangeEngine: (engine: SearchEngineId) => void;

@@ -4,10 +4,8 @@ import type { SearchEngineId } from '../../store/useSettings';
 export type SearchEngine = {
   id: SearchEngineId;
   name: string;
-  /** Ký hiệu ngắn hiện trên nút chọn công cụ tìm kiếm. */
   glyph: string;
   searchUrl: (query: string, safe: boolean) => string;
-  /** Endpoint gợi ý — mọi engine đều trả dạng OpenSearch `[q, [gợi ý…]]`. */
   suggestUrl: (query: string) => string;
 };
 
@@ -64,7 +62,6 @@ export function buildSearchUrl(id: SearchEngineId, query: string, safe: boolean)
   return getSearchEngine(id).searchUrl(query.trim(), safe);
 }
 
-/** Chữ gõ ở thanh địa chỉ → URL cần mở (địa chỉ web hoặc trang kết quả tìm kiếm). */
 export function resolveInput(input: string, id: SearchEngineId, safe: boolean): string {
   const value = input.trim();
   return looksLikeUrl(value) ? ensureScheme(value) : buildSearchUrl(id, value, safe);
@@ -72,7 +69,6 @@ export function resolveInput(input: string, id: SearchEngineId, safe: boolean): 
 
 const MAX_SUGGESTIONS = 6;
 
-/** Gợi ý từ khoá từ API của công cụ tìm kiếm. Lỗi mạng/định dạng → mảng rỗng. */
 export async function fetchSuggestions(
   id: SearchEngineId,
   query: string,

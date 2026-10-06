@@ -3,20 +3,7 @@ import { getText } from './http';
 import { storage } from './storage';
 import { getHost } from './url';
 
-/**
- * Bộ lọc domain quảng cáo/tracker.
- *
- * react-native-webview không cho chặn request con (ảnh, script) ở tầng
- * native, nên việc chặn gồm 3 lớp:
- *  1. Điều hướng & popup tới domain quảng cáo bị chặn ở onShouldStartLoadWithRequest
- *     / onOpenWindow (đây là phần gây khó chịu nhất trên site truyện).
- *  2. Script trong trang báo danh sách host tài nguyên đã tải → app khớp với
- *     danh sách chặn → gửi lại để gỡ iframe/script/ảnh của các host đó và
- *     chặn các phần tử mới chèn vào sau (MutationObserver).
- *  3. CSS ẩn khung quảng cáo phổ biến.
- */
 
-/** Danh sách tối thiểu dùng khi chưa tải bản đầy đủ từ máy chủ. */
 const BUILTIN_ADS = [
   'doubleclick.net', 'googlesyndication.com', 'googleadservices.com', 'googletagservices.com',
   'adservice.google.com', '2mdn.net', 'adnxs.com', 'amazon-adsystem.com', 'criteo.com',
@@ -55,7 +42,6 @@ function parseList(text: string): string[] {
     if (!line) {
       continue;
     }
-    // Hỗ trợ cả "domain" lẫn "0.0.0.0 domain" (hosts).
     const parts = line.split(/\s+/);
     const domain = (parts.length > 1 ? parts[1] : parts[0]).toLowerCase();
     if (/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain) && domain !== 'localhost') {
@@ -73,10 +59,6 @@ function ensureLoaded(): void {
   trackers = new Set([...BUILTIN_TRACKERS, ...parseList(storage.getString(TRACKERS_KEY) ?? '')]);
 }
 
-/**
- * Khớp host và mọi domain cha của nó với danh sách chặn; trả về cả domain đã
- * khớp để trang chặn luôn các subdomain khác của cùng domain quảng cáo.
- */
 export function matchBlockedHost(
   host: string,
   trackingProtection = true,
@@ -104,7 +86,6 @@ export function classifyUrl(url: string, trackingProtection = true): BlockKind |
   return host ? classifyHost(host, trackingProtection) : null;
 }
 
-/** Tải bản danh sách mới nhất từ máy chủ ("Cập nhật danh sách"). */
 export async function updateBlockLists(): Promise<{ ads: number; trackers: number }> {
   const { adsListUrl, trackersListUrl, setListMeta } = useAdblock.getState();
   const [adsText, trackersText] = await Promise.all([
@@ -129,7 +110,6 @@ export function builtinListSize(): { ads: number; trackers: number } {
   return { ads: BUILTIN_ADS.length, trackers: BUILTIN_TRACKERS.length };
 }
 
-/** CSS ẩn khung quảng cáo phổ biến. */
 export const COSMETIC_CSS = [
   'ins.adsbygoogle',
   '[id^="google_ads_"]',

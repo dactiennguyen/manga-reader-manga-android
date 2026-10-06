@@ -21,13 +21,11 @@ export type DownloadGroup = {
   doneCount: number;
   errorCount: number;
   bytes: number;
-  /** 0–1, tính cả chương đang tải dở. */
   progress: number;
   status: DownloadStatus;
   latest: number;
 };
 
-/** Gom task theo truyện, nhóm mới thêm gần nhất lên đầu. */
 export function groupTasks(tasks: DownloadTask[]): DownloadGroup[] {
   const map = new Map<string, DownloadTask[]>();
   for (const task of tasks) {
@@ -102,7 +100,6 @@ function statusColor(status: DownloadStatus, c: Palette): string {
   }
 }
 
-/** Dòng phụ dưới tên truyện ("Downloaded 1 chapters" của app gốc). */
 export function groupSummary(group: DownloadGroup): string {
   const total = group.tasks.length;
   switch (group.status) {
@@ -118,7 +115,6 @@ export function groupSummary(group: DownloadGroup): string {
   }
 }
 
-// ─── Vòng tiến độ ───────────────────────────────────────────────────────────
 
 const RING = 36;
 const RING_STROKE = 3;
@@ -146,7 +142,6 @@ function ProgressRing({ value, color, track }: { value: number; color: string; t
   );
 }
 
-// ─── Dòng truyện ────────────────────────────────────────────────────────────
 
 function DownloadMangaRowBase({
   group,
@@ -227,7 +222,6 @@ function DownloadMangaRowBase({
 
 export const DownloadMangaRow = memo(DownloadMangaRowBase);
 
-// ─── Dòng chương (trong sheet của truyện) ───────────────────────────────────
 
 function ChapterRowBase({
   task,

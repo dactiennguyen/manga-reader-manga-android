@@ -1,19 +1,10 @@
 import { memo, type ComponentType } from 'react';
 import { StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
-/**
- * Icon của app: tên giữ theo Lucide (để code các màn không phải đổi), nhưng
- * vẽ bằng font Material Icons — đúng bộ icon app Flutter gốc dùng.
- * File sinh bởi scripts/gen-icons.py — thêm icon thì sửa bảng MAP trong script rồi chạy lại.
- * Font: android/app/src/main/assets/fonts/MaterialIcons-Regular.ttf (Apache 2.0).
- */
-
 export type IconProps = {
   size?: number | string;
   color?: string;
-  /** Có fill (khác trong suốt) thì dùng bản đặc của icon nếu có. */
   fill?: string;
-  /** Giữ để tương thích API cũ; font icon không có nét. */
   strokeWidth?: number;
   stroke?: string;
   style?: StyleProp<ViewStyle | TextStyle>;
@@ -21,7 +12,6 @@ export type IconProps = {
 };
 
 export type IconComponent = ComponentType<IconProps>;
-/** Tên cũ, để các chỗ khai báo kiểu `LucideIcon` không phải đổi. */
 export type LucideIcon = IconComponent;
 
 const GLYPHS = {

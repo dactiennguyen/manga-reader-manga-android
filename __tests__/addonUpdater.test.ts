@@ -8,7 +8,6 @@ import { mockFetch, urlIs } from './helpers/mockFetch';
 const REPO = 'https://addons.test/repo/manifest.json';
 const madara = BUILTIN_ADDONS.find(p => p.info.uid === 'madara')!;
 
-/** Gói madara bản mới hơn; `patch` để giả lập addon sửa code. */
 function newerMadara(code = madara.code): { pkg: AddonPackage; text: string } {
   const pkg: AddonPackage = { info: { ...madara.info, version: madara.info.version + 1 }, code };
   return { pkg, text: JSON.stringify(pkg) };
@@ -40,7 +39,6 @@ describe('cập nhật addon từ kho', () => {
   afterEach(() => uninstallAddon('madara'));
 
   test('cài bản mới hơn rồi gỡ thì quay về bản có sẵn', async () => {
-    // Bản cập nhật đánh dấu được để biết đang chạy code nào.
     const { text } = newerMadara(`${madara.code}\nexports.updatedMarker = true;`);
     serve(text);
     const report = await checkAddonUpdates(REPO);

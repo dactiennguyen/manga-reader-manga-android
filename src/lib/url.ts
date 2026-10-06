@@ -1,8 +1,3 @@
-/**
- * Xử lý URL thủ công vì URL polyfill của React Native không resolve được
- * đường dẫn tương đối và thiếu searchParams.
- */
-
 const ABSOLUTE = /^[a-z][a-z0-9+.-]*:/i;
 const ORIGIN = /^([a-z][a-z0-9+.-]*:\/\/[^/?#]+)/i;
 
@@ -10,7 +5,6 @@ export function getOrigin(url: string): string {
   return url.match(ORIGIN)?.[1] ?? '';
 }
 
-/** Host viết thường, bỏ cổng và "www.". */
 export function getHost(url: string): string {
   const origin = getOrigin(url);
   if (!origin) {
@@ -29,14 +23,12 @@ export function stripWww(host: string): string {
   return host.replace(/^www\./, '');
 }
 
-/** Phần path (không gồm query/hash), luôn bắt đầu bằng "/". */
 export function getPath(url: string): string {
   const rest = url.slice(getOrigin(url).length);
   const path = rest.split(/[?#]/)[0];
   return path.startsWith('/') ? path : `/${path}`;
 }
 
-/** Các đoạn path không rỗng: "/manga/abc/ch-1/" → ["manga","abc","ch-1"]. */
 export function pathSegments(url: string): string[] {
   return getPath(url)
     .split('/')
@@ -87,7 +79,6 @@ export function resolveUrl(href: string | undefined | null, base: string): strin
   return origin + out.join('/');
 }
 
-/** Gắn query vào URL; bỏ qua giá trị undefined/rỗng, mảng thành key lặp lại. */
 export function withQuery(
   url: string,
   params: Record<string, string | number | boolean | undefined | (string | number)[]>,
@@ -132,7 +123,6 @@ export function trimTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
-/** So sánh URL bỏ qua scheme, www, dấu "/" cuối và hash. */
 export function sameUrl(a: string, b: string): boolean {
   return urlIdentity(a) === urlIdentity(b);
 }
@@ -144,7 +134,6 @@ export function urlIdentity(url: string): string {
   );
 }
 
-/** Người dùng gõ vào thanh địa chỉ: đây là URL hay từ khoá tìm kiếm? */
 export function looksLikeUrl(input: string): boolean {
   const value = input.trim();
   if (!value || /\s/.test(value)) {
@@ -167,7 +156,6 @@ export function ensureScheme(input: string): string {
   return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
 }
 
-/** Tên hiển thị gọn cho thanh địa chỉ. */
 export function displayUrl(url: string): string {
   if (!url) {
     return '';

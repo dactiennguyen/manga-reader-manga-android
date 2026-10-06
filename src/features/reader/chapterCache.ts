@@ -2,11 +2,6 @@ import { getEngine } from '../../sources';
 import type { ChapterContent, SourceConfig } from '../../sources/types';
 import { loadOfflineChapter } from '../downloads/downloader';
 
-/**
- * Nội dung chương trong phiên hiện tại (READER_CHAPTER_WINDOW_SIZE của app gốc):
- * giữ vài chương gần nhất để chuyển chương tức thì và tải sẵn chương kế.
- * Chỉ giữ danh sách trang/đoạn văn, không giữ ảnh.
- */
 
 const MAX_ENTRIES = 6;
 const cache = new Map<string, Promise<ChapterContent>>();
@@ -30,7 +25,6 @@ async function fetchChapter(
   return content;
 }
 
-/** Bản đã tải offline được ưu tiên, không có mới tải từ nguồn. */
 export function loadChapter(
   src: SourceConfig,
   mangaKey: string,
@@ -45,7 +39,6 @@ export function loadChapter(
   }
   const task = fetchChapter(src, mangaKey, chapterUrl);
   cache.set(id, task);
-  // Lỗi thì bỏ khỏi cache để lần sau tải lại.
   task.catch(() => {
     if (cache.get(id) === task) {
       cache.delete(id);

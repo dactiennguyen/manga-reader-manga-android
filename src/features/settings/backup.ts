@@ -29,10 +29,6 @@ import { useSources } from '../../store/useSources';
 import { useStats, type DailyStats, type StatsData } from '../../store/useStats';
 import { refreshUnread } from '../library/updates';
 
-/**
- * Sao lưu & khôi phục (BackupRestoreDialog). App gốc xuất ZIP; ở đây một file
- * JSON là đủ vì dữ liệu chỉ gồm cấu hình và danh sách, không có ảnh.
- */
 
 export const BACKUP_APP = 'manga-reader';
 export const BACKUP_VERSION = 1;
@@ -67,7 +63,6 @@ export type BackupSummary = {
 };
 
 export type RestoreOptions = {
-  /** Xoá bookmark, lịch sử, tiến độ, nguồn tự thêm… trước khi nhập. */
   clearExisting: boolean;
   overwriteSettings: boolean;
   overwriteStats: boolean;
@@ -77,9 +72,7 @@ const MAX_READING = 500;
 const MAX_WEB = 1500;
 const MAX_SEARCHES = 20;
 
-// ─── Tạo bản sao lưu ────────────────────────────────────────────────────────
 
-/** Chỉ lấy các khoá dữ liệu (bỏ hàm action của store). */
 function pickKeys<T extends object>(state: object, template: T): Partial<T> {
   const out: Record<string, unknown> = {};
   const source = state as Record<string, unknown>;
@@ -91,7 +84,6 @@ function pickKeys<T extends object>(state: object, template: T): Partial<T> {
   return out as Partial<T>;
 }
 
-/** Như pickKeys nhưng chỉ nhận giá trị cùng kiểu với mặc định (file có thể bị sửa tay). */
 function pickTyped<T extends object>(raw: Json, template: T): Partial<T> {
   const out: Record<string, unknown> = {};
   for (const [key, fallback] of Object.entries(template)) {
@@ -144,10 +136,6 @@ export function backupFileName(time = Date.now()): string {
   return `backup_${dayKey(time).replace(/-/g, '')}.json`;
 }
 
-/**
- * Ghi file sao lưu vào cache rồi mở hộp thoại "Lưu thành" để người dùng chọn
- * nơi lưu. Trả về false nếu người dùng huỷ.
- */
 export async function exportBackupFile(): Promise<boolean> {
   const fileName = backupFileName();
   const path = `${CachesDirectoryPath}/${fileName}`;
@@ -173,9 +161,7 @@ export async function exportBackupFile(): Promise<boolean> {
   }
 }
 
-// ─── Đọc & kiểm tra ─────────────────────────────────────────────────────────
 
-/** Mở trình chọn file và đọc bản sao lưu; null nếu người dùng huỷ. */
 export async function pickBackupFile(): Promise<{ data: BackupData; fileName: string } | null> {
   let picked: DocumentPickerResponse;
   try {
@@ -264,7 +250,6 @@ function validDaily(value: unknown): value is DailyStats {
   return isRecord(value) && isNumber(value.seconds) && isNumber(value.chapters) && isNumber(value.sessions);
 }
 
-/** Kiểm tra và làm sạch nội dung file; ném lỗi tiếng Việt rõ ràng nếu sai. */
 export function parseBackup(text: string): BackupData {
   let raw: unknown;
   try {
@@ -378,7 +363,6 @@ export function summarizeBackup(data: BackupData): BackupSummary {
   };
 }
 
-// ─── Áp dụng ────────────────────────────────────────────────────────────────
 
 function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
   const seen = new Set<string>();
@@ -392,7 +376,6 @@ function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
   });
 }
 
-/** Gộp tiến độ: hợp các chương đã đọc, giữ vị trí đọc mới hơn. */
 function mergeProgress(current: MangaProgress, incoming: MangaProgress): MangaProgress {
   const last =
     current.last && incoming.last
@@ -403,10 +386,6 @@ function mergeProgress(current: MangaProgress, incoming: MangaProgress): MangaPr
   return { read: { ...incoming.read, ...current.read }, last };
 }
 
-/**
- * Gộp thống kê lấy giá trị lớn hơn theo từng ngày thay vì cộng dồn, để khôi
- * phục cùng một bản sao lưu nhiều lần không làm số liệu bị nhân đôi.
- */
 function mergeStats(current: StatsData, incoming: StatsData): StatsData {
   const daily: Record<string, DailyStats> = { ...incoming.daily };
   for (const [key, day] of Object.entries(current.daily)) {
@@ -433,7 +412,6 @@ export function applyBackup(data: BackupData, options: RestoreOptions): void {
 
   if (data.settings && options.overwriteSettings) {
     const saved = data.settings;
-    // Widget lạ bị bỏ, widget mới (bản sao lưu cũ chưa có) thêm vào cuối.
     const widgets = (saved.homeWidgets ?? DEFAULT_HOME_WIDGETS).filter(
       (w: HomeWidget) => isRecord(w) && DEFAULT_HOME_WIDGETS.some(d => d.id === w.id),
     );
@@ -464,7 +442,6 @@ export function applyBackup(data: BackupData, options: RestoreOptions): void {
       clearExisting
         ? { bookmarks, groups: uniqueBy(groups, g => g) }
         : {
-            // Gộp: bookmark đang có trên máy được ưu tiên giữ nguyên.
             bookmarks: { ...bookmarks, ...state.bookmarks },
             groups: uniqueBy([...state.groups, ...groups], g => g),
           },
@@ -530,7 +507,6 @@ export function applyBackup(data: BackupData, options: RestoreOptions): void {
     current.importStats(next);
   }
 
-  // Số chương chưa đọc phụ thuộc tiến độ vừa nhập.
   for (const key of Object.keys(useLibrary.getState().bookmarks)) {
     refreshUnread(key);
   }

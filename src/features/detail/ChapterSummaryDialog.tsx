@@ -10,7 +10,6 @@ import { useDownloads } from '../../store/useDownloads';
 import { font, space, useTheme } from '../../theme';
 import { scanlatorGroups } from './chapters';
 
-/** "Chapter summary" của app gốc: số chương đã đọc/chưa đọc/đã tải, chương mới nhất, chỗ đang đọc dở. */
 export function ChapterSummaryDialog({
   visible,
   onClose,

@@ -32,7 +32,6 @@ const ITEMS: { id: ItemId; title: string; description: string }[] = [
   },
 ];
 
-/** Tổng dung lượng thư mục (đệ quy, giới hạn độ sâu để không chạy quá lâu). */
 async function folderSize(path: string, depth = 0): Promise<number> {
   let items: ReadDirResItemT[];
   try {

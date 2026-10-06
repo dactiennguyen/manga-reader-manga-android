@@ -35,7 +35,6 @@ import { FileDownloads } from './FileDownloads';
 
 type DownloadView = ContentType | 'web' | 'files';
 
-// Thứ tự như app gốc: Files & Media, Web Page, Manga, Novel.
 const VIEW_OPTIONS = [
   { value: 'files', label: 'Tệp & media' },
   { value: 'web', label: 'Trang web' },
@@ -47,7 +46,6 @@ const CONTENT_NAME: Record<ContentType, string> = { manga: 'truyện tranh', nov
 
 type TabParam = NonNullable<RootStackParamList['Downloads']>['tab'];
 
-/** Tham số `tab` cũ → lựa chọn của nút thả xuống. */
 function viewFromParam(tab: TabParam): DownloadView {
   if (tab === 'pages') {
     return 'web';
@@ -55,7 +53,6 @@ function viewFromParam(tab: TabParam): DownloadView {
   if (tab === 'files') {
     return 'files';
   }
-  // 'chapters': Truyện tranh, trừ khi chỉ có tiểu thuyết được tải.
   const tasks = Object.values(useDownloads.getState().tasks);
   return !tasks.some(t => t.content === 'manga') && tasks.some(t => t.content === 'novel') ? 'novel' : 'manga';
 }
@@ -122,7 +119,6 @@ export function DownloadsScreen() {
           </>
         }
       />
-      {/* Tablet: danh mục dọc bên trái như app gốc, nội dung bên phải. */}
       {wide ? (
         <View style={styles.split}>
           <SideTabs value={view} options={VIEW_OPTIONS} onChange={setView} />
@@ -135,7 +131,6 @@ export function DownloadsScreen() {
   );
 }
 
-// ─── Truyện đã tải ──────────────────────────────────────────────────────────
 
 function ChapterDownloads({
   content,
@@ -156,7 +151,6 @@ function ChapterDownloads({
   const [deleteFiles, setDeleteFiles] = useState(true);
 
   const groups = useMemo(() => groupTasks(tasks), [tasks]);
-  // Xoá hết chương của truyện đang mở thì sheet tự đóng.
   const openGroup = openKey ? groups.find(g => g.mangaKey === openKey) : undefined;
 
   const sourceInfo = useMemo(() => {
@@ -343,7 +337,6 @@ function ChapterDownloads({
   );
 }
 
-// ─── Trang web đã lưu ───────────────────────────────────────────────────────
 
 function SavedPages() {
   const navigation = useAppNavigation();

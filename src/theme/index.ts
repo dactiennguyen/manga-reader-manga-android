@@ -2,10 +2,6 @@ import { useColorScheme, useWindowDimensions } from 'react-native';
 
 import { useSettings } from '../store/useSettings';
 
-/**
- * Bảng màu bám theo app gốc: Material 3 dựng từ màu hổ phách. Theme sáng có
- * app bar vàng, theme tối gần đen với điểm nhấn vàng kim.
- */
 export type Palette = {
   bg: string;
   surface: string;
@@ -15,39 +11,27 @@ export type Palette = {
   textSecondary: string;
   muted: string;
   border: string;
-  /** Màu primary (chữ/icon nhấn, chỉ báo tab, slider). */
   accent: string;
-  /** Nền nhạt của trạng thái đang chọn. */
   accentSoft: string;
   onAccent: string;
-  /** Nút nổi "Start Reading", chip đang chọn (M3 primaryContainer). */
   primaryContainer: string;
   onPrimaryContainer: string;
-  /** Thanh trên cùng (app bar, thanh địa chỉ). */
   appBar: string;
   onAppBar: string;
-  /** Ô URL / nút vuông nằm trên app bar. */
   appBarField: string;
   danger: string;
   dangerSoft: string;
   success: string;
   warning: string;
-  /** Góc bìa "có chương mới". */
   badgeNew: string;
-  /** Góc bìa "chưa đọc". */
   badgeUnread: string;
-  /** Ô chữ loại truyện (M/N) ở góc bìa. */
   badgeType: string;
-  /** Nhãn tên site ở góc bìa. */
   badgeSite: string;
-  /** Mảnh ghép addon khi trang được hỗ trợ. */
   addon: string;
   backdrop: string;
-  /** Tab ẩn danh. */
   incognito: string;
   onIncognito: string;
   skeleton: string;
-  /** Màu dữ liệu biểu đồ. */
   chart: string;
   onChart: string;
   chartAlt: string;
@@ -130,7 +114,6 @@ export function useTheme(): { c: Palette; dark: boolean } {
   return { c: dark ? darkPalette : lightPalette, dark };
 }
 
-/** Bề rộng (dp) từ đó dùng bố cục tablet như app gốc. */
 export const WIDE_MIN_WIDTH = 600;
 
 export function useIsWide(): boolean {
@@ -142,7 +125,6 @@ export const radius = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
 
 export const font = {
-  /** Tiêu đề app bar (M3 title large). */
   appBarTitle: { fontSize: 21, fontWeight: '400' as const },
   title: { fontSize: 20, fontWeight: '700' as const },
   heading: { fontSize: 17, fontWeight: '700' as const },

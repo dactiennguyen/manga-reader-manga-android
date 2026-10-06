@@ -32,17 +32,12 @@ const CONTENT_FILTERS: { value: ContentType; label: string }[] = [
 ];
 
 
-/**
- * "Supported sites": danh mục site dựng sẵn + site tự thêm, lọc theo ngôn ngữ
- * và loại truyện. Ô chọn = ghim site vào trang chủ và Bookmark › Site truyện.
- */
 export function AddonsScreen() {
   const navigation = useAppNavigation();
   const { c } = useTheme();
   const stored = useSources(s => s.sources);
   const customEngines = useEngineSummaries().filter(e => e.allowCustomSites);
   const updateSource = useSources(s => s.updateSource);
-  // Bản đã lưu (đã ghim/chỉnh cài đặt) thay cho bản trong danh mục.
   const sources = useMemo(() => {
     const byId = new Map(catalogSources().map(s => [s.id, s]));
     for (const s of stored) {
@@ -64,7 +59,6 @@ export function AddonsScreen() {
       ),
     [sources, allowNsfw],
   );
-  // Ngôn ngữ đã chọn không còn site nào (vừa xoá/ẩn) thì coi như bỏ lọc.
   const activeLang = lang && languages.includes(lang) ? lang : null;
   const q = searching ? text.trim().toLowerCase() : '';
   const filtered = !!content || !!activeLang || !!q;
@@ -87,7 +81,6 @@ export function AddonsScreen() {
     setText('');
   }, []);
 
-  // Phím back khi đang tìm thì đóng ô tìm trước.
   useFocusEffect(
     useCallback(() => {
       if (!searching) {
@@ -246,7 +239,6 @@ export function AddonsScreen() {
   );
 }
 
-/** Chip viền có mũi tên ▾ ("All Languages ▾"). */
 function DropdownChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const { c } = useTheme();
   const fg = selected ? c.onPrimaryContainer : c.textSecondary;

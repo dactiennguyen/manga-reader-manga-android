@@ -1,10 +1,6 @@
 import { getEngine } from '../../sources';
 import type { Genre, SourceConfig } from '../../sources/types';
 
-/**
- * Danh sách thể loại theo nguồn, giữ trong bộ nhớ suốt phiên app: thể loại
- * hầu như không đổi nên chỉ tải một lần cho mỗi nguồn.
- */
 
 const cache = new Map<string, Genre[]>();
 const inflight = new Map<string, Promise<Genre[]>>();

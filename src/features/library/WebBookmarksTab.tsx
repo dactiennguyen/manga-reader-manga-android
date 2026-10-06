@@ -61,7 +61,6 @@ function WebBookmarkRowBase({
 
 const WebBookmarkRow = memo(WebBookmarkRowBase);
 
-/** Trang web đã đánh dấu ("Bookmarked Page"). */
 export function WebBookmarksTab() {
   const navigation = useAppNavigation();
   const { webBookmarks, updateWebBookmark, removeWebBookmarks } = useBrowser(

@@ -6,7 +6,6 @@ import { Button } from '../../components/ui';
 import type { Chapter } from '../../sources/types';
 import { font, radius, space } from '../../theme';
 
-/** Màu chữ của khối, theo nền reader (đen với manga, theme đọc với novel). */
 export type EndTone = { text: string; muted: string };
 
 export const DARK_TONE: EndTone = { text: '#FFFFFF', muted: 'rgba(255,255,255,0.6)' };
@@ -15,9 +14,7 @@ type Props = {
   chapterName: string;
   next?: Chapter;
   prev?: Chapter;
-  /** Giây đếm ngược trước khi tự sang chương sau (NEXT_CHAPTER_WAITING_TIME); 0 = tắt. */
   delay: number;
-  /** Khối đang hiện trên màn — chỉ đếm ngược khi người đọc thật sự tới đây. */
   active: boolean;
   tone: EndTone;
   onNext: () => void;
@@ -25,7 +22,6 @@ type Props = {
   onOpenManga: () => void;
 };
 
-/** Nút viền theo màu nền đọc (nút ghost chung lấy màu nhấn của theme app, chìm trên nền đen). */
 function ToneButton({
   title,
   icon: Icon,
@@ -49,10 +45,6 @@ function ToneButton({
   );
 }
 
-/**
- * Khối "Hết chương" cuối danh sách trang/đoạn văn. Đặt `key` theo chương để
- * trạng thái "Huỷ" không dính sang chương sau.
- */
 export function EndOfChapter({ chapterName, next, prev, delay, active, tone, onNext, onPrev, onOpenManga }: Props) {
   const [cancelled, setCancelled] = useState(false);
   const [remaining, setRemaining] = useState(delay);

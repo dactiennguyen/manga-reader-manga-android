@@ -2,14 +2,6 @@ import type { TapZone } from '../../store/useReaderSettings';
 
 export type TapAction = 'prev' | 'next' | 'menu';
 
-/**
- * Chạm để cuộn/lật ("Enable Tap to Scroll"). Màn hình chia 3×3:
- * - leftRight: cột trái lùi, cột phải tiến;
- * - topBottom: hàng trên lùi, hàng dưới tiến;
- * - edges: trái + trên lùi, phải + dưới tiến.
- * Ô giữa (hoặc khi tắt) bật/tắt thanh điều khiển. Đọc phải → trái thì đảo
- * trái/phải.
- */
 export function resolveTap(input: {
   x: number;
   y: number;

@@ -7,7 +7,6 @@ import { totalsLast30Days, useAdblock } from '../../store/useAdblock';
 import { font, radius, space, useTheme } from '../../theme';
 import type { BlockStats } from './BrowserWebView';
 
-/** Thống kê chặn quảng cáo của trang + công tắc tắt chặn cho tab hiện tại. */
 export function AdblockSheet({
   visible,
   onClose,
@@ -20,7 +19,6 @@ export function AdblockSheet({
   visible: boolean;
   onClose: () => void;
   stats: BlockStats;
-  /** Chặn quảng cáo bật trong cài đặt. */
   globalEnabled: boolean;
   tabEnabled: boolean;
   onToggleTab: (enabled: boolean) => void;

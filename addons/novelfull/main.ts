@@ -43,25 +43,6 @@ import type {
   UrlKind,
 } from '../../src/sources/types';
 
-/**
- * Họ site novel "NovelFull" (addon html_novel của app gốc). Cùng một bộ mã
- * nhưng mỗi site đặt URL và tên class khác nhau:
- *
- * - NovelFull/NovGo/NovelPhoenix: truyện /<slug>.html, chương
- *   /<slug>/<chương>.html, danh sách /latest-release-novel?page=2, thể loại
- *   /genre/<Tên>, tìm kiếm /search?keyword=. Toàn bộ chương lấy qua
- *   /ajax-chapter-option?novelId=<id số> (một thẻ <select>).
- * - NovelBin/ReadNovelFull: truyện /b/<slug> (/novel-book/<slug>…), danh sách
- *   /sort/latest?page=2, chương qua /ajax/chapter-archive?novelId=<slug>,
- *   nội dung ở #chr-content.
- * - NovelLive/LightNovelPub.me/AllNovelUpdates (giao diện FreeWebNovel): truyện
- *   /book/<slug>, danh sách /list/latest-release-novels/2, tìm kiếm POST
- *   /search/ (searchkey), chương qua /ajax/get-list-chapter?novel_id=<slug>
- *   hoặc các trang /book/<slug>/2, /3…
- *
- * Chỉ có baseUrl nên đọc menu ở trang chủ một lần (link sắp xếp, thể loại,
- * form tìm kiếm) rồi nhớ lại; cách đánh số trang học từ phân trang của trang 1.
- */
 
 type ListKind = 'latest' | 'popular' | 'new' | 'hot' | 'completed';
 
@@ -73,7 +54,6 @@ type SiteMap = {
   search?: SearchForm;
 };
 
-/** Nhận ra link danh sách trong menu theo đường dẫn hoặc chữ. Thứ tự quan trọng: "latest-novels" là truyện mới. */
 const LIST_RULES: { kind: ListKind; path: RegExp; text: RegExp }[] = [
   {
     kind: 'new',
@@ -90,7 +70,6 @@ const LIST_RULES: { kind: ListKind; path: RegExp; text: RegExp }[] = [
   { kind: 'completed', path: /completed/, text: /^completed/ },
 ];
 
-/** Thứ tự thay thế khi site không có trang cho kiểu sắp xếp đó. */
 const SORT_FALLBACK: Record<ListSort, ListKind[]> = {
   latest: ['latest', 'new', 'hot'],
   popular: ['popular', 'hot', 'latest'],
@@ -99,18 +78,15 @@ const SORT_FALLBACK: Record<ListSort, ListKind[]> = {
   az: ['latest'],
 };
 
-/** Đoạn path đầu là trang danh sách. */
 const LIST_SEGMENTS =
   /^(genres?|novelbin-genres?|sort|list|novel-list|search|author|authors|a|tag|tags|status|latest-release-novels?|most-popular(-novels?)?|hot-novels?|completed-novels?|new-novels?|latest-novels?|history|ranking)$/i;
 
-/** Thư mục trang truyện của các site dạng /<dir>/<slug>. */
 const DETAIL_DIRS = new Set(['b', 'book', 'novel', 'novels', 'novel-book', 'n', 'series']);
 
 const GENRE_PATH = /^\/(?:genres?|novelbin-genres?|category)\/[^/]+\/?$/i;
 
 const NSFW_GENRES = /adult|mature|smut|hentai|ecchi|18\+|erotic/i;
 
-/** Dòng quảng cáo/hướng dẫn site chèn vào giữa chương. */
 const BOILERPLATE = [
   /please let us know\s*<\s*report chapter\s*>/i,
   /^tip: you can use left, right/i,
@@ -118,7 +94,6 @@ const BOILERPLATE = [
   /\b(?:visit|read|find|updated|latest chapters?|source)\b[^.]{0,60}\b[\w-]+\s*(?:\.|\(\s*dot\s*\)|\bdot\b)\s*(?:com|net|org|me|app|io|co)\b/i,
 ];
 
-/** Tên các site trong họ — dòng ngắn nhắc tới chúng là dấu đóng của site. */
 const SITE_NAMES = [
   'novelbin',
   'novelfull',
@@ -134,7 +109,6 @@ const SITE_NAMES = [
   'novelnext',
 ];
 
-/** Tên miền là từ thông dụng thì không dùng để lọc dòng. */
 const COMMON_HOSTS = new Set([
   'novel',
   'novels',
@@ -149,7 +123,6 @@ const COMMON_HOSTS = new Set([
 ]);
 
 const sites = new Map<string, Promise<SiteMap>>();
-/** Mẫu URL trang N của từng trang danh sách, học từ phân trang. */
 const pagers = new Map<string, (page: number) => string>();
 
 function sameSite(url: string, base: string): boolean {
@@ -181,7 +154,6 @@ function genresIn($: CheerioAPI, base: string): Genre[] {
         };
       })
       .filter(g => g.id && g.name && g.name.toLowerCase() !== 'all' && g.name.length < 40),
-    // NovelLive có cả /genres/Action/ lẫn /genres/action.
     g => g.id.toLowerCase().replace(/\/+$/, ''),
   ).sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -216,10 +188,8 @@ function siteMap(src: SourceConfig): Promise<SiteMap> {
     $('a[href]').each((_, el) => {
       const href = resolveUrl($(el).attr('href'), `${src.baseUrl}/`);
       const path = getPath(href);
-      // Link trang truyện/thể loại có thể chứa chữ "newest", "hot"… trong slug.
       if (
         !sameSite(href, src.baseUrl) ||
-        // Trang truyện /<slug>.html; trang danh sách kiểu novel11 là …/index_2.html.
         (/\.html?$/i.test(path) && !/\/index(?:_\d+)?\.html?$/i.test(path)) ||
         GENRE_PATH.test(path) ||
         DETAIL_DIRS.has(pathSegments(href)[0]?.toLowerCase() ?? '')
@@ -234,12 +204,10 @@ function siteMap(src: SourceConfig): Promise<SiteMap> {
     return { lists, genres: genresIn($, src.baseUrl), search: searchFormIn($, src.baseUrl) };
   });
   sites.set(src.baseUrl, info);
-  // Lỗi mạng/Cloudflare: không nhớ để lần sau tải lại.
   info.catch(() => sites.delete(src.baseUrl));
   return info;
 }
 
-/** Form tìm kiếm ở trang chủ; không thấy thì dùng của NovelFull gốc. */
 async function searchFormOf(src: SourceConfig): Promise<SearchForm> {
   return (
     (await siteMap(src)).search ?? {
@@ -250,7 +218,6 @@ async function searchFormOf(src: SourceConfig): Promise<SearchForm> {
   );
 }
 
-/** Số trang của một link phân trang: ?page=3, /list/x/3, index_3.html hoặc chữ "3". */
 function pageNumberOf(href: string | undefined, text: string): number | undefined {
   const url = href ?? '';
   const raw =
@@ -274,7 +241,6 @@ function hasNextPage($: CheerioAPI, page: number): boolean {
     .some(el => (pageNumberOf($(el).attr('href'), $(el).text()) ?? 0) > page);
 }
 
-/** Học mẫu URL trang N từ link tới trang 2 ở trang 1. */
 function learnPager($: CheerioAPI, firstUrl: string): ((page: number) => string) | undefined {
   const link = pagerLinks($)
     .toArray()
@@ -292,14 +258,12 @@ function learnPager($: CheerioAPI, firstUrl: string): ((page: number) => string)
   return page => link.replace(/\/2(\/?)(?=$|[?#])/, `/${page}$1`);
 }
 
-/** URL trang N của một trang danh sách. */
 async function pageUrl(firstUrl: string, page: number): Promise<string> {
   if (page <= 1) {
     return firstUrl;
   }
   let pager = pagers.get(firstUrl);
   if (!pager) {
-    // Chưa biết site đánh số trang kiểu nào: xem phân trang của trang 1.
     pager = learnPager(parseHtml(await getText(firstUrl)), firstUrl) ?? (n => withQuery(firstUrl, { page: n }));
     pagers.set(firstUrl, pager);
   }
@@ -320,16 +284,13 @@ function parseItems($: CheerioAPI, base: string): MangaItem[] {
   const items: MangaItem[] = [];
   $(ITEM_SELECTORS.join(', ')).each((_, el) => {
     const $el = $(el);
-    // Khối bên lề (truyện hot, thể loại) dùng cùng class .row.
     if ($el.closest('.list-side, .list-genre, .list-history').length) {
       return;
     }
     const $a = $el.find('.tit a, .novel-title a, .truyen-title a');
-    // Bỏ khối .row bọc ngoài nhiều truyện.
     if ($a.length > 1) {
       return;
     }
-    // AllNovel: cả ô .thumbnail là link, tên nằm trong .title-home-novel.
     const $link = $a.length ? $a : $el.is('.thumbnail') ? $el.find('a[href]').first() : $a;
     const href = $link.attr('href');
     const title =
@@ -353,7 +314,6 @@ function parseItems($: CheerioAPI, base: string): MangaItem[] {
   return uniqBy(items, item => item.url);
 }
 
-/** Một trang danh sách/thể loại; ở trang 1 thì học luôn cách đánh số trang. */
 async function fetchListing(src: SourceConfig, url: string, page: number): Promise<ListPage> {
   const $ = parseHtml(await getText(url));
   if (page === 1 && !pagers.has(url)) {
@@ -367,7 +327,6 @@ async function fetchListing(src: SourceConfig, url: string, page: number): Promi
 
 type InfoRow = { label: string; $value: Cheerio<AnyNode> };
 
-/** Ô thông tin: "<h3>Author:</h3>…" (NovelFull/NovelBin) hoặc icon có title (FreeWebNovel). */
 function infoRows($: CheerioAPI): InfoRow[] {
   const rows: InfoRow[] = [];
   $('.info > div, ul.info > li, .info-meta > li, .list-info > li').each((_, el) => {
@@ -409,7 +368,6 @@ function ratingOf($: CheerioAPI): number | undefined {
   if (Number.isFinite(schema) && schema > 0) {
     return Math.round((schema / best) * 500) / 100;
   }
-  // "4.4 / 5 ( 7 votes )"
   const vote = $('.score .vote, .vote-summary')
     .toArray()
     .map(el => cleanText($(el).text()).match(/([\d.]+)\s*\/\s*(\d+)/))
@@ -440,7 +398,6 @@ function descriptionOf($: CheerioAPI): string | undefined {
   );
 }
 
-/** Mã truyện site dùng cho API chương: id số (NovelFull) hoặc slug (NovelBin, NovelLive). */
 function novelIdOf($: CheerioAPI, url: string): string | undefined {
   const fromPage =
     $('#rating[data-novel-id]').attr('data-novel-id') ||
@@ -485,7 +442,6 @@ const CONTENT_SELECTORS = [
 const INLINE_CHAPTERS =
   '#list-chapter .list-chapter li a, #chapter-archive .list-chapter li a, .m-newest2 .ul-list5 li a, #idData li a, .list-page-novel tr a';
 
-/** Chương qua API riêng của từng site; [] nếu site không có. */
 async function chaptersFromApi(src: SourceConfig, url: string, html: string, $: CheerioAPI): Promise<Chapter[]> {
   const base = src.baseUrl;
   const id = novelIdOf($, url);
@@ -494,7 +450,6 @@ async function chaptersFromApi(src: SourceConfig, url: string, html: string, $: 
   }
   const tries: { when: boolean; run: () => Promise<Chapter[]> }[] = [
     {
-      // NovelFull/NovGo: <select> chứa mọi chương.
       when: /ajax-chapter-option/.test(html) || /^\d+$/.test(id),
       run: async () => {
         const res = await getText(withQuery(`${base}/ajax-chapter-option`, { novelId: id }), {
@@ -509,7 +464,6 @@ async function chaptersFromApi(src: SourceConfig, url: string, html: string, $: 
       },
     },
     {
-      // NovelBin/ReadNovelFull.
       when: /chapter-archive/.test(html) || (!/^\d+$/.test(id) && !/id="indexselect"/.test(html)),
       run: async () => {
         const res = await getText(withQuery(`${base}/ajax/chapter-archive`, { novelId: id }), {
@@ -520,7 +474,6 @@ async function chaptersFromApi(src: SourceConfig, url: string, html: string, $: 
       },
     },
     {
-      // NovelLive/LightNovelPub.me: JSON {chapters: [{chapter_id, chapter_name}]}.
       when: /get-list-chapter|id="indexselect"/.test(html),
       run: async () => {
         const res = await getText(withQuery(`${base}/ajax/get-list-chapter`, { novel_id: id }), {
@@ -542,13 +495,11 @@ async function chaptersFromApi(src: SourceConfig, url: string, html: string, $: 
         return chapters;
       }
     } catch {
-      // Thử cách khác.
     }
   }
   return [];
 }
 
-/** Danh sách chương chia trang ngay trên trang truyện (?page=2 hoặc /book/<slug>/2). */
 async function chaptersFromPages(src: SourceConfig, url: string, $: CheerioAPI): Promise<Chapter[]> {
   const first = chaptersFromLinks($, INLINE_CHAPTERS, src.baseUrl);
   const optionPages = $('#indexselect option')
@@ -581,13 +532,11 @@ async function chaptersFromPages(src: SourceConfig, url: string, $: CheerioAPI):
   return [...first, ...rest.flat()];
 }
 
-/** Toàn bộ chương của trang truyện, mới nhất trước. */
 async function chaptersOf(src: SourceConfig, url: string, html: string, $: CheerioAPI): Promise<Chapter[]> {
   let chapters = await chaptersFromApi(src, url, html, $);
   if (!chapters.length) {
     chapters = await chaptersFromPages(src, url, $);
   }
-  // Site liệt kê chương cũ trước.
   return uniqBy(chapters, ch => ch.url).reverse();
 }
 
@@ -598,11 +547,9 @@ function cleanParagraphs(paragraphs: string[], src: SourceConfig): string[] {
     .toLowerCase();
   const names = host.length >= 5 && !COMMON_HOSTS.has(host) ? [...SITE_NAMES, host] : SITE_NAMES;
   return paragraphs.filter(text => {
-    // Đoạn văn dài là nội dung thật dù có nhắc tên site.
     if (text.length > 250) {
       return true;
     }
-    // Bỏ dấu chấm/khoảng trắng chèn để né bộ lọc: "n.o.v.e.l.b.i.n", "novel bin".
     const squashed = text.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (names.some(name => squashed.includes(name))) {
       return false;
@@ -611,14 +558,11 @@ function cleanParagraphs(paragraphs: string[], src: SourceConfig): string[] {
   });
 }
 
-// ─── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
-/** Trang danh sách / thể loại / tìm kiếm. */
 async function loadList(site: SourceConfig, url: string, params?: ListParams): Promise<ListPage> {
   if (params?.method === 'search') {
     const form = await searchFormOf(site);
     if (form.method === 'POST') {
-      // FreeWebNovel: tìm bằng POST lên trang getURL trả về, kết quả một trang.
       if (params.page > 1) {
         return { items: [], hasNext: false };
       }
@@ -628,7 +572,6 @@ async function loadList(site: SourceConfig, url: string, params?: ListParams): P
     const $ = parseHtml(await getText(url));
     return { items: parseItems($, site.baseUrl), hasNext: hasNextPage($, params.page) };
   }
-  // Không có params (chạy trên trang đang mở): đọc số trang từ URL.
   return fetchListing(site, url, params?.page ?? pageNumberOf(url, '') ?? 1);
 }
 
@@ -683,13 +626,11 @@ async function loadDetail(site: SourceConfig, url: string): Promise<MangaDetail>
 
 async function loadChapter(site: SourceConfig, url: string): Promise<ChapterContent> {
   const $ = parseHtml(await getText(url, { referer: `${site.baseUrl}/` }));
-  // Theo thứ tự ưu tiên chứ không theo thứ tự trong trang (khung .txt bọc ngoài #chapter-content).
   const selector = CONTENT_SELECTORS.find(sel => $(sel).length);
   const $root = selector ? $(selector).first().clone() : undefined;
   if (!$root) {
     throw new Error('Không tìm thấy nội dung chương này.');
   }
-  // Quảng cáo và dòng đóng dấu ẩn bằng CSS.
   $root
     .find(
       '[id^="pf-"], [class^="ad-"], [class*=" ad-"], .ads, .ad, [hidden], [style*="display:none"], [style*="display: none"], .hidden, .chapter-nav, .nav-chapter',
@@ -724,31 +665,23 @@ async function resolveMangaUrl(site: SourceConfig, chapterUrl: string, html?: st
   return href ? resolveUrl(href, `${site.baseUrl}/`) : undefined;
 }
 
-// ─── Các hàm của addon ──────────────────────────────────────────────────────
 
-/**
- * Danh sách và tìm kiếm cần menu trang chủ (đọc một lần); trang N > 1 cần
- * biết cách site đánh số trang (học từ trang 1, có thể phải tải trang 1).
- */
 export async function getURL({ site, params }: GetURLInput): Promise<string> {
   switch (params.method) {
     case 'list': {
       const { lists } = await siteMap(site);
       const kind = SORT_FALLBACK[params.sort].find(k => lists[k]);
-      // Không đọc được menu: dùng đường dẫn của NovelFull gốc.
       const firstUrl = kind ? lists[kind]! : `${site.baseUrl}/latest-release-novel`;
       return pageUrl(firstUrl, params.page);
     }
     case 'search': {
       const form = await searchFormOf(site);
       if (form.method === 'POST') {
-        // Tìm bằng POST: fetch gửi từ khoá (params.query) lên trang này.
         return form.action;
       }
       return withQuery(form.action, { [form.param]: params.query, page: params.page > 1 ? params.page : undefined });
     }
     case 'genre':
-      // Trang thể loại của họ site này không có tuỳ chọn sắp xếp.
       return pageUrl(resolveUrl(params.genre.id.replace(/ /g, '%20'), `${site.baseUrl}/`), params.page);
   }
 }
@@ -800,12 +733,10 @@ export function match({ site, url, html }: MatchInput): UrlKind | null {
       return 'detail';
     }
     if (segments.length === 3) {
-      // /book/<slug>/2 là trang 2 của danh sách chương.
       return /^\d+$/.test(segments[2]) ? 'detail' : 'chapter';
     }
   }
   if (isHtml && segments.length <= 2) {
-    // NovelFull: /<slug>.html và /<slug>/<chương>.html.
     if (segments.length === 2) {
       return 'chapter';
     }

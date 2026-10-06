@@ -5,13 +5,7 @@ import { addonInfo, installAddon } from './registry';
 import { SDK_VERSION } from './sdk';
 import type { AddonPackage } from './types';
 
-/**
- * Cập nhật addon từ kho addon (một thư mục tĩnh do người phát hành host, sinh
- * bởi `npm run addons` → dist/addons/): đọc manifest.json, tải gói nào có
- * version mới hơn bản đang chạy, kiểm sha256, chạy thử rồi mới cài.
- */
 
-/** Thời điểm kiểm tra kho addon lần cuối (MMKV). */
 export const ADDON_CHECK_KEY = 'addons:lastCheck';
 
 export type ManifestEntry = {
@@ -19,7 +13,6 @@ export type ManifestEntry = {
   label?: string;
   version: number;
   sdk: number;
-  /** Đường dẫn gói, tương đối so với manifest. */
   file: string;
   sha256: string;
   size?: number;
@@ -28,9 +21,7 @@ export type ManifestEntry = {
 export type AddonManifest = { sdk: number; addons: ManifestEntry[] };
 
 export type UpdateReport = {
-  /** Addon đã cài bản mới. */
   installed: { uid: string; label: string; version: number }[];
-  /** Có bản mới nhưng cần app mới hơn (SDK cao hơn). */
   needsAppUpdate: string[];
   errors: string[];
 };

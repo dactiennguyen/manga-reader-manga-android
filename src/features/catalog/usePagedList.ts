@@ -37,11 +37,6 @@ function uniqueByUrl(items: MangaItem[], seen = new Set<string>()): MangaItem[] 
   });
 }
 
-/**
- * Danh sách truyện phân trang vô hạn. Khi `key` đổi (nguồn, sắp xếp, thể
- * loại, từ khoá) thì tải lại từ trang 1 và bỏ mọi kết quả của key cũ;
- * `key` null nghĩa là chưa cần tải.
- */
 export function usePagedList(key: string | null, fetchPage: (page: number) => Promise<ListPage>) {
   const [state, setState] = useState<PagedState>(INITIAL);
   const token = useRequestToken();
@@ -49,7 +44,6 @@ export function usePagedList(key: string | null, fetchPage: (page: number) => Pr
   const stateRef = useRef(state);
   const busy = useRef(false);
 
-  // Khai báo trước effect tải để luôn dùng hàm fetch mới nhất.
   useEffect(() => {
     fetchRef.current = fetchPage;
     stateRef.current = state;
@@ -59,7 +53,6 @@ export function usePagedList(key: string | null, fetchPage: (page: number) => Pr
     (mode: 'reset' | 'refresh') => {
       const t = token.next();
       busy.current = false;
-      // Làm mới khi đã có dữ liệu thì giữ danh sách cũ, lỗi chỉ báo toast.
       const keepItems = mode === 'refresh' && stateRef.current.status === 'ready';
       setState(prev =>
         keepItems ? { ...prev, refreshing: true, moreError: undefined } : { ...INITIAL, status: 'loading' },
@@ -120,7 +113,6 @@ export function usePagedList(key: string | null, fetchPage: (page: number) => Pr
               ...prev,
               items: fresh.length ? [...prev.items, ...fresh] : prev.items,
               page,
-              // Trang sau toàn truyện trùng = site lặp trang cuối, dừng để khỏi gọi mãi.
               hasNext: res.hasNext && fresh.length > 0,
               loadingMore: false,
             };

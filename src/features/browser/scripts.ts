@@ -1,12 +1,5 @@
 import { COSMETIC_CSS } from '../../lib/adblock';
 
-/**
- * Script chạy trong trang (bridge WebView ↔ RN). Mọi tin nhắn là JSON `{type, ...}`.
- *
- * Android gọi injectedJavaScriptBeforeContentLoaded ở onPageStarted (có thể
- * chạy trước khi document mới sẵn sàng), nên cùng script được gắn lại ở
- * injectedJavaScript; cờ `window.__mr` giúp nó chỉ cài một lần mỗi trang.
- */
 
 export type HtmlPurpose = 'run' | 'autorun' | 'detect' | 'save';
 
@@ -19,7 +12,6 @@ export type BridgeMessage =
   | { type: 'media'; url: string; items: MediaItem[] }
   | { type: 'pull' };
 
-/** Video/âm thanh tìm thấy trên trang (addon "videodownloader" của app gốc). */
 export type MediaItem = { url: string; kind: 'video' | 'audio'; label: string };
 
 const PURPOSES: HtmlPurpose[] = ['run', 'autorun', 'detect', 'save'];
@@ -28,7 +20,6 @@ const str = (value: unknown): string => (typeof value === 'string' ? value : '')
 const num = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
-/** Kiểm tra dữ liệu từ trang — trang web có thể tự gọi postMessage nên không tin mù quáng. */
 export function parseBridgeMessage(data: string): BridgeMessage | null {
   let raw: unknown;
   try {
@@ -79,11 +70,8 @@ export function parseBridgeMessage(data: string): BridgeMessage | null {
 }
 
 export type BridgeConfig = {
-  /** Chèn CSS ẩn quảng cáo và báo host tài nguyên về app. */
   adblock: boolean;
-  /** Nhấn giữ link/ảnh để mở menu. */
   longPress: boolean;
-  /** Màu tô kết quả "Tìm trong trang". */
   findColor: string;
   findCurrentColor: string;
 };
@@ -126,7 +114,6 @@ export function buildBridgeScript(config: BridgeConfig): string {
 
   post({ type: 'ua', ua: navigator.userAgent });
 
-  /* ── Chặn quảng cáo: báo host tài nguyên, gỡ phần tử của host bị chặn ── */
   function isBlocked(host) {
     var h = host;
     while (h && h.indexOf('.') > 0) {
@@ -219,7 +206,6 @@ export function buildBridgeScript(config: BridgeConfig): string {
     scheduleReport();
   }
 
-  /* ── Nhấn giữ link/ảnh ── */
   if (CFG.longPress) {
     var lp = { timer: 0, x: 0, y: 0, suppressUntil: 0 };
     var cancelLp = function () {
@@ -261,7 +247,6 @@ export function buildBridgeScript(config: BridgeConfig): string {
     document.addEventListener('contextmenu', swallow, true);
   }
 
-  /* ── Kéo xuống ở đầu trang để tải lại ── */
   var pull = { y: -1, x: 0, dy: 0, dx: 0 };
   function atTop(target) {
     var se = document.scrollingElement || document.documentElement;
@@ -292,7 +277,6 @@ export function buildBridgeScript(config: BridgeConfig): string {
     pull.y = -1;
   }, { capture: true, passive: true });
 
-  /* ── Tìm trong trang ── */
   var found = { marks: [], index: -1 };
   mr.findClear = function () {
     var parents = [];
@@ -370,7 +354,6 @@ export const jsFindStep = (delta: 1 | -1) => call(`window.__mr && window.__mr.fi
 
 export const JS_FIND_CLEAR = call('window.__mr && window.__mr.findClear();');
 
-/** Lấy HTML trang hiện tại. Tự chứa, không phụ thuộc bridge (phòng khi script chưa cài được). */
 export function jsRequestHtml(purpose: HtmlPurpose, limit = 0): string {
   const cut = limit > 0 ? `if (h.length > ${limit}) { h = h.slice(0, ${limit}); }` : '';
   return `(function () {
@@ -385,11 +368,6 @@ true;`;
 
 export const jsNavigate = (url: string) => call(`window.location.assign(${JSON.stringify(url)});`);
 
-/**
- * Tìm video/âm thanh tải được trên trang: thẻ <video>/<audio>/<source>, link
- * trỏ thẳng tới file media, và iframe cùng origin. Bỏ blob:/MediaSource và
- * playlist HLS/DASH (không phải một file để tải).
- */
 export const JS_FIND_MEDIA = `(function () {
   try {
     var out = [];
@@ -430,5 +408,4 @@ export const JS_FIND_MEDIA = `(function () {
 })();
 true;`;
 
-/** Xoá localStorage/sessionStorage của site hiện tại ("Cookie & dữ liệu trang"). */
 export const JS_CLEAR_STORAGE = call('localStorage.clear(); sessionStorage.clear();');

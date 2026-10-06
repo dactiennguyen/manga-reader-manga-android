@@ -1,16 +1,3 @@
-/**
- * Chạy engine thật trên toàn bộ site trong docs/cookie-manga-addon-test.csv —
- * đúng bộ site mà addon gốc đã được test — rồi ghi kết quả ra
- * docs/rn-engine-test.csv để so với addon gốc.
- *
- * Mỗi site đi trọn luồng như người dùng: thêm site (dò theme) → danh sách →
- * chi tiết → chương → tải ảnh trang đầu; kèm tìm kiếm, thể loại, trang 2 và
- * nhận diện URL (nút addon trên thanh địa chỉ).
- *
- *   npm run test:live                       # tất cả
- *   ONLY=madara npm run test:live           # lọc theo addon hoặc host
- *   FAILED=1 npm run test:live              # chỉ chạy lại site lỗi lần trước
- */
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -33,13 +20,10 @@ type Site = {
   addon: string;
   key: string;
   host: string;
-  /** Tên site như addon gốc khai báo. */
   name: string;
   lang: string;
   nsfw: boolean;
-  /** Nhóm trạng thái trong cookie-manga-sites-check.csv (1_works, 2_unknown_cloudflare_antibot…). */
   bucket: string;
-  /** Kết quả của addon gốc; rỗng nếu site không nằm trong bộ test addon gốc. */
   origOk: boolean | '';
 };
 
@@ -128,10 +112,6 @@ function csvCell(value: unknown): string {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-/**
- * Site còn sống của theme mà mọi site trong addon gốc đã chết hoặc bị chặn từ
- * máy test — để engine đó vẫn được chạy thật.
- */
 const EXTRA_SITES: Site[] = [
   { addon: 'html_novel', key: 'novgo.net', host: 'novgo.net', name: 'NovGo', lang: 'en', nsfw: false, bucket: '0_extra', origOk: '' },
   {
@@ -146,11 +126,6 @@ const EXTRA_SITES: Site[] = [
   },
 ];
 
-/**
- * 137 site của bộ test addon gốc, cộng mọi site còn sống khác trong
- * cookie-manga-sites-check.csv (bị Cloudflare, bị nhà mạng chặn, đổi giao diện).
- * Site đã chết (nhóm 5_*) bỏ qua.
- */
 function loadSites(): Site[] {
   const checks = new Map(parseCsv(fs.readFileSync(SITES_CHECK, 'utf8')).map(r => [r.key, r]));
   let sites = parseCsv(fs.readFileSync(ADDON_TEST, 'utf8')).map<Site>(r => ({
@@ -195,7 +170,6 @@ function loadSites(): Site[] {
   return sites;
 }
 
-/** Một site có thể nằm trong hai addon (wuxiaworld.site: madara và madara_novel). */
 function rowId(row: { addon?: string; key?: string }): string {
   return `${row.addon}|${row.key}`;
 }
@@ -242,7 +216,6 @@ function sizeOf(content: ChapterContent): number {
   return content.kind === 'images' ? content.pages.length : content.paragraphs.length;
 }
 
-/** Từ khoá tìm kiếm: từ dài nhất trong tên truyện (đủ đặc trưng để ra kết quả). */
 function searchWord(title: string): string {
   const words = title
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
@@ -251,7 +224,6 @@ function searchWord(title: string): string {
   return words.sort((a, b) => b.length - a.length)[0] ?? title;
 }
 
-/** Đọc chương mới nhất, cũ nhất rồi một chương giữa tới khi có một chương tải được ảnh. */
 async function readOneChapter(engine: Engine, src: SourceConfig, detail: MangaDetail, r: Result): Promise<void> {
   const chapters = detail.chapters;
   const candidates = uniq([chapters[0], chapters[chapters.length - 1], chapters[Math.floor(chapters.length / 2)]]);
@@ -273,7 +245,6 @@ async function readOneChapter(engine: Engine, src: SourceConfig, detail: MangaDe
         r.ok = true;
         return;
       }
-      // Trang giữa: trang đầu/cuối hay là banner của nhóm dịch.
       const page = content.pages[Math.floor(content.pages.length / 2)];
       r.page1 = page.uri;
       r.image = await checkImage(page.uri, page.headers);
@@ -322,7 +293,6 @@ async function runSite(site: Site): Promise<Result> {
     page1: '',
     error: '',
   };
-  // Bản addon app đang chạy (bản build trong builtin.generated.ts).
   const engine = engineId && hasEngine(engineId) ? getEngine(engineId as EngineId) : undefined;
   if (!engine) {
     r.error = `chưa có engine cho addon ${site.addon}`;
@@ -362,8 +332,6 @@ async function runSite(site: Site): Promise<Result> {
       throw new Error('danh sách rỗng');
     }
 
-    // Thử tối đa 3 truyện đầu danh sách: một truyện lẻ có thể bị site khoá
-    // chương/xoá ảnh, đó là lỗi của site chứ không phải của engine.
     let detail: MangaDetail | undefined;
     let lastError: unknown;
     for (const item of list.items.slice(0, 3)) {
@@ -392,7 +360,6 @@ async function runSite(site: Site): Promise<Result> {
     }
     r.step = 'done';
 
-    // Phần phụ: không làm hỏng kết quả chính, chỉ ghi lại.
     const kinds = [
       engine.classifyUrl(src, detail.url),
       engine.classifyUrl(src, r.chapterUrl),
@@ -438,7 +405,6 @@ async function pool<T, R>(items: T[], size: number, fn: (item: T, index: number)
 
 type Row = Record<string, string>;
 
-/** Ghi kết quả; chạy lại một phần (ONLY/FAILED) thì gộp vào file cũ. Trả về toàn bộ dòng. */
 function writeResults(results: Result[]): Row[] {
   const merged = new Map<string, Row>();
   if ((process.env.FAILED || process.env.ONLY) && fs.existsSync(OUTPUT)) {
@@ -476,7 +442,6 @@ function tally(rows: Row[], keyOf: (row: Row) => string): string[] {
     .map(([key, e]) => `  ${key.padEnd(30)} ${String(e.ok).padStart(3)}/${e.total}${rows[0]?.origOk !== '' ? `   (addon gốc ${e.orig}/${e.total})` : ''}`);
 }
 
-/** Tóm tắt trên toàn bộ file kết quả (kể cả phần của các lần chạy trước). */
 function summarize(rows: Row[]): string {
   const original = rows.filter(r => r.origOk !== '');
   const others = rows.filter(r => r.origOk === '');

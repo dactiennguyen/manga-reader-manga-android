@@ -2,23 +2,16 @@ import { useCallback, useSyncExternalStore } from 'react';
 
 import { readJSON, removeKeysWithPrefix, storage, writeJSON } from '../lib/storage';
 
-/**
- * Tiến độ đọc từng truyện (DBBookmarkChapters). Mỗi truyện một khoá MMKV
- * riêng vì danh sách chương đã đọc có thể rất dài; ghi theo từng truyện thay
- * vì ghi lại cả kho mỗi lần lật trang.
- */
 
 export type LastRead = {
   chapterUrl: string;
   chapterName: string;
-  /** Trang (manga) hoặc đoạn văn (novel) đang đọc, đếm từ 0. */
   page: number;
   total?: number;
   at: number;
 };
 
 export type MangaProgress = {
-  /** chapterUrl → thời điểm đánh dấu đã đọc. */
   read: Record<string, number>;
   last?: LastRead;
 };
@@ -78,7 +71,6 @@ export function clearAllProgress(): void {
   listeners.forEach(set => set.forEach(listener => listener()));
 }
 
-/** Xuất toàn bộ tiến độ (cho backup). */
 export function exportProgress(): Record<string, MangaProgress> {
   const out: Record<string, MangaProgress> = {};
   for (const fullKey of storage.getAllKeys()) {

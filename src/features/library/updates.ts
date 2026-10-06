@@ -7,17 +7,11 @@ import { getProgress } from '../../store/progress';
 import { useLibrary } from '../../store/useLibrary';
 import { getSource } from '../../store/useSources';
 
-/**
- * Kiểm tra chương mới cho truyện đã bookmark ("Check for updates",
- * hasUpdatesBookmark): khi mở app (nếu bật), khi kéo để làm mới trong
- * Bookmarks, và định kỳ ở nền qua WorkManager (backgroundUpdates.ts).
- */
 
 export type UpdateCheckResult = {
   updated: number;
   failed: number;
   newChapters: number;
-  /** Tên các truyện có chương mới, theo thứ tự kiểm tra. */
   titles: string[];
 };
 
@@ -40,10 +34,6 @@ export function countUnread(key: string, chapters: { url: string }[]): number {
   return chapters.reduce((n, ch) => (read[ch.url] ? n : n + 1), 0);
 }
 
-/**
- * Đồng bộ thông tin bookmark với chi tiết vừa tải. `seen` = người dùng đang
- * xem trang chi tiết, nên xoá badge "chương mới".
- */
 export function syncBookmarkWithDetail(
   key: string,
   detail: MangaDetail,
@@ -67,7 +57,6 @@ export function syncBookmarkWithDetail(
   });
 }
 
-/** Cập nhật lại số chương chưa đọc sau khi đọc/đánh dấu. */
 export function refreshUnread(key: string): void {
   const { bookmarks, updateBookmark } = useLibrary.getState();
   if (bookmarks[key]) {
@@ -77,7 +66,6 @@ export function refreshUnread(key: string): void {
 
 const CONCURRENCY = 3;
 
-/** Trả undefined nếu đang có lượt kiểm tra khác chạy. */
 export async function checkLibraryUpdates(keys?: string[]): Promise<UpdateCheckResult | undefined> {
   if (useUpdateCheck.getState().running) {
     return undefined;

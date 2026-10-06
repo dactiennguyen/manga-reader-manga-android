@@ -8,11 +8,6 @@ import { useLibrary } from '../../store/useLibrary';
 import { useSettings } from '../../store/useSettings';
 import { checkLibraryUpdates, type UpdateCheckResult } from './updates';
 
-/**
- * "Notify bookmarked manga or novel updates": WorkManager định kỳ gọi task JS
- * CheckLibraryUpdates (đăng ký ở index.js), task kiểm tra chương mới bằng
- * engine như khi mở app rồi đăng thông báo. Chỉ có trên Android.
- */
 
 export const BACKGROUND_TASK = 'CheckLibraryUpdates';
 const INTERVAL_HOURS = 6;
@@ -20,7 +15,6 @@ const NOTIFICATION_ID = 1001;
 
 export const backgroundUpdatesSupported = !!NativeLibraryTasks;
 
-/** Bật/tắt lịch kiểm tra nền theo cài đặt. */
 export function applyUpdateSchedule(enabled: boolean): void {
   if (!NativeLibraryTasks) {
     return;
@@ -32,7 +26,6 @@ export function applyUpdateSchedule(enabled: boolean): void {
   }
 }
 
-/** Android 13+ phải xin quyền thông báo lúc chạy. Trả false nếu bị từ chối. */
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (Platform.OS !== 'android' || Number(Platform.Version) < 33) {
     return true;
@@ -53,7 +46,6 @@ export function notificationText(result: UpdateCheckResult): { title: string; te
   };
 }
 
-/** Task chạy ở nền (app có thể đang tắt): dựng lại cấu hình engine rồi kiểm tra. */
 export async function runBackgroundUpdateCheck(): Promise<void> {
   const settings = useSettings.getState();
   if (!settings.notifyUpdates || !Object.keys(useLibrary.getState().bookmarks).length) {

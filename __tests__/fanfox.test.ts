@@ -16,7 +16,6 @@ const src: SourceConfig = {
   addedAt: 0,
 };
 
-// Thư mục desktop (fanfox.net/directory) — rút gọn.
 const DIRECTORY = `
 <ul class="manga-list-1-list line">
   <li>
@@ -40,7 +39,6 @@ const DIRECTORY_LAST = `
 </ul>
 <div class="pager-list"><a href="/directory/142.html">&lt;</a><a class="active" href="javascript:void(0)">143</a><a href="javascript:void(0)">&gt;</a></div>`;
 
-// Danh sách của bản mobile (tìm kiếm, trạng thái, thể loại).
 const MOBILE_LIST = `
 <ul class="post-list">
   <li><div class="post-one clearfix"><a href="https://m.fanfox.net/manga/solo_leveling">

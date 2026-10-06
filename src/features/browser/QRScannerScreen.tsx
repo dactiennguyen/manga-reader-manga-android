@@ -14,7 +14,6 @@ import { buildSearchUrl } from './searchEngines';
 
 type Permission = 'checking' | 'granted' | 'denied';
 
-/** Lớp phủ trên hình camera luôn tối, chữ/icon luôn trắng bất kể giao diện sáng/tối. */
 const ON_CAMERA = '#FFFFFF';
 const CAMERA_SHADE = 'rgba(0, 0, 0, 0.55)';
 const CAMERA_BG = '#000000';
@@ -39,7 +38,6 @@ async function checkCamera(request: boolean): Promise<Permission> {
   return result === PermissionsAndroid.RESULTS.GRANTED ? 'granted' : 'denied';
 }
 
-/** Quét mã QR: link thì mở tab mới, chữ thường thì tìm kiếm web. */
 export function QRScannerScreen() {
   const { c } = useTheme();
   const navigation = useAppNavigation();
@@ -54,7 +52,6 @@ export function QRScannerScreen() {
     checkCamera(true)
       .then(result => !cancelled && setPermission(result))
       .catch(() => !cancelled && setPermission('denied'));
-    // Người dùng có thể cấp quyền trong Cài đặt rồi quay lại.
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
         checkCamera(false)
@@ -71,7 +68,6 @@ export function QRScannerScreen() {
   const onRead = useCallback(
     (value: string | undefined) => {
       const text = value?.trim();
-      // Camera đọc liên tục cùng một mã — chỉ xử lý lần đầu.
       if (!text || handled.current) {
         return;
       }

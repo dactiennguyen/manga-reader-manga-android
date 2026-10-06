@@ -7,13 +7,6 @@ import { findSourceForUrl } from '../../store/useSources';
 
 export const UNSUPPORTED_MESSAGE = 'Trang này không được addon hỗ trợ';
 
-/**
- * "Chạy addon" trên trang đang xem: chuyển HTML lấy từ WebView cho engine
- * (khỏi tải lại — vượt được Cloudflare) rồi mở màn native tương ứng.
- *
- * `auto`: chạy tự động sau khi tải trang — chỉ mở trang truyện/chương, không
- * báo lỗi và không gợi ý thêm site.
- */
 export async function runAddonOnPage(
   navigation: AppNavigation,
   url: string,

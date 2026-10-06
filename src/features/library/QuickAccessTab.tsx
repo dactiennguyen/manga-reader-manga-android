@@ -12,7 +12,6 @@ import { useBrowser, type QuickAccessItem } from '../../store/useBrowser';
 import { radius, space, useTheme } from '../../theme';
 import { ShortcutDialog } from '../settings/ShortcutDialog';
 
-/** Lối tắt Truy cập nhanh (Quick access): bấm mở, nhấn giữ để sửa/xoá. */
 export function QuickAccessTab() {
   const navigation = useAppNavigation();
   const { c } = useTheme();

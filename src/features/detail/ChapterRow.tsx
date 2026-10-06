@@ -9,11 +9,9 @@ import { chapterMeta } from './chapters';
 
 type Props = {
   chapter: Chapter;
-  /** Vị trí trong danh sách gốc (mới nhất trước). */
   index: number;
   mangaKey: string;
   read: boolean;
-  /** Chương đang đọc dở: phần trăm đã đọc nếu biết tổng số trang. */
   current?: { percent?: number };
   onPress: (chapter: Chapter, index: number) => void;
   onLongPress: (chapter: Chapter, index: number) => void;
@@ -58,7 +56,6 @@ function ChapterRowBase({ chapter, index, mangaKey, read, current, onPress, onLo
 
 export const ChapterRow = memo(ChapterRowBase);
 
-/** Icon trạng thái tải của chương; chưa tải thì không hiện gì. */
 function DownloadState({ mangaKey, chapterUrl }: { mangaKey: string; chapterUrl: string }) {
   const { c } = useTheme();
   const task = useChapterDownload(mangaKey, chapterUrl);

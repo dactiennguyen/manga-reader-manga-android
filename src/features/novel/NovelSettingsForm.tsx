@@ -50,10 +50,6 @@ function VoiceSlider({
   );
 }
 
-/**
- * Cài đặt đọc novel: phông (xem trước bằng chính phông đó), cỡ chữ, giãn
- * dòng, màu nền, giọng đọc. Dùng cho sheet "Aa" và màn cài đặt mặc định.
- */
 export function NovelSettingsForm() {
   const { c } = useTheme();
   const novel = useSettings(state => state.novel);

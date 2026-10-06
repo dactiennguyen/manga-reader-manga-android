@@ -22,7 +22,6 @@ import { Divider, ListItem } from '../../components/ui';
 import { displayUrl } from '../../lib/url';
 import { useTheme } from '../../theme';
 
-/** Nút icon tô đặc được (bookmark đã lưu) — IconButton dùng chung không có fill. */
 export function ToolButton({
   icon: Icon,
   onPress,
@@ -57,7 +56,6 @@ export function ToolButton({
   );
 }
 
-/** Thanh đáy trang chi tiết: bookmark, tải xuống, đọc, đảo thứ tự chương. */
 export function DetailBottomBar({
   bookmarked,
   ascending,
@@ -119,7 +117,6 @@ export function DetailBottomBar({
   );
 }
 
-/** Menu ⋮ của thanh địa chỉ ở trang chi tiết: thêm hành động riêng của truyện. */
 export function DetailMenu({
   visible,
   onClose,

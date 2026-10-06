@@ -15,7 +15,6 @@ type Props = {
   mangaKey: string;
 };
 
-/** "Viewer settings" mở từ reader, có thêm "Apply to all pages". */
 export function ViewerSettingsSheet({ visible, onClose, mangaKey }: Props) {
   return (
     <Sheet visible={visible} onClose={onClose} title="Cài đặt trình xem">

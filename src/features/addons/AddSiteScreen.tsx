@@ -53,12 +53,10 @@ type TestState =
   | { status: 'done'; items: MangaItem[] }
   | { status: 'error'; error: unknown };
 
-/** Bỏ "/" thừa ở hai đầu; để trống thì dùng "manga" như theme mặc định. */
 function cleanDir(value: string): string {
   return value.trim().replace(/^\/+|\/+$/g, '') || 'manga';
 }
 
-/** Loại nội dung phải nằm trong các loại engine hỗ trợ. */
 function fitContent(engine: EngineId | null, content: ContentType): ContentType {
   if (!engine) {
     return content;
@@ -82,7 +80,6 @@ function toSource(form: SiteForm & { engine: EngineId }): SourceConfig {
   };
 }
 
-/** "Add supported site": thêm domain dùng theme Madara/MangaThemesia. */
 export function AddSiteScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'AddSite'>>();
   const initialUrl = route.params?.url;
@@ -158,7 +155,6 @@ export function AddSiteScreen() {
     [preferredEngine, probeToken, resetResult],
   );
 
-  // Mở từ trình duyệt ("thêm site này") thì kiểm tra luôn.
   useEffect(() => {
     if (!initialUrl || autoChecked.current) {
       return;
@@ -170,7 +166,6 @@ export function AddSiteScreen() {
     };
   }, [initialUrl, check]);
 
-  /** Không tải được trang chủ (Cloudflare…) vẫn cho tự thiết lập. */
   const setupManually = () => {
     const baseUrl = getOrigin(ensureScheme(input.trim()));
     const host = getHost(baseUrl);
@@ -200,7 +195,6 @@ export function AddSiteScreen() {
       next.content = fitContent(next.engine, next.content);
       return next;
     });
-    // Đổi theme/thư mục/loại thì kết quả thử cũ không còn đúng.
     if ('engine' in patch || 'mangaDir' in patch || 'content' in patch) {
       testToken.invalidate();
       setTest({ status: 'idle' });

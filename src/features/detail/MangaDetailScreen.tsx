@@ -45,7 +45,6 @@ const NO_CHAPTERS: Chapter[] = [];
 const NO_ITEMS: MangaItem[] = [];
 const NO_ROWS: Row[] = [];
 
-/** Sheet dựng lại mỗi lần mở (key = seq) để trạng thái bên trong luôn mới. */
 function useSheetState() {
   const [state, setState] = useState({ visible: false, seq: 0 });
   const open = useCallback(() => setState(s => ({ visible: true, seq: s.seq + 1 })), []);
@@ -53,7 +52,6 @@ function useSheetState() {
   return { ...state, open, close };
 }
 
-/** "Manga Detail" (widget catalogdetail). */
 export function MangaDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'MangaDetail'>>();
   const source = useSource(route.params.sourceId);
@@ -126,7 +124,6 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     return ascending ? rows.reverse() : rows;
   }, [chapters, activeGroup, ascending]);
 
-  // "Similar Manga" là một dải cuộn ngang như app gốc, rộng vừa ~3,4 bìa để thấy là cuộn được.
   const similarWidth = Math.min(140, Math.max(100, Math.floor(width / 3.4)));
   const similarRows = useMemo<Row[]>(() => (similar.length ? [{ type: 'similar', items: similar }] : []), [similar]);
 
@@ -141,7 +138,6 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
   );
   const target = useMemo(() => readTarget(chapters, progress), [chapters, progress]);
 
-  // Chương đang đọc dở (chưa đánh dấu xong) để tô nổi trong danh sách.
   const last = progress.last;
   const currentUrl = last && !progress.read[last.chapterUrl] ? last.chapterUrl : undefined;
   const percent = last?.total ? Math.min(100, Math.round(((last.page + 1) / last.total) * 100)) : undefined;
@@ -185,7 +181,6 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
 
   const openChapter = useCallback(
     (chapter: Chapter) => {
-      // Chỉ mở lại đúng trang khi đây là chương đang đọc dở.
       const p = getProgress(key);
       const resume = p.last?.chapterUrl === chapter.url && !p.read[chapter.url] ? p.last.page : undefined;
       if (source.content === 'novel') {
@@ -224,7 +219,6 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
 
   const openSimilar = useCallback(
     (item: MangaItem) =>
-      // Cùng tên màn: push để có màn mới thay vì đổi tham số màn hiện tại.
       navigation.push('MangaDetail', { sourceId: source.id, url: item.url, title: item.title, cover: item.cover }),
     [navigation, source.id],
   );
@@ -233,7 +227,6 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     Share.share({ title, message: `${title}\n${params.url}` }).catch(() => {});
   }, [title, params.url]);
 
-  // Đổi tab thay cả nội dung danh sách: về đầu để không đứng giữa chừng.
   const switchTab = useCallback((next: Tab) => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
     setTab(next);
@@ -374,7 +367,6 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
           keyExtractor={item => (item.type === 'chapter' ? item.chapter.url : 'similar')}
           getItemType={item => item.type}
           extraData={progress}
-          // Đảo thứ tự/đổi tab thay cả danh sách: không neo theo dòng đang thấy kẻo nhảy tới cuối.
           maintainVisibleContentPosition={{ disabled: true }}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={empty}
@@ -487,7 +479,6 @@ const SimilarRow = memo(function SimilarRowItem({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   inline: { flex: 0, paddingVertical: space.xl },
-  // Chừa chỗ cho nút nổi "Bắt đầu đọc".
   footer: { height: 96 },
   fab: { bottom: space.lg },
   similarRow: { paddingHorizontal: space.lg - 6, paddingTop: space.sm },

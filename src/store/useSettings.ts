@@ -7,7 +7,6 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 
 export type SearchEngineId = 'google' | 'bing' | 'duckduckgo' | 'yahoo' | 'yandex';
 
-/** "Select default search category": tìm web hay tìm truyện trong các nguồn. */
 export type SearchCategory = 'web' | 'manga';
 
 export type HomeWidgetId =
@@ -47,35 +46,25 @@ export type AppSettings = {
   searchCategory: SearchCategory;
   safeSearch: boolean;
   homeWidgets: HomeWidget[];
-  /** Mở gì khi khởi động: trang chủ hay tab cuối. */
   startPage: 'home' | 'lastTab';
-  /** Tự đóng tab không dùng sau khoảng thời gian. */
   autoCloseTabs: 'never' | 'day' | 'week' | 'month';
   adblock: boolean;
   trackingProtection: boolean;
   blockPopups: boolean;
-  /** Trang web mở app khác (intent://, market://…). */
   appLinks: 'ask' | 'allow' | 'block';
   disableLongPressMenu: boolean;
-  /** Mở link từ màn native (nút "Xem trang gốc") trong tab mới. */
   openNativeLinksInNewTab: boolean;
-  /** Tự chạy addon khi mở site đã bookmark. */
   autoRunAddon: boolean;
   showNsfw: boolean;
   ageConfirmed: boolean;
   libraryLayout: 'grid' | 'list';
   catalogLayout: 'grid' | 'list';
   checkUpdatesOnLaunch: boolean;
-  /** Đọc vài chương của truyện chưa bookmark thì gợi ý bookmark. */
   promptBookmark: boolean;
-  /** Kiểm tra chương mới định kỳ ở nền và gửi thông báo. */
   notifyUpdates: boolean;
-  /** URL manifest.json của kho addon (rỗng = không cập nhật addon). */
   addonRepoUrl: string;
-  /** Tự kiểm tra cập nhật addon mỗi ngày khi mở app. */
   autoUpdateAddons: boolean;
   hideStatusBar: boolean;
-  /** Chống chụp màn hình — lưu lựa chọn, áp dụng phía native nếu có hỗ trợ. */
   preventCapture: boolean;
   tourDone: boolean;
   novel: NovelSettings;
@@ -166,7 +155,6 @@ export const useSettings = create<AppSettings & SettingsActions>()(
       name: 'settings',
       storage: persistStorage,
       version: 1,
-      // Thêm widget mới vào cuối nếu bản lưu cũ thiếu.
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<AppSettings>;
         const widgets = saved.homeWidgets ?? current.homeWidgets;
@@ -182,5 +170,4 @@ export const useSettings = create<AppSettings & SettingsActions>()(
   ),
 );
 
-/** NSFW chỉ thật sự bật khi đã xác nhận tuổi. */
 export const useAllowNsfw = () => useSettings(s => s.showNsfw && s.ageConfirmed);

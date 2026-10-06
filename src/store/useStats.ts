@@ -4,7 +4,6 @@ import { persist } from 'zustand/middleware';
 import { persistStorage } from '../lib/storage';
 import { addDays, dayKey } from '../lib/time';
 
-/** Thống kê theo ngày (DBDailyReadingStats). */
 export type DailyStats = {
   seconds: number;
   chapters: number;
@@ -17,7 +16,6 @@ type StatsState = {
   totalChapters: number;
   totalSessions: number;
   longestSession: number;
-  /** Ghi một phiên đọc khi rời reader. Bỏ qua phiên quá ngắn. */
   addSession: (seconds: number) => void;
   addChapterRead: () => void;
   reset: () => void;
@@ -82,10 +80,6 @@ function isActive(day: DailyStats | undefined): boolean {
   return !!day && (day.seconds >= 60 || day.chapters > 0);
 }
 
-/**
- * Chuỗi ngày đọc. Chuỗi hiện tại vẫn giữ nếu hôm nay chưa đọc nhưng hôm qua
- * có đọc (người dùng còn cả ngày hôm nay để duy trì).
- */
 export function computeStreak(daily: Record<string, DailyStats>): {
   current: number;
   best: number;
@@ -114,7 +108,6 @@ export function computeStreak(daily: Record<string, DailyStats>): {
   return { current, best: Math.max(best, current), readToday };
 }
 
-/** n ngày gần nhất, cũ → mới, ngày thiếu điền 0. */
 export function lastDays(daily: Record<string, DailyStats>, count: number): { key: string; stats: DailyStats }[] {
   const today = dayKey();
   return Array.from({ length: count }, (_, i) => {

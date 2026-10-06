@@ -16,13 +16,11 @@ import {
 import { NovelSettingsForm } from './NovelSettingsForm';
 import { TTS_UNSUPPORTED } from './useTts';
 
-/** Cài đặt mặc định của reader novel ("Default font", "Default font size", "Default color theme"). */
 export function NovelSettingsScreen() {
   const novel = useSettings(state => state.novel);
   const setNovel = useSettings(state => state.setNovel);
   const { palette } = useNovelTheme();
 
-  // Dừng giọng nghe thử khi rời màn.
   useEffect(
     () => () => {
       Speech.stop().catch(() => {});

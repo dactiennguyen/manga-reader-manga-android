@@ -60,7 +60,6 @@ type Props = {
   chapterUrl: string;
   chapterName: string;
   pageStore: ValueStore<number>;
-  /** Số trang; 0 = chương chưa sẵn sàng, ẩn slider và thanh công cụ dọc. */
   total: number;
   viewMode: ViewMode;
   rtl: boolean;
@@ -68,7 +67,6 @@ type Props = {
   autoPlaying: boolean;
   immersive: boolean;
   tapToScroll: boolean;
-  /** undefined: máy không hỗ trợ khoá xoay, ẩn nút. */
   orientationLock?: OrientationLock;
   hasPrev: boolean;
   hasNext: boolean;
@@ -77,10 +75,6 @@ type Props = {
 
 const on = (active: boolean) => (active ? CHROME_ACCENT : CHROME_FG);
 
-/**
- * Thanh điều khiển reader manga theo app gốc: thanh địa chỉ addon + hàng tên
- * chương ở trên, thanh công cụ dọc bên phải, slider trang và 3 nút ở dưới.
- */
 export const ReaderChrome = memo(function ReaderChromeView({
   visible,
   chapterUrl,
@@ -217,7 +211,6 @@ const ORIENTATION_ICONS = {
   landscape: ScreenLockLandscape,
 } as const;
 
-/** Nút khoá xoay ở thanh công cụ dọc (dùng chung cho reader manga và novel). */
 export function OrientationButton({
   lock,
   color,

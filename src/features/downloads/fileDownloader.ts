@@ -5,11 +5,6 @@ import { uid } from '../../lib/id';
 import { getPath } from '../../lib/url';
 import { useFiles, type FileDownload, type FileKind } from '../../store/useFiles';
 
-/**
- * "Files & Media": tải ảnh, video, âm thanh, tệp từ trình duyệt vào thư mục
- * Download của máy (thư viện ảnh/ứng dụng Tải xuống thấy được), theo dõi tiến
- * độ trong app. Thay cho addon "videodownloader" của app gốc.
- */
 
 const KIND_BY_EXT: [RegExp, FileKind][] = [
   [/\.(jpe?g|png|webp|gif|avif|bmp|svg|heic)$/i, 'image'],
@@ -31,7 +26,6 @@ function safeDecode(value: string): string {
   }
 }
 
-/** Tên file từ URL, bỏ ký tự không hợp lệ; thiếu đuôi thì thêm đuôi theo loại. */
 export function fileNameFromUrl(url: string, kind?: FileKind): string {
   const last = safeDecode(getPath(url).split('/').filter(Boolean).pop() ?? '');
   let name = last.replace(/[^\p{L}\p{N}._-]+/gu, '_').replace(/^_+|_+$/g, '').slice(-100);
@@ -53,10 +47,8 @@ async function uniquePath(name: string): Promise<string> {
   return `${DownloadDirectoryPath}/${name.slice(0, dot)}_${Date.now()}${name.slice(dot)}`;
 }
 
-/** jobId của các file đang tải, để huỷ khi người dùng xoá. */
 const jobs = new Map<string, number>();
 
-/** Bắt đầu tải, trả về id trong danh sách "Tệp & media". */
 export async function startFileDownload(
   url: string,
   options: { pageUrl?: string; kind?: FileKind; name?: string } = {},
@@ -142,7 +134,6 @@ function run(id: string): void {
     })
     .catch(error => {
       jobs.delete(id);
-      // Bị huỷ vì người dùng xoá: mục đã không còn trong danh sách.
       if (useFiles.getState().files.some(f => f.id === id)) {
         update({ status: 'error', error: error instanceof Error ? error.message : String(error) });
       }
@@ -154,7 +145,6 @@ export function retryFileDownload(id: string): void {
   run(id);
 }
 
-/** Xoá khỏi danh sách; `deleteFiles` thì xoá luôn file trên máy. */
 export async function removeFileDownloads(ids: string[], deleteFiles: boolean): Promise<void> {
   const files = useFiles.getState().files.filter(f => ids.includes(f.id));
   useFiles.getState().remove(ids);

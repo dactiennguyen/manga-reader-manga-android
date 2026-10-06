@@ -1,10 +1,3 @@
-// Thuật toán băm cần phép toán bit.
-/* eslint-disable no-bitwise */
-/**
- * SHA-256 của chuỗi (mã hoá UTF-8), trả về hex. Dùng để kiểm tra gói addon tải
- * về khớp manifest. Viết tay vì Hermes không có crypto.subtle.
- */
-
 const K = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98,
   0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
@@ -20,7 +13,6 @@ function utf8(text: string): Uint8Array {
   const bytes: number[] = [];
   for (let i = 0; i < text.length; i++) {
     let code = text.charCodeAt(i);
-    // Cặp surrogate → một code point.
     if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length) {
       const next = text.charCodeAt(i + 1);
       if (next >= 0xdc00 && next <= 0xdfff) {
@@ -51,7 +43,6 @@ const rotr = (x: number, n: number) => (x >>> n) | (x << (32 - n));
 export function sha256(text: string): string {
   const data = utf8(text);
   const bitLength = data.length * 8;
-  // Đệm: 0x80, các byte 0, rồi độ dài (bit) 64-bit big-endian; tổng là bội số 64.
   const padded = new Uint8Array((((data.length + 9 + 63) >> 6) << 6) >>> 0);
   padded.set(data);
   padded[data.length] = 0x80;

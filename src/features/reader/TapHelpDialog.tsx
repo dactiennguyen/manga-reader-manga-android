@@ -11,16 +11,13 @@ type Props = {
   tapToScroll: boolean;
   zone: TapZone;
   rtl: boolean;
-  /** Các cử chỉ khác, mỗi dòng một mẹo. */
   tips: readonly string[];
-  /** Mở cài đặt vùng chạm (bỏ trống nếu vùng chạm cố định). */
   onOpenSettings?: () => void;
 };
 
 const LABELS: Record<TapAction, string> = { prev: 'Lùi', next: 'Tiến', menu: 'Menu' };
 const GRID = [0, 1, 2] as const;
 
-/** Nút "?" trên hàng tiêu đề: sơ đồ vùng chạm hiện tại và các cử chỉ. */
 export function TapHelpDialog({ visible, onClose, tapToScroll, zone, rtl, tips, onOpenSettings }: Props) {
   const { c } = useTheme();
   const fills: Record<TapAction, string> = {

@@ -14,7 +14,6 @@ import { WebBookmarksTab } from './WebBookmarksTab';
 
 type BookmarkView = 'manga' | 'novel' | 'web' | 'sites' | 'quick';
 
-// Thứ tự như app gốc: Web, Manga, (Novel), Manga Site, Quick access.
 const VIEW_OPTIONS = [
   { value: 'web', label: 'Trang web' },
   { value: 'manga', label: 'Truyện tranh' },
@@ -25,12 +24,10 @@ const VIEW_OPTIONS = [
 
 type TabParam = NonNullable<RootStackParamList['Bookmarks']>['tab'];
 
-/** Tham số `tab` cũ → lựa chọn của nút thả xuống. */
 function viewFromParam(tab: TabParam): BookmarkView {
   if (tab === 'web' || tab === 'sites') {
     return tab;
   }
-  // 'media': mở Truyện tranh, trừ khi thư viện chỉ có tiểu thuyết.
   const list = Object.values(useLibrary.getState().bookmarks);
   return !list.some(b => b.content === 'manga') && list.some(b => b.content === 'novel') ? 'novel' : 'manga';
 }
@@ -40,7 +37,6 @@ export function BookmarksScreen() {
   const tabParam = route.params?.tab;
   const [view, setView] = useState<BookmarkView>(() => viewFromParam(tabParam));
 
-  // Màn đã mở sẵn trong stack mà được điều hướng tới với tab khác.
   useEffect(() => {
     if (tabParam) {
       setView(viewFromParam(tabParam));
@@ -56,7 +52,6 @@ export function BookmarksScreen() {
   return (
     <Screen>
       {view === 'manga' || view === 'novel' ? (
-        // key: đổi loại thì bỏ lựa chọn/tìm kiếm/lọc nhóm của loại trước.
         <MediaBookmarksTab key={view} content={view} dropdown={dropdown} />
       ) : (
         <>
@@ -71,6 +66,5 @@ export function BookmarksScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Cách mép phải/nút kế bên như app gốc.
   dropdown: { marginRight: space.sm },
 });

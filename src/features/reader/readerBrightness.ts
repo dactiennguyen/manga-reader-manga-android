@@ -2,10 +2,6 @@ import { create } from 'zustand';
 
 import { storage } from '../../lib/storage';
 
-/**
- * Độ sáng khi đọc (manga và novel dùng chung): lớp phủ đen trên trang đọc,
- * không đổi độ sáng hệ thống nên không cần quyền WRITE_SETTINGS.
- */
 export const BRIGHTNESS_RANGE = { min: 20, max: 100 } as const;
 
 const KEY = 'reader.brightness';

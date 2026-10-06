@@ -23,34 +23,25 @@ import type { TourRegister } from './Tour';
 
 export type AddressBarHandle = { focus: () => void; blur: () => void };
 
-/** Trạng thái mảnh ghép: site đã thêm, hay nhận diện được theme nhưng chưa thêm. */
 export type AddonState = 'source' | 'detected' | null;
 
 export const ADDRESS_PLACEHOLDER = 'Tìm kiếm hoặc nhập địa chỉ web';
 
-/** Nút thêm của màn rộng (tablet): ← → ⟳ trước mảnh ghép, bookmark sau ô URL. */
 export type WideControls = {
   canBack: boolean;
   canForward: boolean;
-  /** Đang tải thì nút ⟳ thành nút dừng. */
   loading: boolean;
   onBack: () => void;
   onForward: () => void;
   onReload: () => void;
-  /** null khi không xem trang web (trang chủ). */
   bookmarked: boolean | null;
   onBookmarkPress: () => void;
 };
 
-/** URL hiện trong ô khi không gõ: giữ cả scheme như app gốc, bỏ "/" thừa của trang gốc. */
 function shownUrl(url: string): string {
   return url.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
 }
 
-/**
- * Thanh địa chỉ theo app gốc, phủ cả vùng thanh trạng thái:
- * [mảnh ghép] [ô URL … khiên, QR] [số tab] [⋮]
- */
 export function AddressBar({
   url,
   incognito,
@@ -75,7 +66,6 @@ export function AddressBar({
   wide,
   ref,
 }: {
-  /** URL trang đang xem, rỗng khi ở trang chủ. */
   url: string;
   incognito: boolean;
   category: SearchCategory;
@@ -88,7 +78,6 @@ export function AddressBar({
   addon: AddonState;
   addonBusy: boolean;
   onAddonPress: () => void;
-  /** Khiên chặn quảng cáo (null khi không xem trang web). */
   shield: { active: boolean; count: number } | null;
   onShieldPress: () => void;
   onQrPress: () => void;
@@ -97,7 +86,6 @@ export function AddressBar({
   onNewTab: () => void;
   onMenuPress: () => void;
   registerTour: TourRegister;
-  /** Có thì dùng bố cục màn rộng. */
   wide?: WideControls;
   ref?: Ref<AddressBarHandle>;
 }) {
@@ -169,7 +157,6 @@ export function AddressBar({
                     : 'Site được hỗ trợ'
                 }
               />
-              {/* Theme được hỗ trợ nhưng chưa thêm site: chấm báo bấm để thêm. */}
               {addon === 'detected' && !addonBusy && (
                 <View pointerEvents="none" style={[styles.dot, { backgroundColor: c.accent, borderColor: bg }]} />
               )}
@@ -213,7 +200,6 @@ export function AddressBar({
               <X size={18} color={muted} />
             </Pressable>
           )}
-          {/* Khiên chỉ là icon cho gọn để URL hiện đủ như app gốc; số đã chặn xem trong menu/sheet. */}
           {!editing && shield && (
             <Pressable
               onPress={onShieldPress}
@@ -269,7 +255,6 @@ export function AddressBar({
   );
 }
 
-// Kích thước khớp AddonBar để chuyển qua lại giữa trang web và màn addon không bị giật.
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',

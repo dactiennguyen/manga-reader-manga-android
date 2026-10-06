@@ -15,7 +15,6 @@ function safeDecode(value: string): string {
   }
 }
 
-/** "Lưu trang": ghi HTML vào thư mục app rồi thêm vào danh sách trang đã lưu. Trả id. */
 export async function savePage(title: string, url: string, html: string): Promise<string | undefined> {
   if (!(await exists(SAVED_DIR))) {
     await mkdir(SAVED_DIR);
@@ -28,7 +27,6 @@ export async function savePage(title: string, url: string, html: string): Promis
   return addSavedPage({ title, url, file, size: info?.size ?? content.length });
 }
 
-/** Xoá cookie của site đang xem ("Clear cookies and site data"). */
 export async function clearSiteCookies(url: string): Promise<number> {
   const cookies = await CookieManager.getAsArray(url);
   await Promise.all(cookies.map(cookie => CookieManager.clearByName(url, cookie.name)));
@@ -38,7 +36,6 @@ export async function clearSiteCookies(url: string): Promise<number> {
 
 type IntentInfo = { target?: string; fallback?: string; pkg?: string };
 
-/** `intent://host/path#Intent;scheme=x;package=y;S.browser_fallback_url=z;end` */
 export function parseIntentUrl(url: string): IntentInfo {
   const marker = url.indexOf('#Intent;');
   const params: Record<string, string> = {};
@@ -68,11 +65,6 @@ async function tryOpen(url: string): Promise<boolean> {
   }
 }
 
-/**
- * Mở link dành cho app khác (intent:, market:, mailto:, tel:…).
- * `intent://` thử app đích → link dự phòng của trang → Play Store.
- * Trả về URL web cần mở trong tab (link dự phòng), `true` nếu đã mở app, `false` nếu thất bại.
- */
 export async function launchExternal(url: string): Promise<string | boolean> {
   if (/^intent:/i.test(url)) {
     const intent = parseIntentUrl(url);

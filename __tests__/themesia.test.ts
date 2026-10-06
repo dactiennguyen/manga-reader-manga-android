@@ -69,7 +69,6 @@ describe('themesia engine', () => {
   });
 
   test('chapter đọc ảnh từ ts_reader.run, kể cả script base64', async () => {
-    // base64 của: ts_reader.run({"sources":[{"source":"Server 1","images":["https://cdn.ts/1.jpg","https://cdn.ts/2.jpg"]}]});
     const encoded =
       'dHNfcmVhZGVyLnJ1bih7InNvdXJjZXMiOlt7InNvdXJjZSI6IlNlcnZlciAxIiwiaW1hZ2VzIjpbImh0dHBzOi8vY2RuLnRzLzEuanBnIiwiaHR0cHM6Ly9jZG4udHMvMi5qcGciXX1dfSk7';
     mockFetch([

@@ -6,7 +6,6 @@ import { ListItem, Radio } from '../../components/ui';
 
 export type Option<T extends string | number> = { value: T; label: string; description?: string };
 
-/** Bottom sheet chọn một giá trị (Radio), đóng ngay khi chọn. */
 export function OptionSheet<T extends string | number>({
   visible,
   onClose,
@@ -44,7 +43,6 @@ export function OptionSheet<T extends string | number>({
   );
 }
 
-/** Dòng cài đặt hiện giá trị đang chọn, bấm mở OptionSheet. */
 export function SelectRow<T extends string | number>({
   title,
   icon,
@@ -56,7 +54,6 @@ export function SelectRow<T extends string | number>({
 }: {
   title: string;
   icon?: LucideIcon;
-  /** Tiêu đề sheet, mặc định giống tiêu đề dòng. */
   sheetTitle?: string;
   sheetSubtitle?: string;
   options: readonly Option<T>[];

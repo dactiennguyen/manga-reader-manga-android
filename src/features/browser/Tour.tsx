@@ -4,21 +4,15 @@ import { Modal, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from
 import { Button } from '../../components/ui';
 import { font, radius, space, useTheme } from '../../theme';
 
-/**
- * Hướng dẫn lần đầu kiểu coach-mark (features_tour của app gốc): phủ tối
- * toàn màn, chừa khung sáng quanh phần tử cần giới thiệu kèm thẻ chú thích.
- */
 
 export type TourStep = { key: string; text: string };
 
 type Rect = { x: number; y: number; width: number; height: number };
 
-/** Instance của View (RN 0.87: View là function component, ref trỏ tới element native). */
 export type ViewRef = ComponentRef<typeof View>;
 
 export type TourRegister = (key: string) => (node: ViewRef | null) => void;
 
-/** Sổ đăng ký phần tử được giới thiệu: gắn `ref={register('key')}` lên View. */
 export function useTourTargets(): { register: TourRegister; measure: (key: string) => Promise<Rect | null> } {
   const nodes = useRef(new Map<string, ViewRef>());
   const callbacks = useRef(new Map<string, (node: ViewRef | null) => void>());
@@ -66,7 +60,6 @@ export function CoachMarks({
 }: {
   steps: TourStep[];
   measure: (key: string) => Promise<Rect | null>;
-  /** Gọi khi xong hoặc bỏ qua, kèm các bước đã thực sự hiển thị. */
   onFinish: (shown: string[]) => void;
 }) {
   const { c } = useTheme();
@@ -85,7 +78,6 @@ export function CoachMarks({
 
   const finish = useCallback(() => onFinish(shown.current), [onFinish]);
 
-  /** Tìm bước kế tiếp đo được (nằm trong màn hình); không còn bước nào thì kết thúc. */
   const goTo = useCallback(
     async (start: number, area: { x: number; y: number; width: number; height: number }) => {
       for (let i = start; i < steps.length; i++) {
@@ -96,7 +88,6 @@ export function CoachMarks({
         if (!rect) {
           continue;
         }
-        // Đổi sang toạ độ của lớp phủ — measureInWindow trên Android có thể lệch theo thanh trạng thái.
         const local = { x: rect.x - area.x, y: rect.y - area.y, width: rect.width, height: rect.height };
         const visible =
           local.y >= 0 && local.y + local.height <= area.height && local.x >= 0 && local.x + local.width <= area.width;
@@ -182,7 +173,6 @@ export function CoachMarks({
               style={[
                 styles.card,
                 { backgroundColor: c.elevated, top: cardTop },
-                // Thẻ nằm trên vùng sáng: ẩn tới khi đo được chiều cao để đặt đúng chỗ.
                 !below && !cardHeight && styles.hidden,
               ]}
             >

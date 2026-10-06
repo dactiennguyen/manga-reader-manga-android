@@ -1,10 +1,18 @@
-name: Build Android APK (manual)
+name: Build Android (manual)
 
-run-name: Android APK · ${{ inputs.architecture }} · ${{ github.ref_name }}
+run-name: Android ${{ inputs.format }} · ${{ inputs.architecture }} · ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
     inputs:
+      format:
+        description: 'Định dạng: APK để cài trực tiếp; AAB để tạo Android App Bundle'
+        required: true
+        type: choice
+        default: apk
+        options:
+          - apk
+          - aab
       architecture:
         description: 'CPU: arm64 cho điện thoại 64-bit; universal cho mọi ABI của project'
         required: true
@@ -19,7 +27,7 @@ permissions:
 
 jobs:
   build:
-    name: Build release APK
+    name: Build release ${{ inputs.format }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -77,27 +85,41 @@ jobs:
         with:
           cache-provider: basic
 
-      - name: Build APK
+      - name: Build Android artifact
+        id: build
         working-directory: android
         env:
+          BUILD_FORMAT: ${{ inputs.format }}
           BUILD_ARCHITECTURE: ${{ inputs.architecture }}
         run: |
+          case "$BUILD_FORMAT" in
+            apk)
+              task=':app:assembleRelease'
+              artifact_path='android/app/build/outputs/apk/release/*.apk'
+              ;;
+            aab)
+              task=':app:bundleRelease'
+              artifact_path='android/app/build/outputs/bundle/release/*.aab'
+              ;;
+            *) echo 'Unsupported build format' >&2; exit 1 ;;
+          esac
           case "$BUILD_ARCHITECTURE" in
             arm64) architectures='arm64-v8a' ;;
             universal) architectures='armeabi-v7a,arm64-v8a,x86,x86_64' ;;
             *) echo 'Unsupported architecture' >&2; exit 1 ;;
           esac
-          ./gradlew :app:assembleRelease \
+          ./gradlew "$task" \
             --no-daemon \
             --stacktrace \
             --max-workers=2 \
             "-PreactNativeArchitectures=$architectures"
+          echo "artifact_path=$artifact_path" >> "$GITHUB_OUTPUT"
 
-      - name: Upload APK
+      - name: Upload Android artifact
         uses: actions/upload-artifact@v7
         with:
-          name: manga-reader-${{ inputs.architecture }}-${{ github.run_number }}
-          path: android/app/build/outputs/apk/release/*.apk
+          name: manga-reader-${{ inputs.format }}-${{ inputs.architecture }}-${{ github.run_number }}
+          path: ${{ steps.build.outputs.artifact_path }}
           if-no-files-found: error
           compression-level: 0
           retention-days: 14

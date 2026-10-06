@@ -2,7 +2,7 @@
 
 Cập nhật: 2026-10-06 · nhánh `feature/first-version`
 
-Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch bản, nhân vật, chia khung, vẽ, đặt thoại, đọc thử, xuất file. Phần AI, tài khoản và credit chưa làm. Giao diện bằng tiếng Anh.
+Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch bản, nhân vật, chia khung, vẽ, đặt thoại, đọc thử, xuất file. Phần AI mới có nhóm gợi ý truyện bằng chữ (xem mục "Tính năng AI"); AI tạo ảnh, tài khoản và credit chưa làm. Giao diện bằng tiếng Anh.
 
 Ảnh chụp màn hình khi test không nằm trong repo, xem mục "Ảnh chụp khi test" trong [README](../README.md).
 
@@ -12,7 +12,7 @@ Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch b�
 | --- | --- |
 | `npx tsc --noEmit` | Không lỗi |
 | `npm run lint` | Không lỗi |
-| `npm test` | 106 test qua (chia khung, chia trang, kho dữ liệu, file dự án, sắp xếp kéo thả, công cụ kịch bản, phép biến đổi nét vẽ, bản ngôn ngữ, ghép trang đôi) |
+| `npm test` | 127 test qua (chia khung, chia trang, kho dữ liệu, file dự án, sắp xếp kéo thả, công cụ kịch bản, phép biến đổi nét vẽ, bản ngôn ngữ, ghép trang đôi) |
 | Build Android debug (`./gradlew assembleDebug`) | Thành công |
 | Chạy trên máy ảo Android 14 (Pixel 6, API 34) | Đi trọn luồng: tạo truyện → kịch bản → tự chia trang → chỉnh khung → vẽ → đặt thoại → đọc thử → xuất file |
 | Xuất file trên máy ảo | PDF, ZIP ảnh PNG, CBZ, ảnh dài và file `.mangaka` đều tạo ra file đúng |
@@ -67,6 +67,27 @@ Chưa kiểm tra: máy thật, bản release, iOS, bút cảm ứng, truyện r�
 | 16 | Xuất file và đọc thử theo bản ngôn ngữ | Xuất bản, Đọc thử | Có (PNG) |
 
 Sửa kèm theo trong đợt này: Enter trong kịch bản không còn để lại dòng trống và sau khối Bối cảnh sẽ tạo khối Hành động; tên chương mặc định hiện theo vị trí sau khi đổi thứ tự.
+
+## Tính năng AI
+
+App gọi AI qua một server tương thích API của OpenAI (`/v1/chat/completions`) do người dùng tự chạy; địa chỉ server nhập ở Profile → AI server. Chưa nhập thì các nút AI chỉ hiện lời nhắc cài đặt. Mọi kết quả AI đều là bản xem trước: người dùng bấm chấp nhận thì mới ghi vào truyện, và lúc đang chờ luôn hủy được.
+
+| Tính năng | Ở đâu | Đã thử trên máy ảo với AI thật |
+| --- | --- | --- |
+| Cài địa chỉ server, model, API key; nút thử kết nối | Profile → AI server | Có |
+| Từ một câu ý tưởng, AI điền tên truyện, thể loại, tóm tắt | Trang chủ: "Shape with AI"; Tạo truyện: "Suggest with AI" | Có |
+| 3 hướng cốt truyện, mỗi hướng có chương theo từng hồi; chọn thêm vào sau hoặc thay chương cũ | Dàn ý: "AI plot ideas" | Có, gồm cả Undo sau khi thêm |
+| Chia một chương thành 3–6 cảnh và thêm vào kịch bản | Dàn ý: menu chương → "Break into scenes (AI)" | Có |
+| Báo lỗi khi không gọi được server, nút Retry, nút Cancel khi đang chờ | Mọi chỗ trên | Có |
+
+Lúc thử dùng [gemini-web2api](https://github.com/Sophomoresty/gemini-web2api) chạy trên máy tính ở chế độ không đăng nhập (model `gemini-3.6-flash`): mỗi lần gọi mất 3–13 giây. Khoảng một phần ba câu trả lời dài bị lỗi JSON nhẹ, nên app tự sửa JSON và tự gọi lại tối đa 3 lần; sau khi thêm bước này 14/14 lần thử đều ra kết quả.
+
+Giới hạn:
+
+- Server đó là công cụ không chính thức, chỉ nên dùng khi phát triển. Nó không tạo được ảnh; mọi tính năng AI về ảnh chưa làm.
+- Bản release của Android chặn kết nối `http://` thường, nên server phải có `https` hoặc phải đổi cấu hình mạng trước khi phát hành.
+- Chương và cảnh do AI tạo không còn dấu AI sau khi đã chấp nhận.
+- Chưa có: viết tiếp, viết lại, rút gọn thoại, gợi ý SFX, dịch thoại tự động, trợ lý chat.
 
 ## Khác với tài liệu thiết kế
 

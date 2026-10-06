@@ -304,7 +304,7 @@ export function IconButton({
   );
 }
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'ink';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'ink' | 'ai';
 
 export function Button({
   title,
@@ -332,6 +332,7 @@ export function Button({
     ghost: { bg: 'transparent', fg: c.text, border: c.border },
     danger: { bg: c.dangerSoft, fg: c.danger, border: c.danger },
     ink: { bg: c.ink, fg: c.onInk, border: c.ink },
+    ai: { bg: c.ai, fg: c.onAi, border: c.ink },
   }[variant];
   return (
     <Pressable

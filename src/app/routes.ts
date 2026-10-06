@@ -11,12 +11,14 @@ export type TabParamList = {
 
 export type ProjectTab = 'chapters' | 'characters' | 'world' | 'notes';
 
+export type StoryDraft = { title: string; genres: string[]; logline: string };
+
 export type RootStackParamList = {
   Welcome: undefined;
   SignIn: { from?: 'profile' } | undefined;
   Preferences: { edit?: boolean } | undefined;
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
-  NewProject: { idea?: string; blankCanvas?: boolean } | undefined;
+  NewProject: { idea?: string; blankCanvas?: boolean; draft?: StoryDraft } | undefined;
   Project: { projectId: ID; tab?: ProjectTab };
   Outline: { projectId: ID };
   Script: { chapterId: ID; blockId?: ID };

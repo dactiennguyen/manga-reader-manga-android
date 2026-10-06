@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
+import { AiErrorBox, AiLoading } from '../../components/ai';
 import { ComicCard, Cover, ProgressLine, SectionTitle, SpeechBubble } from '../../components/comic';
-import { Brush, Lightbulb, Plus, X } from '../../components/icons';
-import { Button, Chip, ChipRow, IconButton, Screen, TextField, toast } from '../../components/ui';
+import { Brush, Lightbulb, Plus, Sparkles, X } from '../../components/icons';
+import { Button, Chip, ChipRow, confirm, IconButton, Screen, TextField, toast } from '../../components/ui';
+import { aiConfigured } from '../../lib/ai/client';
+import { suggestStory, type StoryIdea } from '../../lib/ai/story';
+import { useAiTask } from '../../lib/ai/useAiTask';
 import { dayKey, dayKeyToDate, formatRelative } from '../../lib/time';
 import { DAILY_TIPS, GENRES, LIMITS } from '../../model/constants';
 import { activeProjects, chapterIdsOf, projectProgress } from '../../model/selectors';
@@ -50,6 +55,10 @@ export function HomeScreen() {
   const tipDismissedDay = useSettings(s => s.tipDismissedDay);
   const state = useStoryData();
   const [idea, setIdea] = useState('');
+  const { state: aiState, start: startAi, cancel: cancelAi, reset: resetAi } = useAiTask<StoryIdea>();
+  const aiIdea = useRef('');
+
+  useFocusEffect(useCallback(() => cancelAi, [cancelAi]));
 
   const today = dayKey();
   const data = useMemo(() => {
@@ -75,6 +84,35 @@ export function HomeScreen() {
     navigation.navigate('NewProject', { idea: trimmed });
     setIdea('');
   };
+
+  const openProfile = () => navigation.navigate('Tabs', { screen: 'Profile' });
+
+  const shapeWithAi = async (source: string) => {
+    if (!source) {
+      return;
+    }
+    if (!aiConfigured()) {
+      const go = await confirm(
+        'Set up AI first',
+        'Shaping an idea needs an AI server. Add its address in Profile, then come back and try again.',
+        { confirmText: 'Open Profile' },
+      );
+      if (go) {
+        openProfile();
+      }
+      return;
+    }
+    Keyboard.dismiss();
+    aiIdea.current = source;
+    const draft = await startAi(signal => suggestStory(source, signal));
+    if (!draft) {
+      return;
+    }
+    navigation.navigate('NewProject', { idea: source, draft });
+    setIdea(value => (value.trim() === source ? '' : value));
+  };
+
+  const aiLoading = aiState.status === 'loading';
 
   const openBlankCanvas = () => {
     const story = useStory.getState();
@@ -112,12 +150,37 @@ export function HomeScreen() {
         multiline
         inputStyle={empty ? styles.ideaInputLarge : styles.ideaInput}
       />
-      <View style={styles.rowBetween}>
-        <Text style={[font.caption, { color: c.muted }]}>
-          {idea.length}/{LIMITS.logline}
-        </Text>
-        <Button title="Create story" icon={Plus} onPress={startFromIdea} disabled={!trimmed} small={!empty} />
+      <Text style={[font.caption, styles.ideaCounter, { color: c.muted }]}>
+        {idea.length}/{LIMITS.logline}
+      </Text>
+      <View style={styles.ideaActions}>
+        <Button
+          title="Shape with AI"
+          variant="ai"
+          icon={Sparkles}
+          onPress={() => shapeWithAi(trimmed)}
+          disabled={!trimmed || aiLoading}
+          small={!empty}
+          style={styles.ideaAction}
+        />
+        <Button
+          title="Create story"
+          icon={Plus}
+          onPress={startFromIdea}
+          disabled={!trimmed}
+          small={!empty}
+          style={styles.ideaAction}
+        />
       </View>
+      {aiLoading && <AiLoading label="Shaping your idea…" onCancel={cancelAi} />}
+      {aiState.status === 'error' && (
+        <AiErrorBox
+          message={aiState.message}
+          onRetry={() => shapeWithAi(aiIdea.current)}
+          onDismiss={resetAi}
+          action={aiState.code === 'not-configured' ? { label: 'Open Profile', onPress: openProfile } : undefined}
+        />
+      )}
       <ChipRow>
         {ideas.map(sample => (
           <Chip key={sample} label={sample} onPress={() => setIdea(sample)} />
@@ -245,7 +308,9 @@ const styles = StyleSheet.create({
   cardBody: { padding: space.md, gap: space.md },
   ideaInput: { minHeight: 64, textAlignVertical: 'top' },
   ideaInputLarge: { minHeight: 120, textAlignVertical: 'top', fontSize: 17 },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  ideaCounter: { alignSelf: 'flex-end', marginTop: -space.xs },
+  ideaActions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  ideaAction: { flexGrow: 1 },
   continueBody: { flexDirection: 'row', padding: space.md, gap: space.md },
   continueInfo: { flex: 1, gap: space.xs },
   selfStart: { alignSelf: 'flex-start', marginTop: space.xs },

@@ -1,10 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useMemo, useState } from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { ScreenProps } from '../../app/routes';
+import { AiErrorBox, AiLoading, AiNote, AiPanel } from '../../components/ai';
 import { ComicCard, SpeechBubble } from '../../components/comic';
-import { ArrowRight, Check, X } from '../../components/icons';
+import { ArrowRight, Check, RefreshCw, Sparkles, X } from '../../components/icons';
 import {
   Button,
   Chip,
@@ -18,6 +19,8 @@ import {
   TextField,
   toast,
 } from '../../components/ui';
+import { suggestStory, type StoryIdea } from '../../lib/ai/story';
+import { useAiTask } from '../../lib/ai/useAiTask';
 import { StyleSample } from '../onboarding/StyleSample';
 import { ART_STYLE_LABEL, ART_STYLES, GENRES, LIMITS } from '../../model/constants';
 import type { ArtStyle, PageSize, ProjectFormat } from '../../model/types';
@@ -53,6 +56,13 @@ const FORMATS: { key: FormatKey; format: ProjectFormat; pageSize: PageSize; labe
     hint: 'Vertical strip, scroll to read on a phone',
   },
 ];
+
+function knownGenres(list: string[] | undefined): string[] {
+  const known: readonly string[] = GENRES;
+  return (list ?? [])
+    .filter((genre, index, all) => known.includes(genre) && all.indexOf(genre) === index)
+    .slice(0, LIMITS.genresPerProject);
+}
 
 function FormatArt({ kind }: { kind: FormatKey }) {
   const webtoon = kind === 'webtoon';
@@ -91,9 +101,21 @@ export function NewProjectScreen({ navigation, route }: ScreenProps<'NewProject'
   const defaultStyle = useSettings(s => s.defaultStyle);
   const projects = useStory(s => s.projects);
   const [step, setStep] = useState(0);
-  const [title, setTitle] = useState('');
-  const [genres, setGenres] = useState<string[]>([]);
-  const [logline, setLogline] = useState(idea.slice(0, LIMITS.logline));
+  const draft = route.params?.draft;
+  const [title, setTitle] = useState(() => (draft?.title ?? '').trim().slice(0, LIMITS.projectTitle));
+  const [genres, setGenres] = useState<string[]>(() => knownGenres(draft?.genres));
+  const [logline, setLogline] = useState(() => (draft?.logline?.trim() || idea).slice(0, LIMITS.logline));
+  const [aiFilled, setAiFilled] = useState(!!draft);
+  const { state: aiState, start: startAi, cancel: cancelAi, reset: resetAi } = useAiTask<StoryIdea>();
+  const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
+  const aiStatus = aiState.status;
+  useEffect(() => {
+    if (aiStatus === 'idle') {
+      return undefined;
+    }
+    const timer = setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 120);
+    return () => clearTimeout(timer);
+  }, [aiStatus]);
   const [formatKey, setFormatKey] = useState<FormatKey>('manga-B5');
   const [style, setStyle] = useState<ArtStyle>(defaultStyle);
   const [color, setColor] = useState(false);
@@ -142,20 +164,57 @@ export function NewProjectScreen({ navigation, route }: ScreenProps<'NewProject'
     }, [back]),
   );
 
+  const editTitle = (value: string) => {
+    setTitle(value);
+    setAiFilled(false);
+  };
+
+  const editLogline = (value: string) => {
+    setLogline(value);
+    setAiFilled(false);
+  };
+
   const toggleGenre = (genre: string) => {
     if (genres.includes(genre)) {
       setGenres(genres.filter(item => item !== genre));
+      setAiFilled(false);
     } else if (genres.length >= LIMITS.genresPerProject) {
       toast(`Pick up to ${LIMITS.genresPerProject} genres`);
     } else {
       setGenres([...genres, genre]);
+      setAiFilled(false);
     }
+  };
+
+  const aiSource = logline.trim() || name;
+  const aiLoading = aiState.status === 'loading';
+
+  const suggest = () => {
+    if (!aiSource) {
+      return;
+    }
+    Keyboard.dismiss();
+    startAi(signal => suggestStory(aiSource, signal));
+  };
+
+  const acceptSuggestion = (suggestion: StoryIdea) => {
+    const picked = knownGenres(suggestion.genres);
+    setTitle(suggestion.title.slice(0, LIMITS.projectTitle));
+    setLogline(suggestion.logline.slice(0, LIMITS.logline));
+    if (picked.length) {
+      setGenres(picked);
+    }
+    setAiFilled(true);
+    resetAi();
   };
 
   const next = () => {
     if (step === 0 && !name) {
       toast('Give your story a title');
       return;
+    }
+    if (aiLoading) {
+      cancelAi();
     }
     setStep(step + 1);
   };
@@ -186,7 +245,7 @@ export function NewProjectScreen({ navigation, route }: ScreenProps<'NewProject'
           <View key={index} style={[styles.stepBar, { backgroundColor: index <= step ? c.accent : c.border }]} />
         ))}
       </View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scroller} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {step === 0 && (
           <>
             <Text style={[font.display, { color: c.text }]}>Your story</Text>
@@ -195,14 +254,15 @@ export function NewProjectScreen({ navigation, route }: ScreenProps<'NewProject'
                 <Text style={[font.hand, { color: c.text }]}>Idea: {idea}</Text>
               </SpeechBubble>
             )}
+            {aiFilled && <AiNote text="Suggested by AI — edit anything" />}
             <View style={styles.field}>
               <FieldLabel>Story title</FieldLabel>
               <TextField
                 value={title}
-                onChangeText={setTitle}
+                onChangeText={editTitle}
                 placeholder="E.g. The Magic Pen"
                 maxLength={LIMITS.projectTitle}
-                autoFocus={!idea}
+                autoFocus={!idea && !draft}
               />
               {duplicate && (
                 <Text style={[font.caption, { color: c.muted }]}>You already have a story with this title</Text>
@@ -225,16 +285,56 @@ export function NewProjectScreen({ navigation, route }: ScreenProps<'NewProject'
               <FieldLabel>One-line summary</FieldLabel>
               <TextField
                 value={logline}
-                onChangeText={setLogline}
+                onChangeText={editLogline}
                 placeholder="Who is it about, what do they want, what stands in the way?"
                 maxLength={LIMITS.logline}
                 multiline
                 inputStyle={styles.logline}
               />
-              <Text style={[font.caption, styles.counter, { color: c.muted }]}>
-                {logline.length}/{LIMITS.logline}
-              </Text>
+              <View style={styles.loglineFooter}>
+                <Button
+                  title="Suggest with AI"
+                  variant="ai"
+                  icon={Sparkles}
+                  small
+                  onPress={suggest}
+                  disabled={!aiSource || aiLoading}
+                />
+                <Text style={[font.caption, { color: c.muted }]}>
+                  {logline.length}/{LIMITS.logline}
+                </Text>
+              </View>
+              {!aiSource && (
+                <Text style={[font.caption, { color: c.muted }]}>
+                  Type a title or a rough idea first, and AI can shape it into a pitch.
+                </Text>
+              )}
             </View>
+            {aiLoading && <AiLoading label="Writing a suggestion…" onCancel={cancelAi} />}
+            {aiState.status === 'error' && (
+              <AiErrorBox
+                message={aiState.message}
+                onRetry={aiState.code === 'not-configured' ? undefined : suggest}
+                onDismiss={resetAi}
+              />
+            )}
+            {aiState.status === 'done' && (
+              <AiPanel title="AI suggestion">
+                <Text style={[font.heading, { color: c.text }]}>{aiState.data.title}</Text>
+                {aiState.data.genres.length > 0 && (
+                  <Text style={[font.caption, { color: c.textSecondary }]}>{aiState.data.genres.join(' · ')}</Text>
+                )}
+                <Text style={[font.body, { color: c.text }]}>{aiState.data.logline}</Text>
+                <Text style={[font.caption, { color: c.textSecondary }]}>
+                  Use replaces the title, genres and summary above. Nothing changes until you tap it.
+                </Text>
+                <View style={styles.aiActions}>
+                  <Button title="Discard" variant="ghost" small onPress={resetAi} />
+                  <Button title="Try again" variant="secondary" icon={RefreshCw} small onPress={suggest} />
+                  <Button title="Use" variant="ai" icon={Check} small onPress={() => acceptSuggestion(aiState.data)} />
+                </View>
+              </AiPanel>
+            )}
           </>
         )}
 
@@ -340,7 +440,8 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, gap: space.lg, paddingBottom: space.xl * 2 },
   field: { gap: space.sm },
   logline: { minHeight: 88, textAlignVertical: 'top' },
-  counter: { alignSelf: 'flex-end' },
+  loglineFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  aiActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: space.sm },
   formatCard: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md },
   formatArtBox: { width: 56, height: 76, alignItems: 'center', justifyContent: 'center' },
   formatPage: { width: 50, height: 70, backgroundColor: PAPER, borderWidth: 2, borderColor: INK, padding: 4, gap: 3 },

@@ -24,6 +24,16 @@ npm run lint
 npm test
 ```
 
+## Bật AI khi phát triển
+
+Các tính năng AI (gợi ý truyện, cốt truyện, chia cảnh) gọi tới một server tương thích API của OpenAI do bạn tự chạy. App không kèm server nào.
+
+1. Chạy server trên máy tính, ví dụ [gemini-web2api](https://github.com/Sophomoresty/gemini-web2api) ở cổng 8081.
+2. Trong app mở **Profile → AI server**, nhập địa chỉ. Trên máy ảo Android, máy tính là `10.0.2.2`, ví dụ `10.0.2.2:8081`; trên máy thật dùng IP của máy tính trong mạng nội bộ.
+3. Bấm **Test connection** rồi **Save**.
+
+Bản debug cho phép kết nối `http://`; bản release thì không, xem [tình trạng triển khai](docs/status.md).
+
 ## Ảnh chụp khi test
 
 Ảnh chụp màn hình tạo ra trong lúc test **không commit vào repo**. Lưu chúng vào thư mục `test-screenshots/` ở gốc project; thư mục này đã nằm trong `.gitignore`. Thư mục `docs/` chỉ chứa văn bản: file ảnh đặt trong đó cũng bị `.gitignore` bỏ qua.

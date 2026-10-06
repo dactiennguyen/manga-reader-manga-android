@@ -15,6 +15,7 @@ import {
   Pencil,
   SlidersHorizontal,
   Smartphone,
+  Sparkles,
   Sun,
   Trash,
 } from '../../components/icons';
@@ -27,6 +28,7 @@ import { initialOf } from '../../model/selectors';
 import { useSettings, type CreatorRole, type Handedness, type ThemeMode } from '../../store/useSettings';
 import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
+import { AiServerSheet } from './AiServerSheet';
 
 const PEN_NAME_MAX = 30;
 
@@ -53,6 +55,8 @@ export function ProfileScreen() {
   const haptics = useSettings(s => s.haptics);
   const role = useSettings(s => s.role);
   const defaultStyle = useSettings(s => s.defaultStyle);
+  const aiBaseUrl = useSettings(s => s.aiBaseUrl);
+  const aiModel = useSettings(s => s.aiModel);
   const set = useSettings(s => s.set);
 
   const projects = useStory(s => s.projects);
@@ -63,6 +67,7 @@ export function ProfileScreen() {
   const [menu, setMenu] = useState<'theme' | 'hand' | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [aiSheet, setAiSheet] = useState(false);
   const [usedBytes, setUsedBytes] = useState<number | null>(null);
 
   const stats = useMemo(() => {
@@ -122,6 +127,7 @@ export function ProfileScreen() {
     }
   };
 
+  const aiAddress = aiBaseUrl.trim();
   const themeLabel = THEME_OPTIONS.find(option => option.value === themeMode)?.label ?? '';
   const handLabel = HAND_OPTIONS.find(option => option.value === handedness)?.label ?? '';
   const statItems = [
@@ -199,6 +205,18 @@ export function ProfileScreen() {
           />
         </Section>
 
+        <Section title="AI">
+          <ListItem
+            icon={Sparkles}
+            iconColor={c.ai}
+            title="AI server"
+            subtitle={aiAddress ? `${aiAddress} · ${aiModel}` : 'Add your own server to turn on AI help'}
+            right={aiAddress ? undefined : <Text style={[font.body, { color: c.muted }]}>Not set</Text>}
+            chevron
+            onPress={() => setAiSheet(true)}
+          />
+        </Section>
+
         <Section title="Privacy and data">
           <ListItem
             icon={FolderInput}
@@ -248,6 +266,7 @@ export function ProfileScreen() {
           onPress: () => set({ handedness: option.value }),
         }))}
       />
+      <AiServerSheet visible={aiSheet} onClose={() => setAiSheet(false)} />
       <PromptDialog
         visible={editingName}
         onClose={() => setEditingName(false)}

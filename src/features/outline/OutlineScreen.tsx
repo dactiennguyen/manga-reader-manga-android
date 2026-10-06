@@ -16,6 +16,7 @@ import {
   Pencil,
   Plus,
   Share2,
+  Sparkles,
   Trash2,
 } from '../../components/icons';
 import { Button, confirm, EmptyState, Header, IconButton, Screen, toast } from '../../components/ui';
@@ -27,6 +28,8 @@ import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { ChapterEditSheet } from './ChapterEditSheet';
 import { DragCard, DragLayer, DragScroll, DragZone, useOutlineDrag } from './OutlineDrag';
+import { PlotIdeasSheet } from './PlotIdeasSheet';
+import { SceneIdeasSheet } from './SceneIdeasSheet';
 
 function chapterCount(count: number): string {
   return `${count} ${count === 1 ? 'chapter' : 'chapters'}`;
@@ -59,6 +62,8 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
   const [menu, setMenu] = useState<MenuState>(null);
   const [editingId, setEditingId] = useState<ID | undefined>();
   const [renamingActId, setRenamingActId] = useState<ID | undefined>();
+  const [plotOpen, setPlotOpen] = useState(false);
+  const [scenesForId, setScenesForId] = useState<ID | undefined>();
   const [logline, setLogline] = useState(project?.logline ?? '');
   useLastOpened(projectId, { screen: 'Outline' });
 
@@ -109,6 +114,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
   const total = chapterIdsOf(project).length;
   const columnWidth = Math.round(width * 0.85);
   const canDrag = total > 1 || acts.length > 1;
+  const outlined = chapterIdsOf(project).some(id => chapters[id]?.summary.trim());
   const statusColor: Record<ChapterStatus, string> = {
     unwritten: c.border,
     writing: c.warning,
@@ -132,6 +138,11 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
     if (value !== project.logline) {
       story.updateProject(projectId, { logline: value });
     }
+  };
+
+  const openPlotIdeas = () => {
+    saveLogline();
+    setPlotOpen(true);
   };
 
   const shareOutline = () => {
@@ -209,6 +220,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
             icon: listMode ? Columns2 : List,
             onPress: () => setListMode(value => !value),
           },
+          { label: 'AI plot ideas', icon: Sparkles, onPress: () => setTimeout(openPlotIdeas, 250) },
           { label: 'Export outline as text', icon: Share2, onPress: shareOutline },
         ],
       };
@@ -223,6 +235,11 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
         subtitle: chapters[id]?.title,
         items: [
           { label: 'Edit chapter', icon: Pencil, onPress: () => setEditingId(id) },
+          {
+            label: 'Break into scenes (AI)',
+            icon: Sparkles,
+            onPress: () => setTimeout(() => setScenesForId(id), 250),
+          },
           { label: 'Move up', icon: ArrowUp, disabled: first, onPress: () => shiftChapter(id, -1) },
           { label: 'Move down', icon: ArrowDown, disabled: last, onPress: () => shiftChapter(id, 1) },
           acts.length > 1 && {
@@ -421,6 +438,16 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
         submitBehavior="blurAndSubmit"
         style={[styles.logline, { color: c.text, borderColor: c.border }]}
       />
+      {!outlined && (
+        <Button
+          title="AI plot ideas"
+          icon={Sparkles}
+          variant="ai"
+          small
+          onPress={openPlotIdeas}
+          style={styles.plotButton}
+        />
+      )}
       {total === 0 && (
         <View style={styles.empty}>
           <SpeechBubble>
@@ -480,6 +507,14 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
           }
         }}
       />
+      {plotOpen && <PlotIdeasSheet projectId={projectId} onClose={() => setPlotOpen(false)} />}
+      {scenesForId !== undefined && (
+        <SceneIdeasSheet
+          chapterId={scenesForId}
+          number={numbers[scenesForId] ?? 0}
+          onClose={() => setScenesForId(undefined)}
+        />
+      )}
       {editingId !== undefined && (
         <ChapterEditSheet
           chapterId={editingId}
@@ -500,6 +535,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     borderBottomWidth: 1,
   },
+  plotButton: { alignSelf: 'flex-start', marginHorizontal: space.lg, marginBottom: space.sm },
   empty: { paddingHorizontal: space.lg, paddingVertical: space.md },
   emptyText: { ...font.hand },
   emptyButton: { marginTop: space.lg, alignSelf: 'flex-start' },

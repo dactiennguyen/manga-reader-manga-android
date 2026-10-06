@@ -25,6 +25,9 @@ export type AppSettings = {
   librarySort: 'updated' | 'title' | 'created';
   canvasTipsSeen: boolean;
   tipDismissedDay: string;
+  aiBaseUrl: string;
+  aiModel: string;
+  aiApiKey: string;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -42,6 +45,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   librarySort: 'updated',
   canvasTipsSeen: false,
   tipDismissedDay: '',
+  aiBaseUrl: '',
+  aiModel: 'gemini-3.6-flash',
+  aiApiKey: '',
 };
 
 type SettingsActions = {

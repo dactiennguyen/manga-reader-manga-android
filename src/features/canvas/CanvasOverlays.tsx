@@ -74,6 +74,8 @@ const TIPS = [
   ['Two fingers', 'Drag to pan, pinch to zoom, twist to rotate the view.'],
   ['Two-finger tap', 'Undo. Double-tap with two fingers to fit the screen.'],
   ['Three-finger tap', 'Redo.'],
+  ['Shapes and tone', 'Tap the shapes tool twice to choose a shape. Brush and lasso fill can paint screentone.'],
+  ['Stylus', 'Pressure is recorded and one finger pans the view.'],
 ];
 
 export function TipsOverlay({ onClose }: { onClose: () => void }) {

@@ -1,20 +1,77 @@
-import { Brush, Eraser, PenLine, Pencil, type LucideIcon } from '../../components/icons';
+import {
+  Brush,
+  Circle,
+  Eraser,
+  Minus,
+  Move,
+  PaintBucket,
+  PenLine,
+  Pencil,
+  Shapes,
+  Square,
+  type LucideIcon,
+} from '../../components/icons';
+import type { LayerTransform } from '../../engine/artMath';
 import type { ArtLayer, ID, PanelArt, Stroke, StrokeTool } from '../../model/types';
 
-export type ToolDef = { id: StrokeTool; label: string; icon: LucideIcon };
+export type CanvasTool = StrokeTool | 'move';
+
+export type ShapeTool = 'line' | 'rect' | 'ellipse';
+
+export type ToolDef = { id: CanvasTool; label: string; icon: LucideIcon };
 
 export const TOOLS: ToolDef[] = [
   { id: 'gpen', label: 'G-pen', icon: PenLine },
   { id: 'pencil', label: 'Pencil', icon: Pencil },
   { id: 'brush', label: 'Brush', icon: Brush },
   { id: 'eraser', label: 'Eraser', icon: Eraser },
+  { id: 'fill', label: 'Lasso fill', icon: PaintBucket },
+  { id: 'move', label: 'Move and scale layer', icon: Move },
 ];
+
+export const SHAPE_TOOLS: { id: ShapeTool; label: string; icon: LucideIcon }[] = [
+  { id: 'line', label: 'Straight line', icon: Minus },
+  { id: 'rect', label: 'Rectangle', icon: Square },
+  { id: 'ellipse', label: 'Ellipse', icon: Circle },
+];
+
+export const SHAPES_ICON = Shapes;
+
+export function isShapeId(tool: CanvasTool): tool is ShapeTool {
+  return tool === 'line' || tool === 'rect' || tool === 'ellipse';
+}
+
+export function supportsTone(tool: CanvasTool): boolean {
+  return tool === 'fill' || tool === 'brush';
+}
+
+export function strokeToolOf(tool: CanvasTool): StrokeTool {
+  return tool === 'move' ? 'gpen' : tool;
+}
 
 export const SIZE_MIN = 2;
 export const SIZE_MAX = 60;
 
-export const DEFAULT_SIZES: Record<StrokeTool, number> = { gpen: 6, pencil: 3, brush: 16, eraser: 28 };
-export const DEFAULT_OPACITY: Record<StrokeTool, number> = { gpen: 1, pencil: 0.75, brush: 1, eraser: 1 };
+export const DEFAULT_SIZES: Record<StrokeTool, number> = {
+  gpen: 6,
+  pencil: 3,
+  brush: 16,
+  eraser: 28,
+  line: 4,
+  rect: 4,
+  ellipse: 4,
+  fill: 4,
+};
+export const DEFAULT_OPACITY: Record<StrokeTool, number> = {
+  gpen: 1,
+  pencil: 0.75,
+  brush: 1,
+  eraser: 1,
+  line: 1,
+  rect: 1,
+  ellipse: 1,
+  fill: 1,
+};
 
 export const GRAYS = ['#000000', '#FFFFFF', '#333333', '#666666', '#999999', '#CCCCCC'];
 
@@ -66,6 +123,32 @@ export function createLiveStore(): LiveStore {
     get: () => current,
     set: stroke => {
       current = stroke;
+      listeners.forEach(listener => listener());
+    },
+    subscribe: listener => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+export type LiveTransform = { layer: ArtLayer; t: LayerTransform };
+
+export type TransformStore = {
+  get: () => LiveTransform | null;
+  set: (transform: LiveTransform | null) => void;
+  subscribe: (listener: () => void) => () => void;
+};
+
+export function createTransformStore(): TransformStore {
+  let current: LiveTransform | null = null;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => current,
+    set: transform => {
+      current = transform;
       listeners.forEach(listener => listener());
     },
     subscribe: listener => {

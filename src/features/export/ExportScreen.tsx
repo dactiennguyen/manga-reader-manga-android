@@ -7,6 +7,8 @@ import { Archive, BookOpen, FileText, GalleryVertical, Images, Save, Share2, Upl
 import {
   Button,
   Checkbox,
+  Chip,
+  ChipRow,
   Header,
   ProgressBar,
   Screen,
@@ -16,6 +18,7 @@ import {
   confirm,
   toast,
 } from '../../components/ui';
+import { translationProgress } from '../../engine/translation';
 import { RNFS, saveToDevice, shareFile } from '../../lib/files';
 import { formatBytes } from '../../lib/format';
 import { readJSON, writeJSON } from '../../lib/storage';
@@ -81,6 +84,7 @@ export function ExportScreen() {
   const [longWidth, setLongWidth] = useState<800 | 1080>(800);
   const [autoCut, setAutoCut] = useState(true);
   const [gap, setGap] = useState(0);
+  const [lang, setLang] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [history, setHistory] = useState<ExportResult[]>(() => readJSON<ExportResult[]>(historyKey) ?? []);
   const [missing, setMissing] = useState<Record<string, boolean>>({});
@@ -116,7 +120,26 @@ export function ExportScreen() {
   );
   const unfinished = pageIds.filter(id => !pages[id].done).length;
   const withInfo = format === 'pdf' && info;
-  const options: ExportOptions = { format, quality, spread, cover, info: withInfo, penName, longWidth, autoCut, gap };
+  const languages = project?.languages ?? [];
+  const exportLang = lang && languages.includes(lang) ? lang : null;
+  const translated = exportLang
+    ? translationProgress(
+        pageIds.flatMap(id => pages[id]?.bubbles ?? []),
+        exportLang,
+      )
+    : null;
+  const options: ExportOptions = {
+    format,
+    quality,
+    spread,
+    cover,
+    info: withInfo,
+    penName,
+    longWidth,
+    autoCut,
+    gap,
+    lang: exportLang,
+  };
   const totalPages = pageIds.length + extraPageCount(options);
   const running = phase.kind === 'running';
   const allSelected = selectable.length > 0 && selectable.every(id => selected.includes(id));
@@ -245,6 +268,27 @@ export function ExportScreen() {
             />
           ))}
         </View>
+
+        {languages.length > 0 && (
+          <>
+            <SectionTitle>Language</SectionTitle>
+            <ComicCard contentStyle={styles.card}>
+              <ChipRow>
+                <Chip label="Original" selected={!exportLang} onPress={() => setLang(null)} />
+                {languages.map(name => (
+                  <Chip key={name} label={name} selected={exportLang === name} onPress={() => setLang(name)} />
+                ))}
+              </ChipRow>
+              <Text style={[font.caption, { color: c.textSecondary }]}>
+                {translated
+                  ? translated.done < translated.total
+                    ? `${translated.done} of ${translated.total} bubbles translated. The rest are exported with the original text.`
+                    : `All ${translated.total} bubbles are translated.`
+                  : 'Bubbles are exported with the original text.'}
+              </Text>
+            </ComicCard>
+          </>
+        )}
 
         <SectionTitle>Options</SectionTitle>
         <ComicCard contentStyle={styles.card}>

@@ -5,6 +5,7 @@ import type { AppNavigation, ProjectTab, ScreenProps } from '../../app/routes';
 import { ComicCard, Cover, MenuSheet, ProgressLine, Tag } from '../../components/comic';
 import {
   BookCheck,
+  Copy,
   EllipsisVertical,
   Image as ImageIcon,
   Palette,
@@ -36,7 +37,7 @@ import type { Project } from '../../model/types';
 import { useStory, type StoryData } from '../../store/useStory';
 import { font, space, useTheme } from '../../theme';
 import { ChaptersTab } from './ChaptersTab';
-import { changeProjectCover, exportProjectFile, trashProjectWithConfirm } from './projectActions';
+import { changeProjectCover, duplicateStory, exportProjectFile, trashProjectWithConfirm } from './projectActions';
 import { CharactersTab, NotesTab, WorldTab } from './ProjectTabs';
 import { useStoryData } from './useStoryData';
 
@@ -323,6 +324,11 @@ export function ProjectScreen({ navigation, route }: ScreenProps<'Project'>) {
             subtitle: ART_STYLE_LABEL[project.style],
             icon: Palette,
             onPress: () => setStyleMenu(true),
+          },
+          {
+            label: 'Duplicate story',
+            icon: Copy,
+            onPress: () => duplicateStory(projectId, copyId => navigation.push('Project', { projectId: copyId })),
           },
           { label: 'Export project (.mangaka)', icon: Share, onPress: () => exportProjectFile(projectId) },
           {

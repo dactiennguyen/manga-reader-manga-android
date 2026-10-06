@@ -1,5 +1,5 @@
 import { useKeepAwake } from '@sayem314/react-native-keep-awake';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -9,22 +9,41 @@ import {
   View,
   useWindowDimensions,
   type FlatListProps,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppNavigation, useAppRoute } from '../../app/routes';
 import { MenuSheet, SpeechBubble } from '../../components/comic';
-import { ChevronDown, EllipsisVertical, Eye, EyeOff, Flag, PenLine, Sun, X } from '../../components/icons';
+import {
+  ChevronDown,
+  EllipsisVertical,
+  Eye,
+  EyeOff,
+  Flag,
+  Languages,
+  PenLine,
+  ScreenRotation,
+  Sun,
+  X,
+} from '../../components/icons';
 import { Button, IconButton, Slider } from '../../components/ui';
 import { pageSize } from '../../engine/layout';
+import type { PageDrawOptions } from '../../engine/page';
+import { orientationSupported, setOrientationLock } from '../../lib/screen';
 import { chapterLabel, chapterNumber } from '../../model/selectors';
 import type { ID } from '../../model/types';
 import { useChapters, useProject } from '../../store/hooks';
 import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { EndCard, FlagListSheet, FlagSheet, PreviewPage } from './PreviewParts';
+import { buildSpreads, firstPageOfSpread, spreadIndexOfPage, spreadLabel } from './spreads';
+import { useZoom } from './useZoom';
 
-type Item = { key: string; pageId?: ID };
+type Item = { key: string; pageIds?: ID[] };
 
 const END_HEIGHT = 420;
 const BACKDROP = '#000000';
@@ -58,29 +77,60 @@ export function PreviewScreen() {
   );
   const total = pageIds.length;
 
-  const [startIndex, setStartIndex] = useState(() =>
-    Math.max(0, params.pageId ? allPageIds.indexOf(params.pageId) : 0),
-  );
-  const [index, setIndex] = useState(startIndex);
+  const manga = project?.format !== 'webtoon';
+  const landscape = width > height;
+  const spread = manga && landscape;
+  const slots = spread ? 2 : 1;
+  const groups = useMemo(() => buildSpreads(pageIds, spread), [pageIds, spread]);
+
+  const [startPage, setStartPage] = useState(() => Math.max(0, params.pageId ? allPageIds.indexOf(params.pageId) : 0));
+  const [pagePos, setPagePos] = useState(startPage);
   const [session, setSession] = useState(0);
   const [controls, setControls] = useState(false);
   const [awake, setAwake] = useState(false);
-  const [sheet, setSheet] = useState<'chapters' | 'menu' | 'flags' | null>(null);
+  const [sheet, setSheet] = useState<'chapters' | 'menu' | 'flags' | 'language' | null>(null);
   const [flagPageId, setFlagPageId] = useState<ID | null>(null);
+  const [pageZoomed, setPageZoomed] = useState(false);
+  const [pinching, setPinching] = useState(false);
+  const pinchingRef = useRef(false);
+  const [lang, setLang] = useState<string | undefined>(undefined);
+
+  const layoutKey = `${width}:${slots}`;
+  const [layout, setLayout] = useState(layoutKey);
+  if (layout !== layoutKey) {
+    setLayout(layoutKey);
+    setStartPage(pagePos);
+    setPageZoomed(false);
+  }
+
+  const itemOfPage = (at: number) => (at >= total ? groups.length : spreadIndexOfPage(groups, at));
+  const index = itemOfPage(pagePos);
+  const initialItem = itemOfPage(startPage);
 
   const listRef = useRef<FlatList<Item>>(null);
   const indexRef = useRef(index);
   indexRef.current = index;
-  const manga = project?.format !== 'webtoon';
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
 
-  const items = useMemo<Item[]>(() => [...pageIds.map(id => ({ key: id, pageId: id })), { key: 'end' }], [pageIds]);
+  const languages = useMemo(() => project?.languages ?? [], [project]);
+  const activeLang = lang && languages.includes(lang) ? lang : undefined;
+  const drawOptions = useMemo<PageDrawOptions>(
+    () => (activeLang ? { placeholders: true, lang: activeLang } : { placeholders: true }),
+    [activeLang],
+  );
+
+  const items = useMemo<Item[]>(
+    () => [...groups.map(ids => ({ key: ids[0], pageIds: ids })), { key: 'end' }],
+    [groups],
+  );
 
   const metrics = useMemo(() => {
     const lengths = items.map(item => {
       if (manga) {
         return width;
       }
-      const page = item.pageId ? pages[item.pageId] : undefined;
+      const page = item.pageIds ? pages[item.pageIds[0]] : undefined;
       if (!page || !project) {
         return END_HEIGHT;
       }
@@ -93,16 +143,77 @@ export function PreviewScreen() {
       offsets.push(sum);
       sum += length;
     }
-    return { lengths, offsets };
+    return { lengths, offsets, total: sum };
   }, [items, manga, pages, project, width]);
 
-  const mangaPageWidth = useMemo(() => {
+  const mangaPage = useMemo(() => {
     if (!project) {
-      return width;
+      return { w: width, h: height };
     }
     const size = pageSize(project);
-    return Math.min(width, Math.floor((height * size.w) / size.h));
-  }, [project, width, height]);
+    const w = Math.min(Math.floor(width / slots), Math.floor((height * size.w) / size.h));
+    return { w, h: Math.round((w * size.h) / size.w) };
+  }, [project, width, height, slots]);
+
+  const scrollY = useSharedValue(0);
+  const listZoom = useZoom({
+    frameW: width,
+    frameH: height,
+    contentW: width,
+    contentH: height,
+    lockY: true,
+    scrollY,
+    scrollMax: Math.max(0, metrics.total - height),
+  });
+  const { pinch: listPinch, pan: listPan, reset: resetListZoom, toggleAt: toggleListZoom } = listZoom;
+  const listGesture = useMemo(() => Gesture.Simultaneous(listPinch, listPan), [listPinch, listPan]);
+
+  useEffect(() => {
+    setPageZoomed(false);
+    setPinching(false);
+    pinchingRef.current = false;
+  }, [index]);
+
+  useEffect(() => {
+    resetListZoom(false);
+  }, [layoutKey, resetListZoom]);
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.value = event.nativeEvent.contentOffset.y;
+    },
+    [scrollY],
+  );
+
+  const rotated = useRef(false);
+  useEffect(
+    () => () => {
+      if (rotated.current) {
+        setOrientationLock('auto');
+      }
+    },
+    [],
+  );
+  const rotate = () => {
+    rotated.current = true;
+    setOrientationLock(landscape ? 'portrait' : 'landscape');
+  };
+
+  const onPageZoom = useCallback((zoomed: boolean) => {
+    setPageZoomed(zoomed);
+    listRef.current?.scrollToIndex({ index: indexRef.current, animated: false });
+  }, []);
+
+  const pagerGesture = useMemo(() => Gesture.Native(), []);
+  const onPagePinch = useCallback((active: boolean) => {
+    if (active === pinchingRef.current) {
+      return;
+    }
+    pinchingRef.current = active;
+    setPinching(active);
+    if (!active) {
+      listRef.current?.scrollToIndex({ index: indexRef.current, animated: false });
+    }
+  }, []);
 
   const goTo = useCallback(
     (target: number, animated = true) => {
@@ -113,10 +224,10 @@ export function PreviewScreen() {
   );
 
   const handleTap = useCallback(
-    (x: number) => {
-      if (manga && x < width * 0.25) {
+    (x: number, zoomed: boolean) => {
+      if (manga && !zoomed && x < width * 0.25) {
         goTo(indexRef.current + 1);
-      } else if (manga && x > width * 0.75) {
+      } else if (manga && !zoomed && x > width * 0.75) {
         goTo(indexRef.current - 1);
       } else {
         setControls(value => !value);
@@ -130,7 +241,7 @@ export function PreviewScreen() {
   const onViewable = useRef<NonNullable<FlatListProps<Item>['onViewableItemsChanged']>>(({ viewableItems }) => {
     const first = viewableItems[0];
     if (first && first.index != null) {
-      setIndex(first.index);
+      setPagePos(firstPageOfSpread(groupsRef.current, first.index));
     }
   }).current;
   const viewability = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
@@ -138,8 +249,10 @@ export function PreviewScreen() {
   const restart = (nextChapterId: ID | undefined, at: number, hide = hideUnfinished) => {
     setChapterId(nextChapterId);
     setHideUnfinished(hide);
-    setStartIndex(Math.max(0, at));
-    setIndex(Math.max(0, at));
+    setStartPage(Math.max(0, at));
+    setPagePos(Math.max(0, at));
+    setPageZoomed(false);
+    resetListZoom(false);
     setSession(value => value + 1);
   };
 
@@ -147,9 +260,12 @@ export function PreviewScreen() {
   const number = project && chapterId ? chapterNumber(project, chapterId) : 0;
   const chapterIndex = chapters.findIndex(ch => ch.id === chapterId);
   const nextChapter = chapters.slice(chapterIndex + 1).find(ch => ch.pageIds.length > 0);
-  const currentPageId = total > 0 ? pageIds[Math.min(index, total - 1)] : undefined;
+  const currentIds = groups[Math.min(index, groups.length - 1)] ?? [];
+  const currentPageId = currentIds[0];
+  const currentFlagged = currentIds.some(id => !!pages[id]?.flag);
   const flagCount = allPageIds.filter(id => !!pages[id].flag).length;
-  const shown = Math.min(index + 1, total);
+  const shown = Math.min(index + 1, groups.length);
+  const label = spreadLabel(groups, index, total);
   const close = () => navigation.goBack();
 
   const toggleUnfinished = () => {
@@ -161,7 +277,7 @@ export function PreviewScreen() {
   const jumpTo = (pageId: ID) => {
     const at = pageIds.indexOf(pageId);
     if (at >= 0) {
-      goTo(at, false);
+      goTo(itemOfPage(at), false);
     } else {
       restart(chapterId, allPageIds.indexOf(pageId), false);
     }
@@ -169,7 +285,7 @@ export function PreviewScreen() {
 
   const renderItem = ({ item, index: at }: { item: Item; index: number }) => {
     const length = metrics.lengths[at] ?? END_HEIGHT;
-    if (!item.pageId) {
+    if (!item.pageIds) {
       return (
         <EndCard
           width={width}
@@ -185,12 +301,22 @@ export function PreviewScreen() {
     }
     return (
       <PreviewPage
-        pageId={item.pageId}
+        pageIds={item.pageIds}
+        slots={slots}
         frameWidth={width}
         frameHeight={manga ? height : length}
-        pageWidth={manga ? mangaPageWidth : width}
+        pageWidth={manga ? mangaPage.w : width}
+        pageHeight={manga ? mangaPage.h : length}
+        rtl={manga}
+        options={drawOptions}
+        zoomable={manga}
+        active={at === index}
         onTap={handleTap}
         onFlag={openFlag}
+        onZoomChange={manga ? onPageZoom : undefined}
+        onPinchChange={manga ? onPagePinch : undefined}
+        outerGesture={manga ? pagerGesture : undefined}
+        onDoubleTap={manga ? undefined : toggleListZoom}
       />
     );
   };
@@ -215,39 +341,52 @@ export function PreviewScreen() {
     );
   }
 
+  const list = (
+    <FlatList
+      key={`${chapter.id}:${layoutKey}:${session}`}
+      ref={listRef}
+      data={items}
+      keyExtractor={item => item.key}
+      renderItem={renderItem}
+      horizontal={manga}
+      inverted={manga}
+      pagingEnabled={manga}
+      scrollEnabled={!manga || (!pageZoomed && !pinching)}
+      initialScrollIndex={initialItem > 0 && initialItem < items.length ? initialItem : undefined}
+      getItemLayout={(_, at) => ({ length: metrics.lengths[at] ?? 0, offset: metrics.offsets[at] ?? 0, index: at })}
+      onViewableItemsChanged={onViewable}
+      viewabilityConfig={viewability}
+      onScrollToIndexFailed={() => undefined}
+      onScroll={manga ? undefined : onScroll}
+      scrollEventThrottle={16}
+      initialNumToRender={manga ? 1 : 2}
+      maxToRenderPerBatch={2}
+      windowSize={3}
+      showsHorizontalScrollIndicator={false}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+
   return (
     <View style={styles.root}>
       <StatusBar hidden />
       {awake && <Awake />}
-      <FlatList
-        key={`${chapter.id}:${width}:${session}`}
-        ref={listRef}
-        data={items}
-        keyExtractor={item => item.key}
-        renderItem={renderItem}
-        horizontal={manga}
-        inverted={manga}
-        pagingEnabled={manga}
-        initialScrollIndex={startIndex > 0 && startIndex < items.length ? startIndex : undefined}
-        getItemLayout={(_, at) => ({ length: metrics.lengths[at] ?? 0, offset: metrics.offsets[at] ?? 0, index: at })}
-        onViewableItemsChanged={onViewable}
-        viewabilityConfig={viewability}
-        onScrollToIndexFailed={() => undefined}
-        initialNumToRender={manga ? 1 : 2}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        showsHorizontalScrollIndicator={false}
-        showsVerticalScrollIndicator={false}
-      />
+      {manga ? (
+        <GestureDetector gesture={pagerGesture}>{list}</GestureDetector>
+      ) : (
+        <GestureDetector gesture={listGesture}>
+          <Animated.View collapsable={false} style={[styles.flex, listZoom.style]}>
+            {list}
+          </Animated.View>
+        </GestureDetector>
+      )}
 
       {!controls && total > 0 && (
         <View
           pointerEvents="none"
           style={[styles.counter, { bottom: insets.bottom + space.sm, backgroundColor: c.toolbar }]}
         >
-          <Text style={[font.caption, { color: c.onToolbar }]}>
-            {shown}/{total}
-          </Text>
+          <Text style={[font.caption, { color: c.onToolbar }]}>{label}</Text>
         </View>
       )}
 
@@ -263,7 +402,7 @@ export function PreviewScreen() {
             </Pressable>
             <IconButton
               icon={Flag}
-              color={currentPageId && pages[currentPageId]?.flag ? c.accent : c.onToolbar}
+              color={currentFlagged ? c.accent : c.onToolbar}
               disabled={!currentPageId}
               onPress={() => currentPageId && setFlagPageId(currentPageId)}
               accessibilityLabel="Flag this page"
@@ -278,19 +417,17 @@ export function PreviewScreen() {
           </View>
           <View style={[styles.bottomBar, { backgroundColor: c.toolbar, paddingBottom: insets.bottom + space.sm }]}>
             <View style={styles.sliderRow}>
-              {total > 1 && (
+              {groups.length > 1 && (
                 <Slider
                   style={styles.slider}
                   min={1}
-                  max={total}
+                  max={groups.length}
                   step={1}
-                  value={manga ? total + 1 - shown : shown}
-                  onComplete={value => goTo(manga ? total - Math.round(value) : Math.round(value) - 1, false)}
+                  value={manga ? groups.length + 1 - shown : shown}
+                  onComplete={value => goTo(manga ? groups.length - Math.round(value) : Math.round(value) - 1, false)}
                 />
               )}
-              <Text style={[font.label, styles.sliderLabel, { color: c.onToolbar }]}>
-                {shown}/{total}
-              </Text>
+              <Text style={[font.label, styles.sliderLabel, { color: c.onToolbar }]}>{label}</Text>
             </View>
             <Button
               title="Edit this page"
@@ -336,6 +473,32 @@ export function PreviewScreen() {
             icon: Sun,
             onPress: () => setAwake(value => !value),
           },
+          manga &&
+            orientationSupported && {
+              label: landscape ? 'Rotate to portrait' : 'Rotate to landscape',
+              subtitle: landscape ? 'One page at a time' : 'Two-page spread view',
+              icon: ScreenRotation,
+              onPress: rotate,
+            },
+          languages.length > 0 && {
+            label: 'Language',
+            subtitle: activeLang ?? 'Original',
+            icon: Languages,
+            onPress: () => setSheet('language'),
+          },
+        ]}
+      />
+      <MenuSheet
+        visible={sheet === 'language'}
+        onClose={() => setSheet(null)}
+        title="Language"
+        items={[
+          { label: 'Original', subtitle: activeLang ? undefined : 'Selected', onPress: () => setLang(undefined) },
+          ...languages.map(code => ({
+            label: code,
+            subtitle: activeLang === code ? 'Selected' : undefined,
+            onPress: () => setLang(code),
+          })),
         ]}
       />
       <FlagListSheet visible={sheet === 'flags'} onClose={() => setSheet(null)} pageIds={allPageIds} onJump={jumpTo} />
@@ -349,7 +512,8 @@ export function PreviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BACKDROP },
+  root: { flex: 1, backgroundColor: BACKDROP, overflow: 'hidden' },
+  flex: { flex: 1 },
   centered: { alignItems: 'center', justifyContent: 'center', gap: space.lg, padding: space.xl },
   counter: {
     position: 'absolute',
@@ -382,5 +546,5 @@ const styles = StyleSheet.create({
   },
   sliderRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   slider: { flex: 1 },
-  sliderLabel: { minWidth: 44, textAlign: 'right' },
+  sliderLabel: { minWidth: 56, textAlign: 'right' },
 });

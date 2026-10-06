@@ -2,18 +2,22 @@ import {
   AlphaType,
   BlendMode,
   ColorType,
+  FilterMode,
   PaintStyle,
   Skia,
   StrokeCap,
   StrokeJoin,
+  TileMode,
   type SkCanvas,
   type SkPaint,
   type SkPath,
   type SkPicture,
+  type SkShader,
 } from '@shopify/react-native-skia';
 import { getStroke, type StrokeOptions } from 'perfect-freehand';
 
 import type { ArtLayer, ID, PanelArt, Stroke } from '../model/types';
+import { TONE_PITCH, isFillTool, isShapeTool, shapeBox, toneRadius } from './artMath';
 import { getImage } from './images';
 
 export type ArtDrawOptions = { skipLayerId?: ID; onlyLayerIds?: ID[] };
@@ -86,9 +90,81 @@ export function isOutlineTool(tool: Stroke['tool']): boolean {
   return tool === 'gpen' || tool === 'brush';
 }
 
+function shapePath(stroke: Stroke): SkPath | null {
+  const box = shapeBox(stroke.points);
+  if (!box) {
+    return null;
+  }
+  if (stroke.tool === 'line') {
+    const [x0, y0, x1, y1] = stroke.points;
+    const same = x0 === x1 && y0 === y1;
+    return Skia.PathBuilder.Make()
+      .moveTo(x0, y0)
+      .lineTo(same ? x1 + 0.01 : x1, same ? y1 + 0.01 : y1)
+      .build();
+  }
+  const rect = Skia.XYWHRect(box.x, box.y, Math.max(0.01, box.w), Math.max(0.01, box.h));
+  return stroke.tool === 'ellipse' ? Skia.Path.Oval(rect) : Skia.Path.Rect(rect);
+}
+
+function closedPath(points: number[][]): SkPath | null {
+  if (points.length < 3) {
+    return null;
+  }
+  const n = points.length;
+  const mid = (i: number) => {
+    const a = points[i % n];
+    const b = points[(i + 1) % n];
+    return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  };
+  const builder = Skia.PathBuilder.Make();
+  const start = mid(0);
+  builder.moveTo(start[0], start[1]);
+  for (let i = 1; i <= n; i++) {
+    const p = points[i % n];
+    const m = mid(i);
+    builder.quadTo(p[0], p[1], m[0], m[1]);
+  }
+  builder.close();
+  return builder.build();
+}
+
+const toneCache = new Map<string, SkShader>();
+
+export function toneShader(color: string, density: number): SkShader {
+  const key = `${color}|${density}`;
+  const cached = toneCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const rect = Skia.XYWHRect(0, 0, TONE_PITCH, TONE_PITCH);
+  const recorder = Skia.PictureRecorder();
+  const canvas = recorder.beginRecording(rect);
+  const paint = Skia.Paint();
+  paint.setAntiAlias(true);
+  paint.setColor(Skia.Color(color));
+  canvas.drawCircle(TONE_PITCH / 2, TONE_PITCH / 2, toneRadius(density), paint);
+  const matrix = Skia.Matrix();
+  matrix.rotate(Math.PI / 4);
+  const shader = recorder
+    .finishRecordingAsPicture()
+    .makeShader(TileMode.Repeat, TileMode.Repeat, FilterMode.Linear, matrix, rect);
+  if (toneCache.size >= 64) {
+    toneCache.clear();
+  }
+  toneCache.set(key, shader);
+  return shader;
+}
+
 const pathCache = new WeakMap<Stroke, SkPath | null>();
 
 function buildStrokePath(stroke: Stroke, last: boolean): SkPath | null {
+  if (isShapeTool(stroke.tool)) {
+    return shapePath(stroke);
+  }
+  if (isFillTool(stroke.tool)) {
+    return closedPath(toTriples({ points: stroke.points }));
+  }
   const points = toTriples(stroke);
   if (!points.length) {
     return null;
@@ -150,14 +226,17 @@ export function strokePaint(stroke: Stroke): SkPaint {
   } else {
     paint.setColor(Skia.Color(stroke.color));
     paint.setAlphaf(stroke.opacity);
+    if (stroke.tone) {
+      paint.setShader(toneShader(stroke.color, stroke.tone.density));
+    }
   }
-  if (isOutlineTool(stroke.tool)) {
+  if (isOutlineTool(stroke.tool) || isFillTool(stroke.tool)) {
     paint.setStyle(PaintStyle.Fill);
   } else {
     paint.setStyle(PaintStyle.Stroke);
     paint.setStrokeWidth(stroke.size);
     paint.setStrokeCap(StrokeCap.Round);
-    paint.setStrokeJoin(StrokeJoin.Round);
+    paint.setStrokeJoin(stroke.tool === 'rect' ? StrokeJoin.Miter : StrokeJoin.Round);
   }
   return paint;
 }

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { copyArt, deleteArt } from '../engine/artStore';
+import { copyArt, deleteArt, saveArt } from '../engine/artStore';
 import {
   DEFAULT_GUTTER_H,
   DEFAULT_GUTTER_V,
@@ -12,7 +12,9 @@ import {
   defaultTemplate,
   panelOrder,
 } from '../engine/layout';
+import { cleanLanguageName, dropTranslations, languageNameError, renameTranslations } from '../engine/translation';
 import { uid } from '../lib/id';
+import { buildProjectBundle, mapBundleImages, remapBundleIds } from '../lib/projectArchive';
 import { debouncedPersistStorage } from '../lib/storage';
 import { DEFAULT_ACT_TITLES, LIMITS } from '../model/constants';
 import type { PagePlan } from '../model/paginate';
@@ -20,6 +22,7 @@ import type {
   Act,
   ArtStyle,
   Block,
+  Bubble,
   Chapter,
   Character,
   ID,
@@ -28,6 +31,7 @@ import type {
   Page,
   PageSize,
   Panel,
+  PanelArt,
   Project,
   ProjectFormat,
   Relation,
@@ -62,10 +66,14 @@ export type SceneInit = { description?: string; blocks?: Block[] };
 type StoryActions = {
   createProject: (input: NewProjectInput) => ID;
   updateProject: (projectId: ID, patch: Partial<Omit<Project, 'id' | 'acts'>>) => void;
+  addLanguage: (projectId: ID, name: string) => string | null;
+  renameLanguage: (projectId: ID, from: string, to: string) => string | null;
+  removeLanguage: (projectId: ID, name: string) => void;
   setLastOpened: (projectId: ID, lastOpened: LastOpened) => void;
   trashProject: (projectId: ID) => void;
   restoreProject: (projectId: ID) => void;
   deleteProjectForever: (projectId: ID) => void;
+  duplicateProject: (projectId: ID, mapImage?: (path: string) => string | undefined) => ID | null;
   purgeTrash: (now?: number) => void;
 
   addAct: (projectId: ID, title?: string) => ID;
@@ -180,6 +188,26 @@ function panelsFromPlan(
   return { layout: built.layout, panels };
 }
 
+function mapProjectBubbles(state: StoryData, projectId: ID, change: (bubble: Bubble) => Bubble): Record<ID, Page> {
+  const pages = { ...state.pages };
+  for (const chapter of Object.values(state.chapters)) {
+    if (chapter.projectId !== projectId) {
+      continue;
+    }
+    for (const pageId of chapter.pageIds) {
+      const page = pages[pageId];
+      if (!page) {
+        continue;
+      }
+      const bubbles = page.bubbles.map(change);
+      if (bubbles.some((bubble, index) => bubble !== page.bubbles[index])) {
+        pages[pageId] = { ...page, bubbles };
+      }
+    }
+  }
+  return pages;
+}
+
 function removePagesData(state: StoryData, pageIds: ID[]): Record<ID, Page> {
   for (const pageId of pageIds) {
     const page = state.pages[pageId];
@@ -188,6 +216,14 @@ function removePagesData(state: StoryData, pageIds: ID[]): Record<ID, Page> {
     }
   }
   return omit(state.pages, pageIds);
+}
+
+function byId<T extends { id: ID }>(items: T[]): Record<ID, T> {
+  const record: Record<ID, T> = {};
+  for (const item of items) {
+    record[item.id] = item;
+  }
+  return record;
 }
 
 function cloneBlocks(blocks: Block[]): Block[] {
@@ -235,6 +271,57 @@ export const useStory = create<StoryState>()(
             return state;
           }
           return { projects: { ...state.projects, [projectId]: { ...project, ...patch, updatedAt: Date.now() } } };
+        }),
+
+      addLanguage: (projectId, name) => {
+        const project = get().projects[projectId];
+        const languages = project?.languages ?? [];
+        if (!project || languageNameError(languages, name)) {
+          return null;
+        }
+        const clean = cleanLanguageName(name);
+        get().updateProject(projectId, { languages: [...languages, clean] });
+        return clean;
+      },
+
+      renameLanguage: (projectId, from, to) => {
+        const project = get().projects[projectId];
+        const languages = project?.languages ?? [];
+        if (!project || !languages.includes(from) || languageNameError(languages, to, from)) {
+          return null;
+        }
+        const clean = cleanLanguageName(to);
+        if (clean === from) {
+          return clean;
+        }
+        set(state => ({
+          projects: {
+            ...state.projects,
+            [projectId]: {
+              ...project,
+              languages: languages.map(item => (item === from ? clean : item)),
+              updatedAt: Date.now(),
+            },
+          },
+          pages: mapProjectBubbles(state, projectId, bubble => renameTranslations(bubble, from, clean)),
+        }));
+        return clean;
+      },
+
+      removeLanguage: (projectId, name) =>
+        set(state => {
+          const project = state.projects[projectId];
+          if (!project || !project.languages?.includes(name)) {
+            return state;
+          }
+          const languages = project.languages.filter(item => item !== name);
+          return {
+            projects: {
+              ...state.projects,
+              [projectId]: { ...project, languages: languages.length ? languages : undefined, updatedAt: Date.now() },
+            },
+            pages: mapProjectBubbles(state, projectId, bubble => dropTranslations(bubble, name)),
+          };
         }),
 
       setLastOpened: (projectId, lastOpened) =>
@@ -289,6 +376,35 @@ export const useStory = create<StoryState>()(
             world: omit(state.world, ofProject(state.world)),
           };
         }),
+
+      duplicateProject: (projectId, mapImage = () => undefined) => {
+        const bundle = buildProjectBundle(projectId);
+        if (!bundle) {
+          return null;
+        }
+        const copy = mapBundleImages(remapBundleIds(bundle), mapImage);
+        const now = Date.now();
+        const project: Project = {
+          ...copy.project,
+          title: `${bundle.project.title} (copy)`,
+          createdAt: now,
+          updatedAt: now,
+        };
+        delete project.deletedAt;
+        get().mergeEntities({
+          projects: { [project.id]: project },
+          chapters: byId(copy.chapters),
+          scenes: byId(copy.scenes),
+          characters: byId(copy.characters),
+          relations: byId(copy.relations),
+          world: byId(copy.world),
+          pages: byId(copy.pages),
+        });
+        for (const [panelId, art] of Object.entries(copy.art)) {
+          saveArt(panelId, JSON.parse(JSON.stringify(art)) as PanelArt);
+        }
+        return project.id;
+      },
 
       purgeTrash: (now = Date.now()) => {
         const limit = LIMITS.trashDays * 24 * 60 * 60 * 1000;

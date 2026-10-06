@@ -8,6 +8,8 @@ import type { ID, PageStatus } from '../../model/types';
 import { usePage } from '../../store/hooks';
 import { font, space, useTheme } from '../../theme';
 
+export const THUMB_META_H = 26;
+
 export const STATUS_ICON: Record<PageStatus, LucideIcon> = {
   empty: Circle,
   paneled: PanelsTopLeft,
@@ -92,6 +94,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.xs,
-    paddingVertical: space.xs,
+    height: THUMB_META_H,
   },
 });

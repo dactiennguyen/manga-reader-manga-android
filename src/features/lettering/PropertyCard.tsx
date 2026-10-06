@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Bold, Minus, PenLine, Plus, Trash2, User } from '../../components/icons';
 import { Chip, IconButton, Segmented, Slider } from '../../components/ui';
 import { FONT_LABEL } from '../../engine/fonts';
 import { SFX_STYLES } from '../../engine/lettering';
+import { hasTranslation, translationOf } from '../../engine/translation';
 import { BUBBLE_TYPE_LABEL, EFFECT_LABEL } from '../../model/constants';
 import type { Bubble, BubbleFont, BubbleType, Effect, EffectType } from '../../model/types';
 import { font, radius, space, useTheme } from '../../theme';
@@ -75,6 +76,7 @@ function SizeControl({ value, onChange }: { value: number; onChange: (value: num
 export function BubbleCard({
   bubble,
   speaker,
+  lang,
   onChange,
   onEdit,
   onDelete,
@@ -83,6 +85,7 @@ export function BubbleCard({
 }: {
   bubble: Bubble;
   speaker?: string;
+  lang?: string | null;
   onChange: (patch: Partial<Bubble>, tag?: string) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -112,6 +115,21 @@ export function BubbleCard({
         <IconButton icon={PenLine} size={18} onPress={onEdit} accessibilityLabel="Edit text" />
         <IconButton icon={Trash2} size={18} color={c.danger} onPress={onDelete} accessibilityLabel="Delete" />
       </View>
+      {!!lang && (
+        <Pressable onPress={onEdit} style={styles.langRow} accessibilityRole="button">
+          <View
+            style={[
+              styles.langDot,
+              { borderColor: c.ink, backgroundColor: hasTranslation(bubble, lang) ? c.success : c.warning },
+            ]}
+          />
+          <Text style={[styles.langText, { color: c.textSecondary }]} numberOfLines={1}>
+            {hasTranslation(bubble, lang)
+              ? `${lang}: ${translationOf(bubble, lang)}`
+              : `No ${lang} text yet · showing the original`}
+          </Text>
+        </Pressable>
+      )}
       {speech && (
         <Row label="Style">
           {SPEECH_TYPES.map(type => (
@@ -279,6 +297,9 @@ const styles = StyleSheet.create({
   rowContent: { gap: space.xs, alignItems: 'center', paddingRight: space.sm },
   slider: { flex: 1 },
   value: { ...font.label, minWidth: 40, textAlign: 'center' },
+  langRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xs },
+  langDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5 },
+  langText: { ...font.caption, flex: 1 },
   size: { flexDirection: 'row', alignItems: 'center' },
   hint: { ...font.caption, paddingVertical: space.xs },
 });

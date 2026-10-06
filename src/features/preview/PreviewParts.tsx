@@ -1,64 +1,182 @@
-import { memo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector, type GestureType } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 
 import { PageView } from '../../components/PageView';
 import { Sheet } from '../../components/Sheet';
 import { ComicCard } from '../../components/comic';
 import { Flag } from '../../components/icons';
 import { Button, Chip, TextField, confirm } from '../../components/ui';
+import type { PageDrawOptions } from '../../engine/page';
 import type { ID, PageFlag } from '../../model/types';
 import { usePage } from '../../store/hooks';
 import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
+import { slotAtPoint } from './spreads';
+import { useZoom } from './useZoom';
 
 export const FLAG_REASONS = ['Art', 'Dialogue', 'Layout', 'Reading order'] as const;
 
-const PAGE_OPTIONS = { placeholders: true };
+const BADGE_SIZE = 32;
+const BADGE_ZONE = space.sm + BADGE_SIZE + 12;
+
+function PageSlot({ pageId, width, options }: { pageId: ID; width: number; options: PageDrawOptions }) {
+  const { c } = useTheme();
+  const page = usePage(pageId);
+  return (
+    <View style={{ width }}>
+      <PageView pageId={pageId} width={width} options={options} />
+      {page && !page.done && (
+        <View style={[styles.unfinished, { backgroundColor: c.toolbar }]}>
+          <Text style={[font.caption, { color: c.onToolbar }]}>Not done</Text>
+        </View>
+      )}
+      {page?.flag && (
+        <View
+          accessible
+          accessibilityLabel="Flagged page"
+          style={[styles.flagBadge, { backgroundColor: c.accent, borderColor: c.onAccent }]}
+        >
+          <Flag size={16} color={c.onAccent} />
+        </View>
+      )}
+    </View>
+  );
+}
 
 export const PreviewPage = memo(function PreviewPageItem({
-  pageId,
+  pageIds,
+  slots,
   frameWidth,
   frameHeight,
   pageWidth,
+  pageHeight,
+  rtl,
+  options,
+  zoomable,
+  active,
   onTap,
   onFlag,
+  onZoomChange,
+  onPinchChange,
+  outerGesture,
+  onDoubleTap,
 }: {
-  pageId: ID;
+  pageIds: ID[];
+  slots: number;
   frameWidth: number;
   frameHeight: number;
   pageWidth: number;
-  onTap: (x: number) => void;
+  pageHeight: number;
+  rtl: boolean;
+  options: PageDrawOptions;
+  zoomable: boolean;
+  active: boolean;
+  onTap: (x: number, zoomed: boolean) => void;
   onFlag: (pageId: ID) => void;
+  onZoomChange?: (zoomed: boolean) => void;
+  onPinchChange?: (active: boolean) => void;
+  outerGesture?: GestureType;
+  onDoubleTap?: (x: number, y: number) => void;
 }) {
-  const { c } = useTheme();
-  const page = usePage(pageId);
-  const press = (event: GestureResponderEvent) => onTap(event.nativeEvent.pageX);
+  const contentW = slots * pageWidth;
+  const { pinch, pan, style, zoomed, reset, toggleAt, toContent } = useZoom({
+    frameW: frameWidth,
+    frameH: frameHeight,
+    contentW,
+    contentH: pageHeight,
+    onChange: onZoomChange,
+    onPinch: onPinchChange,
+    outer: outerGesture,
+  });
+
+  useEffect(() => {
+    if (!active) {
+      reset(false);
+    }
+  }, [active, reset]);
+
+  const gesture = useMemo(() => {
+    const slotAt = (x: number, y: number) => {
+      const point = toContent(x, y);
+      const slot = slotAtPoint(point.x, pageWidth, slots, pageIds.length, rtl);
+      const left = rtl ? contentW - (slot + 1) * pageWidth : slot * pageWidth;
+      const onBadge =
+        point.x >= left + pageWidth - BADGE_ZONE &&
+        point.x <= left + pageWidth &&
+        point.y >= 0 &&
+        point.y <= BADGE_ZONE;
+      return { pageId: pageIds[slot], onBadge };
+    };
+    const tap = Gesture.Tap()
+      .runOnJS(true)
+      .maxDistance(16)
+      .onEnd((e, ok) => {
+        if (!ok) {
+          return;
+        }
+        const hit = slotAt(e.x, e.y);
+        if (!zoomed && hit.onBadge && useStory.getState().pages[hit.pageId]?.flag) {
+          onFlag(hit.pageId);
+        } else {
+          onTap(e.absoluteX, zoomed);
+        }
+      });
+    const doubleTap = Gesture.Tap()
+      .runOnJS(true)
+      .numberOfTaps(2)
+      .maxDelay(220)
+      .maxDistance(16)
+      .onEnd((e, ok) => {
+        if (!ok) {
+          return;
+        }
+        if (onDoubleTap) {
+          onDoubleTap(e.absoluteX, e.absoluteY);
+        } else {
+          toggleAt(e.x, e.y);
+        }
+      });
+    const longPress = Gesture.LongPress()
+      .runOnJS(true)
+      .minDuration(450)
+      .numberOfPointers(1)
+      .maxDistance(12)
+      .onStart(e => onFlag(slotAt(e.x, e.y).pageId));
+    const touches = Gesture.Race(longPress, Gesture.Exclusive(doubleTap, tap));
+    return zoomable ? Gesture.Simultaneous(pinch, pan, touches) : touches;
+  }, [
+    pinch,
+    pan,
+    zoomed,
+    zoomable,
+    toggleAt,
+    toContent,
+    pageIds,
+    slots,
+    pageWidth,
+    contentW,
+    rtl,
+    onTap,
+    onFlag,
+    onDoubleTap,
+  ]);
+
   return (
-    <Pressable
-      onPress={press}
-      onLongPress={() => onFlag(pageId)}
-      delayLongPress={450}
-      style={[styles.frame, { width: frameWidth, height: frameHeight }]}
-    >
-      <View>
-        <PageView pageId={pageId} width={pageWidth} options={PAGE_OPTIONS} />
-        {page && !page.done && (
-          <View style={[styles.unfinished, { backgroundColor: c.toolbar }]}>
-            <Text style={[font.caption, { color: c.onToolbar }]}>Not done</Text>
-          </View>
-        )}
-        {page?.flag && (
-          <Pressable
-            onPress={() => onFlag(pageId)}
-            hitSlop={12}
-            accessibilityLabel="Edit flag"
-            style={[styles.flagBadge, { backgroundColor: c.accent, borderColor: c.onAccent }]}
+    <View style={[styles.frame, styles.clip, { width: frameWidth, height: frameHeight }]}>
+      <GestureDetector gesture={gesture}>
+        <Animated.View collapsable={false} style={[StyleSheet.absoluteFill, styles.frame]}>
+          <Animated.View
+            style={[styles.spread, rtl && styles.spreadRtl, { width: contentW, height: pageHeight }, zoomable && style]}
           >
-            <Flag size={16} color={c.onAccent} />
-          </Pressable>
-        )}
-      </View>
-    </Pressable>
+            {pageIds.map(id => (
+              <PageSlot key={id} pageId={id} width={pageWidth} options={options} />
+            ))}
+          </Animated.View>
+        </Animated.View>
+      </GestureDetector>
+    </View>
   );
 });
 
@@ -214,6 +332,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
   frame: { alignItems: 'center', justifyContent: 'center' },
+  clip: { overflow: 'hidden' },
+  spread: { flexDirection: 'row', alignItems: 'center' },
+  spreadRtl: { flexDirection: 'row-reverse' },
   unfinished: {
     position: 'absolute',
     top: space.sm,
@@ -227,8 +348,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: space.sm,
     right: space.sm,
-    width: 32,
-    height: 32,
+    width: BADGE_SIZE,
+    height: BADGE_SIZE,
     borderRadius: radius.pill,
     borderWidth: 2,
     alignItems: 'center',

@@ -1,7 +1,16 @@
 import type { AppNavigation } from '../../app/routes';
-import { confirm, toast } from '../../components/ui';
-import { MIME, pickImage, removeFile, shareFile } from '../../lib/files';
-import { exportProjectArchive } from '../../lib/projectArchive';
+import { confirm, snackbar, toast } from '../../components/ui';
+import {
+  MIME,
+  RNFS,
+  copyIntoImages,
+  fileUri,
+  pickImage,
+  removeFile,
+  shareFile,
+  stripFileScheme,
+} from '../../lib/files';
+import { buildProjectBundle, exportProjectArchive, mapBundleImages } from '../../lib/projectArchive';
 import { chapterNumber, pageNumber } from '../../model/selectors';
 import type { ID, Project } from '../../model/types';
 import { useStory, type StoryData } from '../../store/useStory';
@@ -44,8 +53,55 @@ export async function trashProjectWithConfirm(project: Project): Promise<boolean
     return false;
   }
   useStory.getState().trashProject(project.id);
-  toast('Moved to Trash');
+  snackbar({
+    message: 'Moved to trash',
+    actionLabel: 'Undo',
+    onAction: () => useStory.getState().restoreProject(project.id),
+  });
   return true;
+}
+
+async function copyProjectImages(projectId: ID): Promise<Map<string, string>> {
+  const copied = new Map<string, string>();
+  const bundle = buildProjectBundle(projectId);
+  if (!bundle) {
+    return copied;
+  }
+  const paths = new Set<string>();
+  mapBundleImages(bundle, path => {
+    paths.add(path);
+    return path;
+  });
+  for (const path of paths) {
+    try {
+      const source = stripFileScheme(path);
+      if (await RNFS.exists(source)) {
+        const dest = await copyIntoImages(source);
+        copied.set(path, path.startsWith('file://') ? fileUri(dest) : dest);
+      }
+    } catch {
+      copied.delete(path);
+    }
+  }
+  return copied;
+}
+
+export async function duplicateStory(projectId: ID, onOpen?: (copyId: ID) => void): Promise<ID | null> {
+  const copied = await copyProjectImages(projectId);
+  const copyId = useStory.getState().duplicateProject(projectId, path => copied.get(path));
+  if (!copyId) {
+    copied.forEach(dest => {
+      removeFile(stripFileScheme(dest)).catch(() => undefined);
+    });
+    toast('Could not duplicate this story');
+    return null;
+  }
+  snackbar({
+    message: 'Story duplicated',
+    actionLabel: onOpen ? 'Open' : undefined,
+    onAction: onOpen ? () => onOpen(copyId) : undefined,
+  });
+  return copyId;
 }
 
 export type ResumeTarget = { where: string; action: string; go: (navigation: AppNavigation) => void };

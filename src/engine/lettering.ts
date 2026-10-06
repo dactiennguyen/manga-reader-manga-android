@@ -16,6 +16,7 @@ import { hashString, uid } from '../lib/id';
 import type { Bubble, BubbleType, Effect, EffectType } from '../model/types';
 import { FONT_FAMILY } from './fonts';
 import type { PanelShape, Pt } from './layout';
+import { TRANSLATED_MIN_FONT_SIZE, localizeBubble } from './translation';
 
 export const MIN_FONT_SIZE = 17;
 export const BUBBLE_STROKE = 3.5;
@@ -283,22 +284,49 @@ function buildParagraph(
 export function fitBubbleText(
   bubble: Bubble,
   fonts: SkTypefaceFontProvider,
+  minFontSize: number = MIN_FONT_SIZE,
 ): { fontSize: number; width: number; height: number; overflow: boolean } {
   const inset = textInset(bubble);
   const width = Math.max(20, bubble.w - inset.x * 2);
   const maxHeight = Math.max(20, bubble.h - inset.y * 2);
+  const floor = Math.min(minFontSize, bubble.fontSize);
   let fontSize = bubble.fontSize;
   let height = 0;
   for (;;) {
     const paragraph = buildParagraph(bubble, fonts, fontSize, INK);
     paragraph.layout(width);
     height = paragraph.getHeight();
-    if (bubble.type === 'sfx' || height <= maxHeight || fontSize <= MIN_FONT_SIZE) {
+    if (bubble.type === 'sfx' || height <= maxHeight || fontSize <= floor) {
       break;
     }
-    fontSize = Math.max(MIN_FONT_SIZE, fontSize - 2);
+    fontSize = Math.max(floor, fontSize - 2);
   }
   return { fontSize, width, height, overflow: bubble.type !== 'sfx' && height > maxHeight };
+}
+
+export function fitTranslatedText(
+  original: Bubble,
+  translated: Bubble,
+  fonts: SkTypefaceFontProvider,
+): { fontSize: number; width: number; height: number; overflow: boolean } {
+  if (translated.type !== 'sfx') {
+    return fitBubbleText(translated, fonts, TRANSLATED_MIN_FONT_SIZE);
+  }
+  const source = fitBubbleText(original, fonts);
+  const maxHeight = Math.max(source.height, original.h);
+  const floor = Math.min(TRANSLATED_MIN_FONT_SIZE * 2, translated.fontSize);
+  let fontSize = translated.fontSize;
+  let height = 0;
+  for (;;) {
+    const paragraph = buildParagraph(translated, fonts, fontSize, INK);
+    paragraph.layout(source.width);
+    height = paragraph.getHeight();
+    if (height <= maxHeight || fontSize <= floor) {
+      break;
+    }
+    fontSize = Math.max(floor, fontSize - 4);
+  }
+  return { fontSize, width: source.width, height, overflow: height > maxHeight };
 }
 
 function drawThoughtTrail(canvas: SkCanvas, bubble: Bubble): void {
@@ -326,7 +354,13 @@ function drawThoughtTrail(canvas: SkCanvas, bubble: Bubble): void {
   });
 }
 
-export function drawBubble(canvas: SkCanvas, bubble: Bubble, fonts: SkTypefaceFontProvider | null): void {
+export function drawBubble(
+  canvas: SkCanvas,
+  source: Bubble,
+  fonts: SkTypefaceFontProvider | null,
+  lang?: string | null,
+): void {
+  const bubble = localizeBubble(source, lang);
   const c = bubbleCenter(bubble);
   canvas.save();
   if (bubble.rotation) {
@@ -363,7 +397,7 @@ export function drawBubble(canvas: SkCanvas, bubble: Bubble, fonts: SkTypefaceFo
     }
   }
   if (fonts && bubble.text.trim()) {
-    const fit = fitBubbleText(bubble, fonts);
+    const fit = bubble === source ? fitBubbleText(bubble, fonts) : fitTranslatedText(source, bubble, fonts);
     const inset = textInset(bubble);
     const x = bubble.x + inset.x;
     const y = c.y - fit.height / 2;

@@ -6,6 +6,7 @@ import { Cover, MenuSheet, PromptDialog, SpeechBubble, type MenuItem } from '../
 import {
   ArrowDownUp,
   BookCheck,
+  Copy,
   EllipsisVertical,
   FolderInput,
   Image as ImageIcon,
@@ -41,7 +42,12 @@ import { useSettings } from '../../store/useSettings';
 import { useStory } from '../../store/useStory';
 import { font, radius, space, useIsWide, useTheme } from '../../theme';
 import { useStoryData } from '../project/useStoryData';
-import { changeProjectCover, exportProjectFile, trashProjectWithConfirm } from '../project/projectActions';
+import {
+  changeProjectCover,
+  duplicateStory,
+  exportProjectFile,
+  trashProjectWithConfirm,
+} from '../project/projectActions';
 
 type Filter = 'all' | ProjectStatus;
 type Sort = 'updated' | 'title' | 'created';
@@ -159,6 +165,13 @@ export function LibraryScreen() {
     ? [
         { label: 'Rename', icon: Pencil, onPress: () => setRenameId(menuProject.id) },
         { label: 'Change cover', icon: ImageIcon, onPress: () => changeProjectCover(menuProject.id) },
+        {
+          label: 'Duplicate',
+          subtitle: 'A full copy with its own script, pages and art',
+          icon: Copy,
+          onPress: () =>
+            duplicateStory(menuProject.id, copyId => navigation.navigate('Project', { projectId: copyId })),
+        },
         {
           label: 'Export project',
           subtitle: 'A .mangaka file for backup or moving devices',

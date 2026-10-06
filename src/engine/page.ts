@@ -38,6 +38,7 @@ export type PageDrawOptions = {
   dimExceptPanelId?: ID;
   skipArtPanelId?: ID;
   skipBubbleId?: ID;
+  lang?: string;
 };
 
 export type PageContext = { page: Page; project: Project; size: Size; shapes: PanelShape[]; rtl: boolean };
@@ -156,7 +157,7 @@ export function drawPage(
   if (options.bubbles !== false) {
     for (const bubble of page.bubbles) {
       if (bubble.id !== options.skipBubbleId) {
-        drawBubble(canvas, bubble, fonts);
+        drawBubble(canvas, bubble, fonts, options.lang);
       }
     }
   }

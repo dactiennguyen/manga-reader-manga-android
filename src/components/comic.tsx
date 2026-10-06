@@ -13,6 +13,7 @@ import {
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 
 import { fileUri } from '../lib/files';
+import { haptic } from '../lib/haptics';
 import { initialOf } from '../model/selectors';
 import type { Character, Project } from '../model/types';
 import { font, radius, space, useTheme } from '../theme';
@@ -310,6 +311,11 @@ export function MenuSheet({
   subtitle?: string;
   items: (MenuItem | false | null | undefined)[];
 }) {
+  useEffect(() => {
+    if (visible) {
+      haptic(12);
+    }
+  }, [visible]);
   return (
     <Sheet visible={visible} onClose={onClose} title={title} subtitle={subtitle}>
       {items.filter(Boolean).map(item => {

@@ -159,6 +159,19 @@ describe('project archive', () => {
     expect(bundle.project.coverUri).toBe('/data/app/mangaka/images/cover.png');
   });
 
+  it('keeps language versions and bubble translations through export and import', () => {
+    const { projectId, pageId } = seed();
+    story().addLanguage(projectId, 'Vietnamese');
+    const [first, ...rest] = story().pages[pageId].bubbles;
+    story().updatePage(pageId, { bubbles: [{ ...first, translations: { Vietnamese: 'Otra vez no…' } }, ...rest] });
+    const bundle = parseProjectBundle(JSON.stringify(buildProjectBundle(projectId)!));
+    let counter = 0;
+    const copy = remapBundleIds(bundle, () => `lang${counter++}`);
+    expect(copy.project.languages).toEqual(['Vietnamese']);
+    expect(copy.pages[0].bubbles[0].translations).toEqual({ Vietnamese: 'Otra vez no…' });
+    expect(copy.pages[0].bubbles[0].text).toBe('Not again…');
+  });
+
   it('round-trips through JSON and rejects files that are not a story', () => {
     const { projectId } = seed();
     const bundle = buildProjectBundle(projectId)!;

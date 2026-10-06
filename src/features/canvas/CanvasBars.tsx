@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 
-import { ChevronLeft, ChevronRight, Pipette } from '../../components/icons';
-import type { StrokeTool } from '../../model/types';
+import type { ReactNode } from 'react';
+
+import { ChevronLeft, ChevronRight, Pipette, type LucideIcon } from '../../components/icons';
+import { TONE_DENSITIES } from '../../engine/artMath';
 import { font, radius, space, useTheme } from '../../theme';
-import { TOOLS } from './canvasShared';
+import { SHAPES_ICON, SHAPE_TOOLS, TOOLS, isShapeId, type CanvasTool, type ShapeTool } from './canvasShared';
 
 export function ToolSlider({
   label,
@@ -65,11 +67,13 @@ export function ColorStrip({
   colors,
   recent,
   value,
+  leading,
   onPick,
 }: {
   colors: string[];
   recent: string[];
   value: string;
+  leading?: ReactNode;
   onPick: (color: string) => void;
 }) {
   const { c } = useTheme();
@@ -88,6 +92,7 @@ export function ColorStrip({
   );
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorRow}>
+      {leading}
       {recent.map(color => swatch(color, `r-${color}`))}
       {recent.length ? <View style={[styles.colorDivider, { backgroundColor: c.toolbarAlt }]} /> : null}
       {colors.map(color => swatch(color, color))}
@@ -95,64 +100,167 @@ export function ColorStrip({
   );
 }
 
+export function TonePicker({ value, onChange }: { value: number | null; onChange: (value: number | null) => void }) {
+  const { c } = useTheme();
+  const chip = (density: number | null) => {
+    const active = value === density;
+    const label = density === null ? 'Solid' : `${Math.round(density * 100)}%`;
+    return (
+      <Pressable
+        key={label}
+        onPress={() => onChange(density)}
+        accessibilityRole="button"
+        accessibilityLabel={density === null ? 'Solid color' : `Screentone ${label}`}
+        accessibilityState={{ selected: active }}
+        style={[
+          styles.toneChip,
+          { borderColor: active ? c.accent : c.onToolbarMuted },
+          active && { backgroundColor: c.accent },
+        ]}
+      >
+        <Text style={[styles.toneText, { color: active ? c.onAccent : c.onToolbar }]}>{label}</Text>
+      </Pressable>
+    );
+  };
+  return (
+    <>
+      {chip(null)}
+      {TONE_DENSITIES.map(chip)}
+      <View style={[styles.colorDivider, { backgroundColor: c.toolbarAlt }]} />
+    </>
+  );
+}
+
 export function ToolRail({
   tool,
+  shape,
   picking,
   collapsed,
   side,
+  maxHeight,
   onTool,
   onPick,
   onToggle,
 }: {
-  tool: StrokeTool;
+  tool: CanvasTool;
+  shape: ShapeTool;
   picking: boolean;
   collapsed: boolean;
   side: 'left' | 'right';
-  onTool: (tool: StrokeTool) => void;
+  maxHeight: number;
+  onTool: (tool: CanvasTool) => void;
   onPick: () => void;
   onToggle: () => void;
 }) {
   const { c } = useTheme();
-  const current = TOOLS.find(item => item.id === tool) ?? TOOLS[0];
+  const [shapesOpen, setShapesOpen] = useState(false);
+  const shapeActive = isShapeId(tool) && !picking;
+  const shapeDef = SHAPE_TOOLS.find(item => item.id === (isShapeId(tool) ? tool : shape)) ?? SHAPE_TOOLS[0];
+  const current = isShapeId(tool) ? shapeDef : TOOLS.find(item => item.id === tool) ?? TOOLS[0];
   const Collapse = (side === 'left') === collapsed ? ChevronRight : ChevronLeft;
+  const ShapeIcon = isShapeId(tool) ? shapeDef.icon : SHAPES_ICON;
+  const button = (item: { id: CanvasTool; label: string; icon: LucideIcon }) => {
+    const active = item.id === tool && !picking;
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => {
+          setShapesOpen(false);
+          if (collapsed) {
+            onToggle();
+          } else {
+            onTool(item.id);
+          }
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={item.label}
+        accessibilityState={{ selected: active }}
+        style={[styles.railButton, active && { backgroundColor: c.accent }]}
+      >
+        <item.icon size={22} color={active ? c.onAccent : c.onToolbar} />
+      </Pressable>
+    );
+  };
   return (
-    <View style={[styles.rail, side === 'left' ? styles.railLeft : styles.railRight, { backgroundColor: c.toolbar }]}>
-      {(collapsed ? [current] : TOOLS).map(item => {
-        const active = item.id === tool && !picking;
-        return (
-          <Pressable
-            key={item.id}
-            onPress={() => (collapsed ? onToggle() : onTool(item.id))}
-            accessibilityRole="button"
-            accessibilityLabel={item.label}
-            accessibilityState={{ selected: active }}
-            style={[styles.railButton, active && { backgroundColor: c.accent }]}
-          >
-            <item.icon size={22} color={active ? c.onAccent : c.onToolbar} />
-          </Pressable>
-        );
-      })}
-      {collapsed ? null : (
-        <>
-          <Pressable
-            onPress={onPick}
-            accessibilityRole="button"
-            accessibilityLabel="Eyedropper"
-            style={[styles.railButton, picking && { backgroundColor: c.accent }]}
-          >
-            <Pipette size={22} color={picking ? c.onAccent : c.onToolbar} />
-          </Pressable>
-          <View style={[styles.railDivider, { backgroundColor: c.toolbarAlt }]} />
-          <Pressable
-            onPress={onToggle}
-            accessibilityRole="button"
-            accessibilityLabel="Collapse toolbar"
-            style={styles.railButton}
-          >
-            <Collapse size={20} color={c.onToolbarMuted} />
-          </Pressable>
-        </>
-      )}
+    <View pointerEvents="box-none" style={[styles.railWrap, side === 'left' ? styles.railLeft : styles.railRight]}>
+      <View style={[styles.rail, { backgroundColor: c.toolbar, maxHeight }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.railContent}>
+          {collapsed ? (
+            button(current)
+          ) : (
+            <>
+              {TOOLS.slice(0, 4).map(button)}
+              <Pressable
+                onPress={() => {
+                  if (shapeActive) {
+                    setShapesOpen(v => !v);
+                  } else {
+                    onTool(shapeDef.id);
+                  }
+                }}
+                onLongPress={() => {
+                  onTool(shapeDef.id);
+                  setShapesOpen(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Shapes, ${shapeDef.label}`}
+                accessibilityHint="Tap again or long press to choose a shape"
+                accessibilityState={{ selected: shapeActive, expanded: shapesOpen }}
+                style={[styles.railButton, shapeActive && { backgroundColor: c.accent }]}
+              >
+                <ShapeIcon size={22} color={shapeActive ? c.onAccent : c.onToolbar} />
+              </Pressable>
+              {TOOLS.slice(4).map(button)}
+              <Pressable
+                onPress={() => {
+                  setShapesOpen(false);
+                  onPick();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Eyedropper"
+                accessibilityState={{ selected: picking }}
+                style={[styles.railButton, picking && { backgroundColor: c.accent }]}
+              >
+                <Pipette size={22} color={picking ? c.onAccent : c.onToolbar} />
+              </Pressable>
+              <View style={[styles.railDivider, { backgroundColor: c.toolbarAlt }]} />
+              <Pressable
+                onPress={() => {
+                  setShapesOpen(false);
+                  onToggle();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Collapse toolbar"
+                style={styles.railButton}
+              >
+                <Collapse size={20} color={c.onToolbarMuted} />
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      </View>
+      {shapesOpen && !collapsed ? (
+        <View style={[styles.rail, styles.flyout, { backgroundColor: c.toolbar }]}>
+          {SHAPE_TOOLS.map(item => {
+            const active = item.id === tool && !picking;
+            return (
+              <Pressable
+                key={item.id}
+                onPress={() => {
+                  onTool(item.id);
+                  setShapesOpen(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: active }}
+                style={[styles.railButton, active && { backgroundColor: c.accent }]}
+              >
+                <item.icon size={22} color={active ? c.onAccent : c.onToolbar} />
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -169,9 +277,22 @@ const styles = StyleSheet.create({
   swatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 1 },
   swatchActive: { borderWidth: 3 },
   colorDivider: { width: 2, height: 22 },
-  rail: { position: 'absolute', top: space.md, borderRadius: radius.lg, padding: space.xs, gap: space.xs },
-  railLeft: { left: space.sm },
-  railRight: { right: space.sm },
+  railWrap: { position: 'absolute', top: space.md, alignItems: 'flex-start', gap: space.xs },
+  rail: { width: 44 + space.xs * 2, borderRadius: radius.lg, padding: space.xs },
+  railContent: { gap: space.xs },
+  flyout: { gap: space.xs },
+  toneChip: {
+    height: 28,
+    minWidth: 40,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: space.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toneText: { ...font.caption, fontVariant: ['tabular-nums'] },
+  railLeft: { left: space.sm, flexDirection: 'row' },
+  railRight: { right: space.sm, flexDirection: 'row-reverse' },
   railButton: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   railDivider: { height: 2, marginHorizontal: space.xs },
 });

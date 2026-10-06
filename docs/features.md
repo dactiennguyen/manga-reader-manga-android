@@ -42,7 +42,8 @@ Sau khi tạo, app mở thẳng màn Tổng quan truyện với một chương t
 - Hiển thị mọi truyện trên máy dạng lưới bìa, mới sửa gần nhất đứng đầu.
 - Lọc theo trạng thái: Nháp (chưa có trang nào), Đang làm, Hoàn thành (người dùng tự đánh dấu).
 - Tìm theo tên truyện. Sắp xếp theo: sửa gần nhất, tên, ngày tạo.
-- Nhấn giữ một truyện: đổi tên, đổi bìa, nhân bản, đánh dấu hoàn thành, xóa.
+- Nhấn giữ một truyện: đổi tên, đổi bìa, nhân bản, đánh dấu hoàn thành, xóa. Nhân bản tạo một bản sao độc lập gồm cả kịch bản, trang, tranh và ảnh.
+- Sau khi xóa, thanh thông báo có nút Hoàn tác trong vài giây.
 - **Xóa** chuyển truyện vào Thùng rác, giữ 30 ngày rồi mới xóa hẳn. Khôi phục được trong thời gian đó.
 
 ### F-03 Tổng quan truyện và tiến độ
@@ -90,6 +91,10 @@ Kịch bản của một chương là danh sách **cảnh**. Mỗi cảnh gồm 
 
 - Khối thoại gắn với một nhân vật trong hồ sơ; gõ `@` để chọn nhanh. Nhân vật chưa có thì tạo nhanh chỉ với tên.
 - Thêm, xóa, kéo thả đổi thứ tự khối và cảnh.
+- Chuyển một khối sang cảnh khác: mũi tên lên ở khối đầu cảnh đưa nó về cuối cảnh trước (và ngược lại), hoặc chọn "Move to scene…" trong menu khối.
+- **Tìm và thay thế:** tìm trong mọi khối của chương, có "Match case", nhảy tới từng kết quả, thay một hoặc thay tất cả. Thay tất cả là một bước hoàn tác.
+- **Thống kê:** số từ, số câu thoại, số khối theo loại, số trang và thời gian đọc ước tính, số câu thoại của từng nhân vật.
+- **Chia sẻ kịch bản:** xuất chương thành file `.txt` trình bày kiểu kịch bản rồi mở bảng chia sẻ của Android.
 - **Ước tính số trang:** mỗi cảnh hiện số trang dự kiến, tính 5 khối hành động hoặc thoại cho một trang. Con số chỉ để tham khảo.
 - **Cảnh báo thoại dài:** khối thoại quá 80 ký tự được gạch chân vàng, vì khó vừa một bong bóng.
 
@@ -140,7 +145,7 @@ Kịch bản của một chương là danh sách **cảnh**. Mỗi cảnh gồm 
 
 - Storyboard là danh sách trang của một chương, hiện dạng lưới thumbnail.
 - Mỗi trang có trạng thái: **Trống** (chưa chia khung), **Đã chia khung**, **Đang vẽ** (có ít nhất một khung có tranh), **Xong** (người dùng đánh dấu).
-- Thêm trang trống, nhân bản, xóa, kéo thả đổi thứ tự.
+- Thêm trang trống, nhân bản, xóa, kéo thả đổi thứ tự (nhấn giữ rồi kéo ở chế độ lưới; nhấn giữ rồi thả tay thì mở menu).
 - Với định dạng trang manga, thumbnail xếp **từ phải sang trái** để giống cách đọc; trang 1 đứng lẻ, các trang sau ghép cặp như trang đôi.
 
 ### F-13 AI chia kịch bản thành trang
@@ -171,7 +176,10 @@ Kịch bản của một chương là danh sách **cảnh**. Mỗi cảnh gồm 
 
 Canvas mở cho **một khung** hoặc **cả trang**.
 
-- **Công cụ:** G-pen (nét mực, đậm nhạt theo tốc độ), bút chì (phác thảo), bút lông, tẩy, đổ màu, chọn vùng (chữ nhật, tự do), di chuyển, bút lấy màu.
+- **Công cụ:** G-pen (nét mực, đậm nhạt theo tốc độ), bút chì (phác thảo), bút lông, tẩy, vẽ hình (đường thẳng, chữ nhật, elip), tô vùng, di chuyển và co giãn lớp, bút lấy màu.
+- **Tô vùng:** khoanh một vùng bằng tay, nhả tay thì vùng tự khép và được tô. Tranh lưu dạng nét vẽ nên không có kiểu thùng sơn loang theo điểm ảnh.
+- **Screentone:** bút lông và tô vùng có thể tô bằng chấm tram thay cho màu đặc, mật độ 10/25/40/60%. Lưới chấm cố định theo trang nên các vùng tô riêng vẫn khớp nhau.
+- **Di chuyển lớp:** kéo để dời cả nội dung lớp, kéo góc hoặc chụm hai ngón để co giãn. Chưa có chọn một phần lớp.
 - **Thiết lập bút:** kích thước, độ mờ, độ ổn định nét (chống rung tay).
 - **Màu:** mặc định bảng đen, trắng, 5 mức xám. Bật "Màu đầy đủ" trong dự án để dùng bảng màu tự do.
 - **Lớp:** tối đa 8 lớp mỗi khung. Mỗi lớp có tên, ẩn/hiện, độ mờ, khóa. Hai lớp mặc định: *Phác thảo* và *Nét mực*.
@@ -239,7 +247,7 @@ Mọi kết quả AI nằm trên **lớp mới**, không sửa lớp của ngư�
 
 - Với khung có liên kết kịch bản, AI đặt bong bóng cho mọi khối thoại của khung: chọn kiểu bong bóng theo kiểu thoại, đặt ở vùng trống, tránh che mặt nhân vật, xếp theo thứ tự đọc.
 - Người dùng chỉnh lại vị trí tự do.
-- **Dịch thoại:** dịch toàn bộ thoại của một chương sang ngôn ngữ khác thành một *bản ngôn ngữ* riêng; tranh dùng chung, bong bóng tự co giãn theo chữ mới.
+- **Bản ngôn ngữ:** mỗi truyện có thể thêm tối đa 5 ngôn ngữ. Tranh và vị trí bong bóng dùng chung; mỗi bong bóng giữ một câu chữ cho từng ngôn ngữ. Bản hiện tại nhập tay (từng bong bóng hoặc qua danh sách dịch của trang/chương); chữ dịch dài hơn sẽ tự thu nhỏ cho vừa bong bóng. Bong bóng chưa dịch được đánh dấu và hiện tạm chữ gốc. AI dịch tự động sẽ làm cùng phần AI.
 
 ---
 
@@ -249,6 +257,8 @@ Mọi kết quả AI nằm trên **lớp mới**, không sửa lớp của ngư�
 
 - Hiển thị chương như độc giả thấy: toàn màn hình, không có công cụ.
 - Trang manga: lật phải sang trái, xem trang đơn hoặc trang đôi khi xoay ngang. Webtoon: cuộn dọc liên tục.
+- Phóng to tới 4 lần bằng chụm hai ngón hoặc chạm đôi; khi đang phóng to, kéo để xem phần khác của trang và vuốt không lật trang.
+- Chọn bản ngôn ngữ để đọc thử nếu truyện có.
 - **Đánh dấu:** chạm giữ một trang để gắn cờ "cần sửa" kèm ghi chú. Danh sách cờ hiện ở storyboard.
 - **AI nhận xét:** đọc cả chương (ảnh trang + kịch bản) và nhận xét về nhịp truyện, trang quá nhiều chữ, khung khó hiểu thứ tự đọc.
 

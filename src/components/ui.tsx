@@ -1,8 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, Check, ChevronRight, Search, X } from './icons';
-import { useEffect, useRef, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ComponentRef, type ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   PanResponder,
   Platform,
   Pressable,
@@ -22,6 +23,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { haptic } from '../lib/haptics';
 import { useKeyboardHeight } from '../lib/keyboard';
 import { font, radius, space, useTheme } from '../theme';
 import type { LucideIcon } from './icons';
@@ -48,12 +50,128 @@ export function confirm(
         {
           text: options.confirmText ?? 'OK',
           style: options.destructive ? 'destructive' : 'default',
-          onPress: () => resolve(true),
+          onPress: () => {
+            if (options.destructive) {
+              haptic(16);
+            }
+            resolve(true);
+          },
         },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },
     );
   });
+}
+
+export type SnackbarOptions = {
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  duration?: number;
+};
+
+type SnackbarEntry = SnackbarOptions & { key: number };
+
+let snackbarEntry: SnackbarEntry | null = null;
+let snackbarKey = 0;
+const snackbarListeners = new Set<() => void>();
+
+function setSnackbar(entry: SnackbarEntry | null): void {
+  snackbarEntry = entry;
+  snackbarListeners.forEach(listener => listener());
+}
+
+function subscribeSnackbar(listener: () => void): () => void {
+  snackbarListeners.add(listener);
+  return () => {
+    snackbarListeners.delete(listener);
+  };
+}
+
+export function snackbar(options: SnackbarOptions): void {
+  if (snackbarListeners.size === 0) {
+    toast(options.message);
+    return;
+  }
+  setSnackbar({ ...options, key: ++snackbarKey });
+}
+
+export function dismissSnackbar(): void {
+  if (snackbarEntry) {
+    setSnackbar(null);
+  }
+}
+
+export function SnackbarHost({ bottomOffset = 0 }: { bottomOffset?: number }) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
+  const entry = useSyncExternalStore(subscribeSnackbar, () => snackbarEntry);
+  const [shown, setShown] = useState<SnackbarEntry | null>(entry);
+  const progress = useRef(new Animated.Value(0)).current;
+  if (entry && entry !== shown) {
+    setShown(entry);
+  }
+
+  useEffect(() => {
+    if (!entry) {
+      Animated.timing(progress, { toValue: 0, duration: 140, useNativeDriver: true }).start();
+      return;
+    }
+    progress.setValue(0);
+    Animated.timing(progress, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    const timer = setTimeout(() => {
+      if (snackbarEntry?.key === entry.key) {
+        setSnackbar(null);
+      }
+    }, entry.duration ?? (entry.actionLabel ? 5000 : 3000));
+    return () => clearTimeout(timer);
+  }, [entry, progress]);
+
+  if (!shown) {
+    return null;
+  }
+  const onAction = () => {
+    haptic();
+    setSnackbar(null);
+    shown.onAction?.();
+  };
+  return (
+    <View
+      pointerEvents={entry ? 'box-none' : 'none'}
+      style={[styles.snackbarHost, { bottom: Math.max(keyboard, insets.bottom + bottomOffset) + space.md }]}
+    >
+      <Animated.View
+        accessibilityLiveRegion="polite"
+        style={[
+          styles.snackbar,
+          {
+            backgroundColor: c.ink,
+            borderColor: c.ink,
+            opacity: progress,
+            transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+          },
+        ]}
+      >
+        <Text style={[font.body, styles.snackbarText, { color: c.onInk }]} numberOfLines={3}>
+          {shown.message}
+        </Text>
+        {!!shown.actionLabel && (
+          <Pressable
+            onPress={onAction}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.snackbarAction,
+              { backgroundColor: c.accent, borderColor: c.onInk, opacity: pressed ? 0.8 : 1 },
+            ]}
+          >
+            <Text style={[font.label, { color: c.onAccent }]}>{shown.actionLabel}</Text>
+          </Pressable>
+        )}
+      </Animated.View>
+    </View>
+  );
 }
 
 export function Screen({
@@ -256,7 +374,10 @@ export function Fab({
   const insets = useSafeAreaInsets();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptic(10);
+        onPress();
+      }}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [
@@ -292,7 +413,13 @@ export function Chip({
   const fg = selected ? c.onPrimaryContainer : c.textSecondary;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={
+        onPress &&
+        (() => {
+          haptic();
+          onPress();
+        })
+      }
       onLongPress={onLongPress}
       style={({ pressed }) => [
         styles.chip,
@@ -338,7 +465,12 @@ export function Segmented<T extends string | number>({
           <Pressable
             key={String(option.value)}
             disabled={disabled}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (!active) {
+                haptic();
+              }
+              onChange(option.value);
+            }}
             style={[
               styles.segment,
               index > 0 && [styles.segmentDivider, { borderLeftColor: c.ink }],
@@ -386,7 +518,12 @@ export function TabBar<T extends string>({
           return (
             <Pressable
               key={tab.key}
-              onPress={() => onChange(tab.key)}
+              onPress={() => {
+                if (!active) {
+                  haptic();
+                }
+                onChange(tab.key);
+              }}
               android_ripple={{ color: c.border }}
               style={[styles.tab, stretch && styles.flex]}
             >
@@ -415,7 +552,14 @@ export function Checkbox({
 }) {
   const { c } = useTheme();
   return (
-    <Pressable onPress={() => onChange(!checked)} style={styles.checkboxRow} hitSlop={6}>
+    <Pressable
+      onPress={() => {
+        haptic();
+        onChange(!checked);
+      }}
+      style={styles.checkboxRow}
+      hitSlop={6}
+    >
       <View
         style={[
           styles.checkbox,
@@ -667,6 +811,10 @@ export function SwitchRow({
   disabled?: boolean;
 }) {
   const { c } = useTheme();
+  const change = (next: boolean) => {
+    haptic();
+    onValueChange(next);
+  };
   return (
     <ListItem
       title={title}
@@ -674,11 +822,11 @@ export function SwitchRow({
       icon={icon}
       titleLines={2}
       disabled={disabled}
-      onPress={() => onValueChange(!value)}
+      onPress={() => change(!value)}
       right={
         <Switch
           value={value}
-          onValueChange={onValueChange}
+          onValueChange={change}
           disabled={disabled}
           trackColor={{ true: c.accent, false: c.border }}
           thumbColor={Platform.OS === 'android' ? c.surface : undefined}
@@ -835,6 +983,30 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonSmall: { minHeight: 34, paddingHorizontal: space.lg, gap: 6 },
+  snackbarHost: { position: 'absolute', left: space.lg, right: space.lg, alignItems: 'center' },
+  snackbar: {
+    width: '100%',
+    maxWidth: 560,
+    minHeight: 52,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    paddingLeft: space.lg,
+    paddingRight: space.sm,
+    paddingVertical: space.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    elevation: 6,
+  },
+  snackbarText: { flex: 1 },
+  snackbarAction: {
+    minHeight: 36,
+    borderRadius: radius.sm,
+    borderWidth: 2,
+    paddingHorizontal: space.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   fab: {
     position: 'absolute',
     right: 16,

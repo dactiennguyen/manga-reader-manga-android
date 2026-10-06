@@ -1,6 +1,6 @@
 import type { ComponentRef } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { ScreenProps } from '../../app/routes';
 import { CharacterPicker } from '../../components/CharacterPicker';
 import { Banner, MenuSheet } from '../../components/comic';
@@ -8,24 +8,28 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
+  ChartColumn,
   ChevronDown,
   ChevronRight,
   EllipsisVertical,
   Focus,
+  FolderInput,
   History,
   Minimize2,
   PanelsTopLeft,
   Plus,
   Redo2,
+  Search,
   Share2,
   Trash2,
   Undo2,
 } from '../../components/icons';
-import { Button, Chip, confirm, EmptyState, Header, IconButton, Screen, toast } from '../../components/ui';
+import { Button, Chip, confirm, EmptyState, Header, IconButton, Screen, snackbar, toast } from '../../components/ui';
+import { RNFS, shareFile } from '../../lib/files';
 import { isRtl, panelOrder } from '../../engine/layout';
 import { plural } from '../../lib/format';
 import { uid } from '../../lib/id';
-import { BLOCK_LABEL, BLOCK_TYPES, DIALOGUE_KIND_LABEL, DIALOGUE_KINDS, LIMITS } from '../../model/constants';
+import { BLOCK_LABEL, BLOCK_TYPES, DIALOGUE_KINDS, LIMITS } from '../../model/constants';
 import { estimatePages, estimateScenePages } from '../../model/paginate';
 import { chapterLabel, scriptOutdated } from '../../model/selectors';
 import type { Block, BlockType, Character, ID, Scene } from '../../model/types';
@@ -37,6 +41,17 @@ import type { SceneInit } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { BlockRow } from './BlockRow';
 import type { BlockApi } from './BlockRow';
+import { FindBar } from './FindBar';
+import {
+  findInText,
+  findMatches,
+  formatScript,
+  replaceAllInScenes,
+  replaceRange,
+  sceneSummary,
+  scriptFileName,
+} from './scriptTools';
+import { StatsSheet } from './StatsSheet';
 import { VersionsSheet } from './VersionsSheet';
 
 type PanelRef = { label: string; pageId: ID };
@@ -51,6 +66,7 @@ type SceneApi = {
 
 const MAX_HISTORY = Math.max(30, LIMITS.undoSteps);
 const FIRST_PLACEHOLDER = 'Where does the story begin?';
+const TEXT_MIME = 'text/plain';
 
 function pagesText(value: number): string {
   return `~${Number.isInteger(value) ? value : value.toFixed(1)} ${value === 1 ? 'page' : 'pages'}`;
@@ -61,6 +77,8 @@ const SceneSection = memo(function SceneSectionBase({
   index,
   characters,
   panels,
+  matchIds,
+  currentId,
   api,
   sceneApi,
 }: {
@@ -68,6 +86,8 @@ const SceneSection = memo(function SceneSectionBase({
   index: number;
   characters: Record<ID, Character>;
   panels: Map<ID, PanelRef>;
+  matchIds?: Set<ID>;
+  currentId?: ID;
   api: BlockApi;
   sceneApi: SceneApi;
 }) {
@@ -115,6 +135,7 @@ const SceneSection = memo(function SceneSectionBase({
                 placeholder={
                   index === 0 && blockIndex === 0 && block.type === 'setting' ? FIRST_PLACEHOLDER : undefined
                 }
+                mark={block.id === currentId ? 'current' : matchIds?.has(block.id) ? 'match' : undefined}
                 api={api}
               />
             );
@@ -145,6 +166,14 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
   const [sceneMenuId, setSceneMenuId] = useState<ID | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [pickFor, setPickFor] = useState<ID | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [replacement, setReplacement] = useState('');
+  const [matchCase, setMatchCase] = useState(false);
+  const [findIndex, setFindIndex] = useState(0);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [blockMenuId, setBlockMenuId] = useState<ID | null>(null);
+  const [moveFor, setMoveFor] = useState<ID | null>(null);
   const [, setHistoryTick] = useState(0);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const inputs = useRef(new Map<ID, ComponentRef<typeof TextInput>>());
@@ -302,7 +331,8 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
           return;
         }
         const blocks = found.scene.blocks.map(block => (block.id === blockId ? { ...block, text: before } : block));
-        const created: Block = { id: uid(), type: found.block.type, text: after };
+        const type = found.block.type === 'setting' ? 'action' : found.block.type;
+        const created: Block = { id: uid(), type, text: after };
         if (created.type === 'dialogue') {
           created.kind = found.block.kind ?? 'speak';
         }
@@ -361,6 +391,7 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
     return {
       api,
       sceneApi,
+      scenes: currentScenes,
       find,
       flush,
       record,
@@ -425,6 +456,53 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
     navigation.navigate('Storyboard', { chapterId });
   }, [ops, navigation, chapterId]);
 
+  const matches = useMemo(
+    () => (findOpen ? findMatches(scenes, query, matchCase) : []),
+    [findOpen, scenes, query, matchCase],
+  );
+  const matchIds = useMemo(
+    () => (matches.length ? new Set(matches.map(match => match.blockId)) : undefined),
+    [matches],
+  );
+  const currentIndex = matches.length ? Math.min(findIndex, matches.length - 1) : -1;
+  const currentMatch = currentIndex >= 0 ? matches[currentIndex] : undefined;
+  const currentSceneId = currentMatch?.sceneId;
+  const currentBlockId = currentMatch?.blockId;
+
+  const reveal = useCallback((sceneId: ID, blockId: ID) => {
+    const scene = useStory.getState().scenes[sceneId];
+    if (!scene) {
+      return;
+    }
+    if (scene.collapsed) {
+      useStory.getState().updateScene(sceneId, { collapsed: false });
+    }
+    setTimeout(
+      () => {
+        const y = (sceneY.current.get(sceneId) ?? 0) + (blockY.current.get(blockId) ?? 0);
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 40), animated: true });
+      },
+      scene.collapsed ? 150 : 0,
+    );
+  }, []);
+
+  useEffect(() => {
+    if (currentSceneId && currentBlockId) {
+      reveal(currentSceneId, currentBlockId);
+    }
+  }, [currentSceneId, currentBlockId, currentIndex, reveal]);
+
+  useEffect(() => {
+    if (!findOpen) {
+      return;
+    }
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setFindOpen(false);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [findOpen]);
+
   if (!chapter) {
     return (
       <Screen>
@@ -438,36 +516,105 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
   const focused = ops.find(focusedId);
   const blockCount = scenes.reduce((sum, scene) => sum + scene.blocks.length, 0);
 
-  const shareScript = () => {
+  const shareScript = async () => {
     ops.flush();
-    const lines = [title.toUpperCase()];
-    const state = useStory.getState();
-    (state.chapters[chapterId]?.sceneIds ?? []).forEach((id, index) => {
-      const scene = state.scenes[id];
-      if (!scene) {
-        return;
-      }
-      lines.push('', `SCENE ${index + 1}`);
-      for (const block of scene.blocks) {
-        if (!block.text.trim()) {
-          continue;
+    const current = ops.scenes();
+    if (!current.some(scene => scene.blocks.some(block => block.text.trim()))) {
+      toast('Nothing to share yet');
+      return;
+    }
+    const path = `${RNFS.CachesDirectoryPath}/${scriptFileName(title)}`;
+    try {
+      await RNFS.writeFile(path, formatScript(title, current, useStory.getState().characters), 'utf8');
+      await shareFile(path, TEXT_MIME, title);
+    } catch {
+      toast('Could not share the script');
+    }
+  };
+
+  const matchText = currentMatch ? ops.find(currentMatch.blockId)?.block.text : undefined;
+  const findContext =
+    currentMatch && matchText !== undefined
+      ? {
+          before:
+            (currentMatch.start > 16 ? '…' : '') +
+            matchText.slice(Math.max(0, currentMatch.start - 16), currentMatch.start).replace(/\n/g, ' '),
+          match: matchText.slice(currentMatch.start, currentMatch.end).replace(/\n/g, ' '),
+          after: matchText.slice(currentMatch.end, currentMatch.end + 24).replace(/\n/g, ' '),
         }
-        if (block.type === 'dialogue') {
-          const name = (block.characterId && state.characters[block.characterId]?.name) || '???';
-          const kind = block.kind && block.kind !== 'speak' ? ` (${DIALOGUE_KIND_LABEL[block.kind]})` : '';
-          lines.push(`    ${name.toUpperCase()}${kind}: ${block.text}`);
-        } else if (block.type === 'setting') {
-          lines.push(`[${block.text}]`);
-        } else if (block.type === 'narration') {
-          lines.push(`${BLOCK_LABEL.narration}: ${block.text}`);
-        } else if (block.type === 'sfx') {
-          lines.push(`${BLOCK_LABEL.sfx}: ${block.text}`);
-        } else {
-          lines.push(block.text);
-        }
-      }
+      : undefined;
+
+  const openFind = () => {
+    ops.flush();
+    setFindIndex(0);
+    setFindOpen(true);
+  };
+
+  const stepMatch = (delta: -1 | 1) => {
+    if (matches.length) {
+      setFindIndex((currentIndex + delta + matches.length) % matches.length);
+    }
+  };
+
+  const replaceCurrent = () => {
+    ops.flush();
+    const fresh = findMatches(ops.scenes(), query, matchCase);
+    const at = Math.min(Math.max(currentIndex, 0), fresh.length - 1);
+    const target = fresh[at];
+    if (!target) {
+      return;
+    }
+    ops.patchBlock(target.blockId, block => ({
+      ...block,
+      text: replaceRange(block.text, target.start, target.end, replacement),
+    }));
+    const added = findInText(replacement, query, matchCase).length;
+    const remaining = fresh.length - 1 + added;
+    setFindIndex(remaining > 0 ? (at + added) % remaining : 0);
+  };
+
+  const replaceEverything = () => {
+    ops.flush();
+    const { changes, count } = replaceAllInScenes(ops.scenes(), query, replacement, matchCase);
+    if (!count) {
+      return;
+    }
+    snapshotScript(chapterId);
+    ops.record();
+    for (const change of changes) {
+      useStory.getState().updateScene(change.sceneId, { blocks: change.blocks });
+    }
+    setFindIndex(0);
+    Keyboard.dismiss();
+    snackbar({
+      message: `Replaced ${count} ${count === 1 ? 'occurrence' : 'occurrences'}`,
+      actionLabel: 'Undo',
+      onAction: ops.undo,
     });
-    Share.share({ title, message: lines.join('\n') }).catch(() => toast('Sharing failed'));
+  };
+
+  const transferBlock = (blockId: ID, targetSceneId: ID, atStart: boolean) => {
+    const found = ops.find(blockId);
+    const target = useStory.getState().scenes[targetSceneId];
+    if (!found || !target || target.id === found.scene.id) {
+      return;
+    }
+    ops.record();
+    const rest = found.scene.blocks.filter(block => block.id !== blockId);
+    const state = useStory.getState();
+    state.updateScene(found.scene.id, { blocks: rest.length ? rest : [{ id: uid(), type: 'action', text: '' }] });
+    state.updateScene(target.id, {
+      blocks: atStart ? [found.block, ...target.blocks] : [...target.blocks, found.block],
+      collapsed: false,
+    });
+  };
+
+  const moveToScene = (blockId: ID, targetSceneId: ID) => {
+    ops.flush();
+    transferBlock(blockId, targetSceneId, false);
+    const index = chapter.sceneIds.indexOf(targetSceneId);
+    setTimeout(() => reveal(targetSceneId, blockId), 200);
+    toast(`Moved to scene ${index + 1}`);
   };
 
   const changeType = (type: BlockType) => {
@@ -482,18 +629,42 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
     });
   };
 
-  const moveBlock = (delta: -1 | 1) => {
+  const moveBlock = (blockId: ID | null, delta: -1 | 1, refocus: boolean) => {
     ops.flush();
-    const found = ops.find(focusedId);
-    const target = found ? found.index + delta : -1;
-    if (!found || target < 0 || target >= found.scene.blocks.length) {
+    const found = ops.find(blockId);
+    if (!found || !blockId) {
       return;
     }
-    const blocks = [...found.scene.blocks];
-    blocks.splice(found.index, 1);
-    blocks.splice(target, 0, found.block);
-    ops.setBlocks(found.scene.id, blocks);
+    const target = found.index + delta;
+    if (target >= 0 && target < found.scene.blocks.length) {
+      const blocks = [...found.scene.blocks];
+      blocks.splice(found.index, 1);
+      blocks.splice(target, 0, found.block);
+      ops.setBlocks(found.scene.id, blocks);
+      return;
+    }
+    const neighbor = chapter.sceneIds[chapter.sceneIds.indexOf(found.scene.id) + delta];
+    if (neighbor) {
+      transferBlock(blockId, neighbor, delta === 1);
+      if (refocus) {
+        ops.focusBlock(blockId);
+      } else {
+        setTimeout(() => reveal(neighbor, blockId), 200);
+      }
+    }
   };
+
+  const edgeOf = (found: { scene: Scene; index: number } | undefined) => {
+    const at = found ? chapter.sceneIds.indexOf(found.scene.id) : -1;
+    return {
+      first: !found || (found.index === 0 && at <= 0),
+      last: !found || (found.index === found.scene.blocks.length - 1 && at >= chapter.sceneIds.length - 1),
+    };
+  };
+  const focusedEdge = edgeOf(focused);
+  const menuBlock = ops.find(blockMenuId);
+  const menuEdge = edgeOf(menuBlock);
+  const moveBlockScene = ops.find(moveFor)?.scene.id;
 
   const addScene = () => {
     ops.flush();
@@ -598,6 +769,8 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
             index={index}
             characters={characters}
             panels={panels}
+            matchIds={matchIds}
+            currentId={scene.id === currentSceneId ? currentBlockId : undefined}
             api={ops.api}
             sceneApi={ops.sceneApi}
           />
@@ -605,7 +778,31 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
         <Button title="New scene" icon={Plus} variant="secondary" onPress={addScene} />
         <Button title="Paginate" icon={ArrowRight} onPress={openStoryboard} />
       </ScrollView>
-      {focused && (
+      {findOpen && (
+        <FindBar
+          query={query}
+          replacement={replacement}
+          matchCase={matchCase}
+          count={matches.length}
+          current={currentIndex}
+          context={findContext}
+          onQuery={value => {
+            setQuery(value);
+            setFindIndex(0);
+          }}
+          onReplacement={setReplacement}
+          onMatchCase={value => {
+            setMatchCase(value);
+            setFindIndex(0);
+          }}
+          onNext={() => stepMatch(1)}
+          onPrevious={() => stepMatch(-1)}
+          onReplace={replaceCurrent}
+          onReplaceAll={replaceEverything}
+          onClose={() => setFindOpen(false)}
+        />
+      )}
+      {focused && !findOpen && (
         <View style={[styles.toolbar, { backgroundColor: c.surface, borderTopColor: c.ink }]}>
           <ScrollView
             horizontal
@@ -631,14 +828,14 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
             />
             <IconButton
               icon={ArrowUp}
-              onPress={() => moveBlock(-1)}
-              disabled={focused.index === 0}
+              onPress={() => moveBlock(focusedId, -1, true)}
+              disabled={focusedEdge.first}
               accessibilityLabel="Move block up"
             />
             <IconButton
               icon={ArrowDown}
-              onPress={() => moveBlock(1)}
-              disabled={focused.index === focused.scene.blocks.length - 1}
+              onPress={() => moveBlock(focusedId, 1, true)}
+              disabled={focusedEdge.last}
               accessibilityLabel="Move block down"
             />
             <IconButton
@@ -646,6 +843,14 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
               onPress={() => ops.removeBlock(focusedId)}
               disabled={focused.scene.blocks.length <= 1}
               accessibilityLabel="Delete block"
+            />
+            <IconButton
+              icon={EllipsisVertical}
+              onPress={() => {
+                ops.flush();
+                setBlockMenuId(focusedId);
+              }}
+              accessibilityLabel="Block options"
             />
           </ScrollView>
         </View>
@@ -655,11 +860,73 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
         onClose={() => setMenuOpen(false)}
         title="Script"
         items={[
+          { label: 'Find and replace', icon: Search, onPress: () => setTimeout(openFind, 250) },
           { label: 'Paginate', icon: PanelsTopLeft, onPress: openStoryboard },
           { label: 'Version history', icon: History, onPress: () => setTimeout(() => setVersionsOpen(true), 250) },
           { label: 'Focus mode', icon: Focus, onPress: () => setFocusMode(true) },
-          { label: 'Export as text', icon: Share2, onPress: shareScript },
+          { label: 'Statistics', icon: ChartColumn, onPress: () => setTimeout(() => setStatsOpen(true), 250) },
+          { label: 'Share script', icon: Share2, subtitle: 'Plain-text screenplay (.txt)', onPress: shareScript },
         ]}
+      />
+      <MenuSheet
+        visible={blockMenuId !== null}
+        onClose={() => setBlockMenuId(null)}
+        title={menuBlock ? BLOCK_LABEL[menuBlock.block.type] : 'Block'}
+        subtitle={menuBlock?.block.text.trim().replace(/\s+/g, ' ').slice(0, 60) || undefined}
+        items={[
+          {
+            label: 'Move up',
+            icon: ArrowUp,
+            disabled: menuEdge.first,
+            onPress: () => moveBlock(blockMenuId, -1, false),
+          },
+          {
+            label: 'Move down',
+            icon: ArrowDown,
+            disabled: menuEdge.last,
+            onPress: () => moveBlock(blockMenuId, 1, false),
+          },
+          {
+            label: 'Move to scene…',
+            icon: FolderInput,
+            disabled: chapter.sceneIds.length <= 1,
+            onPress: () => {
+              const blockId = blockMenuId;
+              setTimeout(() => setMoveFor(blockId), 250);
+            },
+          },
+          {
+            label: 'Delete block',
+            icon: Trash2,
+            destructive: true,
+            disabled: !menuBlock || menuBlock.scene.blocks.length <= 1,
+            onPress: () => ops.removeBlock(blockMenuId),
+          },
+        ]}
+      />
+      <MenuSheet
+        visible={moveFor !== null}
+        onClose={() => setMoveFor(null)}
+        title="Move to scene"
+        subtitle="The block goes to the end of the scene"
+        items={scenes.map((scene, index) => ({
+          label: `Scene ${index + 1}`,
+          subtitle:
+            scene.id === moveBlockScene ? 'Current scene' : sceneSummary(scene) || plural(scene.blocks.length, 'block'),
+          disabled: scene.id === moveBlockScene,
+          onPress: () => {
+            if (moveFor) {
+              moveToScene(moveFor, scene.id);
+            }
+          },
+        }))}
+      />
+      <StatsSheet
+        visible={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        title={title}
+        scenes={scenes}
+        characters={characters}
       />
       <MenuSheet
         visible={sceneMenuId !== null}
@@ -696,7 +963,13 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
       />
       <CharacterPicker
         visible={pickFor !== null}
-        onClose={() => setPickFor(null)}
+        onClose={() => {
+          const blockId = pickFor;
+          setPickFor(null);
+          if (blockId) {
+            ops.focusBlock(blockId);
+          }
+        }}
         projectId={chapter.projectId}
         selectedIds={ops.find(pickFor)?.block.characterId ? [ops.find(pickFor)?.block.characterId as ID] : []}
         allowClear

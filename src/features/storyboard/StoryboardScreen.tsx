@@ -35,6 +35,7 @@ import { useStory } from '../../store/useStory';
 import { font, space, useTheme } from '../../theme';
 import { AutoPaginateSheet } from './AutoPaginateSheet';
 import { PageThumb } from './PageThumb';
+import { StoryboardGrid } from './StoryboardGrid';
 
 type Row = { key: string; pageIds: ID[] };
 
@@ -81,20 +82,18 @@ export function StoryboardScreen({ navigation, route }: ScreenProps<'Storyboard'
   );
 
   const manga = project?.format !== 'webtoon';
-  const rows = useMemo<Row[]>(() => {
-    const ids = pages.map(p => p.id);
-    if (listView || !manga) {
-      return ids.map(id => ({ key: id, pageIds: [id] }));
-    }
-    const out: Row[] = [];
-    if (ids.length) {
-      out.push({ key: ids[0], pageIds: [ids[0]] });
-    }
-    for (let i = 1; i < ids.length; i += 2) {
-      out.push({ key: ids[i], pageIds: ids.slice(i, i + 2) });
-    }
-    return out;
-  }, [pages, listView, manga]);
+  const rows = useMemo<Row[]>(() => pages.map(page => ({ key: page.id, pageIds: [page.id] })), [pages]);
+  const pageIds = useMemo(() => pages.map(page => page.id), [pages]);
+  const gridW = manga ? Math.min(180, (screenW - space.lg * 2) / 2) : Math.min(200, screenW * 0.5);
+  const gridThumbs = useMemo(
+    () =>
+      pages.map(page => {
+        const size = project ? pageSize(project, page) : { w: 1, h: 1 };
+        const h = (gridW * size.h) / size.w;
+        return { w: gridW, h: manga ? h : Math.min(h, WEBTOON_MAX_H) };
+      }),
+    [pages, project, gridW, manga],
+  );
 
   if (!chapter || !project) {
     return (
@@ -109,7 +108,7 @@ export function StoryboardScreen({ navigation, route }: ScreenProps<'Storyboard'
   const numberOf = (pageId: ID) => chapter.pageIds.indexOf(pageId) + 1;
   const doneCount = pages.filter(p => p.done).length;
   const flagCount = pages.filter(p => p.flag).length;
-  const thumbW = listView ? 84 : manga ? Math.min(180, (screenW - space.lg * 2) / 2) : Math.min(200, screenW * 0.5);
+  const thumbW = listView ? 84 : gridW;
   const thumbH = (page: Page) => {
     const size = pageSize(project, page);
     const h = (thumbW * size.h) / size.w;
@@ -177,35 +176,32 @@ export function StoryboardScreen({ navigation, route }: ScreenProps<'Storyboard'
   };
 
   const renderRow = ({ item }: { item: Row }) => {
-    if (listView) {
-      const page = allPages[item.pageIds[0]];
-      const order = page ? panelOrder(page, rtl) : [];
-      return (
-        <Pressable
-          onPress={() => pressPage(item.pageIds[0])}
-          onLongPress={() => longPressPage(item.pageIds[0])}
-          style={[styles.listRow, { borderBottomColor: c.border }]}
-        >
-          {renderThumb(item.pageIds[0])}
-          <View style={styles.listText}>
-            {order.length === 0 && <Text style={[font.caption, { color: c.muted }]}>No panels yet</Text>}
-            {order.map((panelId, index) => {
-              const panel = page?.panels[panelId];
-              return (
-                <Text key={panelId} numberOfLines={2} style={[font.caption, { color: c.textSecondary }]}>
-                  <Text style={[font.label, { color: c.text }]}>
-                    {index + 1}
-                    {panel?.shot ? ` · ${SHOT_LABEL[panel.shot]}` : ''}
-                  </Text>
-                  {`  ${panel?.description || 'No description'}`}
+    const page = allPages[item.pageIds[0]];
+    const order = page ? panelOrder(page, rtl) : [];
+    return (
+      <Pressable
+        onPress={() => pressPage(item.pageIds[0])}
+        onLongPress={() => longPressPage(item.pageIds[0])}
+        style={[styles.listRow, { borderBottomColor: c.border }]}
+      >
+        {renderThumb(item.pageIds[0])}
+        <View style={styles.listText}>
+          {order.length === 0 && <Text style={[font.caption, { color: c.muted }]}>No panels yet</Text>}
+          {order.map((panelId, index) => {
+            const panel = page?.panels[panelId];
+            return (
+              <Text key={panelId} numberOfLines={2} style={[font.caption, { color: c.textSecondary }]}>
+                <Text style={[font.label, { color: c.text }]}>
+                  {index + 1}
+                  {panel?.shot ? ` · ${SHOT_LABEL[panel.shot]}` : ''}
                 </Text>
-              );
-            })}
-          </View>
-        </Pressable>
-      );
-    }
-    return <View style={[styles.gridRow, manga && rtl && styles.rtlRow]}>{item.pageIds.map(renderThumb)}</View>;
+                {`  ${panel?.description || 'No description'}`}
+              </Text>
+            );
+          })}
+        </View>
+      </Pressable>
+    );
   };
 
   return (
@@ -296,13 +292,23 @@ export function StoryboardScreen({ navigation, route }: ScreenProps<'Storyboard'
           )}
           <Button title="Add blank page" variant="secondary" icon={Plus} onPress={() => addPage()} />
         </View>
-      ) : (
+      ) : listView ? (
         <FlatList
-          key={listView ? 'list' : 'grid'}
           data={rows}
           keyExtractor={row => row.key}
           renderItem={renderRow}
           contentContainerStyle={styles.content}
+        />
+      ) : (
+        <StoryboardGrid
+          pageIds={pageIds}
+          thumbs={gridThumbs}
+          columns={manga ? 2 : 1}
+          rtl={manga && rtl}
+          selection={selection}
+          onPressPage={pressPage}
+          onLongPressPage={longPressPage}
+          onMove={(from, to) => story.movePage(chapterId, from, to)}
         />
       )}
       {selection ? (
@@ -406,8 +412,6 @@ const styles = StyleSheet.create({
   stats: { paddingHorizontal: space.lg, paddingTop: space.md, gap: space.xs },
   cta: { paddingHorizontal: space.lg, paddingTop: space.md, alignItems: 'flex-start' },
   content: { padding: space.lg, paddingBottom: 96, gap: space.md },
-  gridRow: { flexDirection: 'row', justifyContent: 'center' },
-  rtlRow: { flexDirection: 'row-reverse' },
   listRow: {
     flexDirection: 'row',
     gap: space.md,

@@ -47,6 +47,7 @@ export function Overlay({
   k,
   size,
   fonts,
+  lang,
   selected,
   floating,
   guides,
@@ -62,6 +63,7 @@ export function Overlay({
   k: number;
   size: Size;
   fonts: SkTypefaceFontProvider | null;
+  lang?: string | null;
   selected: Bubble | null;
   floating: boolean;
   guides: Guide[];
@@ -79,9 +81,9 @@ export function Overlay({
     }
     const recorder = Skia.PictureRecorder();
     const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, size.w, size.h));
-    drawBubble(canvas, selected, fonts);
+    drawBubble(canvas, selected, fonts, lang);
     return recorder.finishRecordingAsPicture();
-  }, [selected, floating, fonts, size.w, size.h]);
+  }, [selected, floating, fonts, lang, size.w, size.h]);
 
   const r = 7 / k;
   const center = selected ? bubbleCenter(selected) : null;

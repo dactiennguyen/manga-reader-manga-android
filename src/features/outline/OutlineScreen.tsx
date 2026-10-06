@@ -20,12 +20,13 @@ import {
 } from '../../components/icons';
 import { Button, confirm, EmptyState, Header, IconButton, Screen, toast } from '../../components/ui';
 import { CHAPTER_STATUS_LABEL, LIMITS } from '../../model/constants';
-import { chapterIdsOf, chapterStatus } from '../../model/selectors';
+import { chapterIdsOf, chapterName, chapterStatus } from '../../model/selectors';
 import type { Act, ChapterStatus, ID } from '../../model/types';
 import { useLastOpened, useProject } from '../../store/hooks';
 import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { ChapterEditSheet } from './ChapterEditSheet';
+import { DragCard, DragLayer, DragScroll, DragZone, useOutlineDrag } from './OutlineDrag';
 
 function chapterCount(count: number): string {
   return `${count} ${count === 1 ? 'chapter' : 'chapters'}`;
@@ -76,6 +77,24 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
     return out;
   }, [project]);
 
+  const sections = useMemo(() => (project?.acts ?? []).map(act => act.chapterIds), [project]);
+  const ctl = useOutlineDrag({
+    sections,
+    horizontal: !listMode,
+    onMove: (chapterId, section, index) => {
+      const target = project?.acts[section];
+      if (!target) {
+        return;
+      }
+      const crossed = !target.chapterIds.includes(chapterId);
+      useStory.getState().moveChapter(chapterId, target.id, index);
+      if (crossed) {
+        toast(`Moved to ${target.title}`);
+      }
+    },
+    onMenu: chapterId => setMenu({ kind: 'chapter', chapterId }),
+  });
+
   if (!project) {
     return (
       <Screen>
@@ -89,6 +108,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
   const story = useStory.getState();
   const total = chapterIdsOf(project).length;
   const columnWidth = Math.round(width * 0.85);
+  const canDrag = total > 1 || acts.length > 1;
   const statusColor: Record<ChapterStatus, string> = {
     unwritten: c.border,
     writing: c.warning,
@@ -126,7 +146,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
         if (!chapter) {
           continue;
         }
-        lines.push(`Chapter ${numbers[id]}. ${chapter.title}`);
+        lines.push(`Chapter ${numbers[id]}. ${chapterName(chapter.title, numbers[id])}`);
         if (chapter.summary) {
           lines.push(`  ${chapter.summary}`);
         }
@@ -276,17 +296,20 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
     };
   };
 
-  const renderCard = (id: ID) => {
+  const renderCard = (id: ID, ghost = false) => {
     const chapter = chapters[id];
     if (!chapter) {
       return null;
     }
     const status = statuses[id] ?? 'unwritten';
-    return (
+    const card = (
       <ComicCard
-        key={id}
-        onPress={() => setEditingId(id)}
-        onLongPress={() => setMenu({ kind: 'chapter', chapterId: id })}
+        onPress={() => {
+          if (!ctl.busy.current) {
+            setEditingId(id);
+          }
+        }}
+        onLongPress={canDrag ? undefined : () => setMenu({ kind: 'chapter', chapterId: id })}
         contentStyle={styles.card}
       >
         <View style={styles.cardHead}>
@@ -294,7 +317,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
             <Text style={[styles.numberText, { color: c.onInk }]}>{numbers[id]}</Text>
           </View>
           <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={2}>
-            {chapter.title || 'Untitled'}
+            {chapterName(chapter.title, numbers[id])}
           </Text>
         </View>
         {chapter.summary ? (
@@ -315,18 +338,27 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
         </View>
       </ComicCard>
     );
+    return ghost ? (
+      card
+    ) : (
+      <DragCard key={id} ctl={ctl} id={id} enabled={canDrag}>
+        {card}
+      </DragCard>
+    );
   };
 
   const renderAct = (act: Act, board: boolean) => {
     const body = (
       <>
-        {act.chapterIds.map(renderCard)}
+        {act.chapterIds.map(id => renderCard(id))}
         <Button title="Chapter" icon={Plus} variant="secondary" small onPress={() => addChapter(act.id)} />
       </>
     );
     return (
-      <View
+      <DragZone
         key={act.id}
+        ctl={ctl}
+        index={acts.indexOf(act)}
         style={[
           styles.column,
           { backgroundColor: c.surfaceAlt, borderColor: c.border },
@@ -351,7 +383,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
         ) : (
           <View style={styles.cards}>{body}</View>
         )}
-      </View>
+      </DragZone>
     );
   };
 
@@ -399,25 +431,35 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
           <Button title="Add chapter" icon={Plus} onPress={() => addChapter()} style={styles.emptyButton} />
         </View>
       )}
-      {listMode ? (
-        <ScrollView style={styles.flex} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
-          {acts.map(act => renderAct(act, false))}
-          {addActButton(false)}
-        </ScrollView>
-      ) : (
-        <ScrollView
-          style={styles.flex}
-          horizontal
-          snapToInterval={columnWidth + space.md}
-          decelerationRate="fast"
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.board}
-        >
-          {acts.map(act => renderAct(act, true))}
-          {addActButton(true)}
-        </ScrollView>
-      )}
+      <View style={styles.flex}>
+        {listMode ? (
+          <DragScroll
+            key="list"
+            ctl={ctl}
+            style={styles.flex}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+          >
+            {acts.map(act => renderAct(act, false))}
+            {addActButton(false)}
+          </DragScroll>
+        ) : (
+          <DragScroll
+            key="board"
+            ctl={ctl}
+            style={styles.flex}
+            snapToInterval={columnWidth + space.md}
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.board}
+          >
+            {acts.map(act => renderAct(act, true))}
+            {addActButton(true)}
+          </DragScroll>
+        )}
+        <DragLayer ctl={ctl} renderCard={id => renderCard(id, true)} />
+      </View>
       <MenuSheet
         visible={menu !== null}
         onClose={() => setMenu(null)}

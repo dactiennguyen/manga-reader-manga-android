@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
+import { useAppNavigation } from '../../app/routes';
 import { Cover } from '../../components/comic';
 import { ArchiveRestore, Trash } from '../../components/icons';
-import { Button, confirm, EmptyState, Header, IconButton, Screen, toast } from '../../components/ui';
+import { Button, confirm, EmptyState, Header, IconButton, Screen, snackbar, toast } from '../../components/ui';
 import { plural } from '../../lib/format';
 import { DAY_MS } from '../../lib/time';
 import { LIMITS } from '../../model/constants';
@@ -18,6 +19,7 @@ function daysLeft(project: Project, now: number): number {
 
 export function TrashScreen() {
   const { c } = useTheme();
+  const navigation = useAppNavigation();
   const projects = useStory(s => s.projects);
   const items = useMemo(
     () =>
@@ -30,7 +32,11 @@ export function TrashScreen() {
 
   const onRestore = (project: Project) => {
     useStory.getState().restoreProject(project.id);
-    toast(`Restored "${project.title}"`);
+    snackbar({
+      message: `Restored "${project.title || 'Untitled'}"`,
+      actionLabel: 'Open',
+      onAction: () => navigation.navigate('Project', { projectId: project.id }),
+    });
   };
 
   const onDelete = async (project: Project) => {

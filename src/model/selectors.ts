@@ -34,7 +34,15 @@ export function chapterLabel(state: StoryData, chapterId: ID): string {
   }
   const number = chapterNumber(state.projects[chapter.projectId], chapterId);
   const title = chapter.title.trim();
-  return !title || title === `Chapter ${number}` ? `Chapter ${number}` : `Chapter ${number} · ${title}`;
+  return isDefaultChapterTitle(title) ? `Chapter ${number}` : `Chapter ${number} · ${title}`;
+}
+
+export function isDefaultChapterTitle(title: string): boolean {
+  return /^(chapter \d+)?$/i.test(title.trim());
+}
+
+export function chapterName(title: string, number: number): string {
+  return isDefaultChapterTitle(title) ? `Chapter ${number}` : title.trim();
 }
 
 export function pageStatus(page: Page): PageStatus {

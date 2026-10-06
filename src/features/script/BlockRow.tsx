@@ -20,6 +20,8 @@ export type BlockApi = {
   flushRef: { current: (() => void) | null };
 };
 
+export type BlockMark = 'match' | 'current';
+
 const DEBOUNCE_MS = 300;
 
 const PLACEHOLDER: Record<Block['type'], string> = {
@@ -36,6 +38,7 @@ function BlockRowBase({
   panelLabel,
   panelPageId,
   placeholder,
+  mark,
   api,
 }: {
   block: Block;
@@ -43,6 +46,7 @@ function BlockRowBase({
   panelLabel?: string;
   panelPageId?: ID;
   placeholder?: string;
+  mark?: BlockMark;
   api: BlockApi;
 }) {
   const { c } = useTheme();
@@ -50,6 +54,8 @@ function BlockRowBase({
   const latest = useRef(block.text);
   const pushed = useRef(block.text);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const caret = useRef<number | null>(null);
+  const submittedAt = useRef(0);
   const id = block.id;
   const type = block.type;
 
@@ -116,6 +122,25 @@ function BlockRowBase({
     timer.current = setTimeout(flush, DEBOUNCE_MS);
   };
 
+  const onSubmit = () => {
+    const now = Date.now();
+    if (now - submittedAt.current < 300) {
+      return;
+    }
+    submittedAt.current = now;
+    const value = latest.current;
+    const at = Math.min(caret.current ?? value.length, value.length);
+    const before = value.slice(0, at);
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    api.text(id, value);
+    apply(before);
+    pushed.current = before;
+    api.enter(id, before, value.slice(at));
+  };
+
   const long = type === 'dialogue' && text.length > LIMITS.longDialogue;
 
   const input = (
@@ -136,6 +161,11 @@ function BlockRowBase({
         flush();
         api.blur(id);
       }}
+      onSelectionChange={event => {
+        caret.current = event.nativeEvent.selection.start;
+      }}
+      onSubmitEditing={onSubmit}
+      submitBehavior="submit"
       multiline
       scrollEnabled={false}
       placeholder={placeholder ?? PLACEHOLDER[type]}
@@ -193,7 +223,16 @@ function BlockRowBase({
   }
 
   return (
-    <View style={styles.row} onLayout={event => api.layout(id, event.nativeEvent.layout.y)}>
+    <View
+      style={[styles.row, mark === 'current' && { backgroundColor: c.accentSoft }]}
+      onLayout={event => api.layout(id, event.nativeEvent.layout.y)}
+    >
+      {mark !== undefined && (
+        <View
+          pointerEvents="none"
+          style={[styles.mark, { backgroundColor: mark === 'current' ? c.accent : c.border }]}
+        />
+      )}
       <View style={styles.flex}>{body}</View>
       {panelLabel !== undefined && panelPageId !== undefined && (
         <Pressable
@@ -216,6 +255,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: space.xs },
   input: { ...font.body, lineHeight: 22, paddingVertical: space.xs, paddingHorizontal: 0, textAlignVertical: 'top' },
   longInput: { borderBottomWidth: 2 },
+  mark: { position: 'absolute', left: -space.md, top: 0, bottom: 0, width: 4, borderRadius: 2 },
   barred: { borderLeftWidth: 3, paddingLeft: space.md },
   typeLabel: { ...font.overline, fontSize: 11 },
   settingText: { fontWeight: '700' },

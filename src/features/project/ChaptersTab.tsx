@@ -6,7 +6,7 @@ import { MenuSheet, PromptDialog, SpeechBubble, Tag, type MenuItem } from '../..
 import { ArrowDown, ArrowUp, Copy, ListOrdered, Pencil, Plus, Trash } from '../../components/icons';
 import { Button, ProgressBar, toast } from '../../components/ui';
 import { CHAPTER_STATUS_LABEL, LIMITS } from '../../model/constants';
-import { chapterProgress, chapterStatus, scriptOutdated } from '../../model/selectors';
+import { chapterName, chapterProgress, chapterStatus, scriptOutdated } from '../../model/selectors';
 import type { ID, Project } from '../../model/types';
 import { useStory, type StoryData } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
@@ -20,7 +20,7 @@ export function ChaptersTab({ state, project }: { state: StoryData; project: Pro
 
   const acts = project.acts;
   const total = acts.reduce((sum, act) => sum + act.chapterIds.length, 0);
-  const nameOf = (chapterId: ID, number: number) => state.chapters[chapterId]?.title.trim() || `Chapter ${number}`;
+  const nameOf = (chapterId: ID, number: number) => chapterName(state.chapters[chapterId]?.title ?? '', number);
   const numberOf = (chapterId: ID) => acts.flatMap(act => act.chapterIds).indexOf(chapterId) + 1;
 
   const move = (chapterId: ID, delta: -1 | 1) => {

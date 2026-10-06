@@ -25,6 +25,7 @@ export type Project = {
   style: ArtStyle;
   color: boolean;
   coverUri?: string;
+  languages?: string[];
   done: boolean;
   acts: Act[];
   lastOpened?: LastOpened;
@@ -169,6 +170,7 @@ export type Bubble = {
   outlineColor?: 'white' | 'black';
   vertical?: boolean;
   color?: string;
+  translations?: Record<string, string>;
 };
 
 export type EffectType = 'speed' | 'focus' | 'tone' | 'gradient' | 'sparkle';
@@ -203,7 +205,9 @@ export type Page = {
   updatedAt: number;
 };
 
-export type StrokeTool = 'gpen' | 'pencil' | 'brush' | 'eraser';
+export type StrokeTool = 'gpen' | 'pencil' | 'brush' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill';
+
+export type StrokeTone = { density: number };
 
 export type Stroke = {
   tool: StrokeTool;
@@ -212,6 +216,7 @@ export type Stroke = {
   opacity: number;
   points: number[];
   pressure?: boolean;
+  tone?: StrokeTone;
 };
 
 export type LayerImage = { uri: string; x: number; y: number; w: number; h: number };

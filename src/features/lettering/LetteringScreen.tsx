@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { useAppNavigation, useAppRoute } from '../../app/routes';
@@ -14,6 +14,7 @@ import {
   EllipsisVertical,
   Eye,
   EyeOff,
+  Languages,
   ListChecks,
   ListOrdered,
   MessageCircle,
@@ -36,11 +37,19 @@ import {
   createBubble,
   createEffect,
   fitBubbleText,
+  fitTranslatedText,
   hitTestBubble,
   rotatePoint,
   toBubbleLocal,
 } from '../../engine/lettering';
 import { usePageContext } from '../../engine/page';
+import {
+  bubbleText,
+  hasTranslation,
+  localizeBubble,
+  setTranslation,
+  translatableBubbles,
+} from '../../engine/translation';
 import { uid } from '../../lib/id';
 import { BUBBLE_TYPE_LABEL, EFFECT_LABEL } from '../../model/constants';
 import type { Bubble, BubbleType, Effect, EffectType, ID } from '../../model/types';
@@ -48,6 +57,7 @@ import { useChapter, useCharacters, useLastOpened, usePage, useProjectOfPage } f
 import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { ModeBar } from '../page/ModeBar';
+import { ManageLanguagesSheet, TranslationSheet, progressLabel, useActiveLanguage } from './Languages';
 import { Overlay, rotateHandle, type Guide } from './Overlay';
 import { BubbleCard, EffectCard } from './PropertyCard';
 import { autoPlace, blockMapOf, pageBlocksOf, placeBlock, type PageBlock, type Snapshot } from './script';
@@ -93,6 +103,7 @@ export function LetteringScreen() {
   const scenes = useStory(s => s.scenes);
   const characters = useCharacters(project?.id);
   useLastOpened(project?.id, { screen: 'Lettering', chapterId: page?.chapterId, pageId });
+  const [lang, setLang] = useActiveLanguage(project);
 
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<ViewState | null>(null);
@@ -109,8 +120,23 @@ export function LetteringScreen() {
   const [speakerOpen, setSpeakerOpen] = useState(false);
   const [hideBubbles, setHideBubbles] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
+  const [langMenu, setLangMenu] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [translateOpen, setTranslateOpen] = useState(false);
+  const [originalOpen, setOriginalOpen] = useState(false);
   const [, bump] = useState(0);
   const history = useRef<{ past: Snapshot[]; future: Snapshot[]; tag?: string }>({ past: [], future: [] });
+  const languageKey = (project?.languages ?? []).join('\n');
+  const knownLanguages = useRef(languageKey);
+  useEffect(() => {
+    const before = knownLanguages.current ? knownLanguages.current.split('\n') : [];
+    const now = languageKey ? languageKey.split('\n') : [];
+    knownLanguages.current = languageKey;
+    if (before.some(name => !now.includes(name))) {
+      history.current = { past: [], future: [] };
+      bump(n => n + 1);
+    }
+  }, [languageKey]);
   const drag = useRef<Drag | null>(null);
   const pinch = useRef<{ view0: ViewState; fx: number; fy: number } | null>(null);
   const lastTap = useRef<{ time: number; id: ID | null }>({ time: 0, id: null });
@@ -140,8 +166,17 @@ export function LetteringScreen() {
     [bubbles, blockMap, chapter],
   );
   const warned = useMemo(
-    () => (fonts ? bubbles.filter(bubble => bubble.text.trim() && fitBubbleText(bubble, fonts).overflow) : []),
-    [bubbles, fonts],
+    () =>
+      fonts
+        ? bubbles.filter(bubble => {
+            const shown = localizeBubble(bubble, lang);
+            if (!shown.text.trim()) {
+              return false;
+            }
+            return (shown === bubble ? fitBubbleText(bubble, fonts) : fitTranslatedText(bubble, shown, fonts)).overflow;
+          })
+        : [],
+    [bubbles, fonts, lang],
   );
   const stored = selection?.kind === 'bubble' ? bubbles.find(bubble => bubble.id === selection.id) ?? null : null;
   const selectedBubble = draft && stored && draft.id === stored.id ? draft : stored;
@@ -388,8 +423,19 @@ export function LetteringScreen() {
     setDraft(null);
   };
 
+  const changeTranslation = (id: ID, text: string) => {
+    if (lang) {
+      commit({ bubbles: bubbles.map(b => (b.id === id ? setTranslation(b, lang, text) : b)) }, `${id}:lang:${lang}`);
+    }
+  };
+
   const closeEditor = () => {
     setEditing(false);
+    const editedOriginal = originalOpen;
+    setOriginalOpen(false);
+    if (lang && !editedOriginal) {
+      return;
+    }
     const block = stored?.blockId ? blockMap[stored.blockId] : undefined;
     const text = stored?.text.trim() ?? '';
     if (!block || !text || block.text.trim() === text) {
@@ -555,6 +601,7 @@ export function LetteringScreen() {
   }
 
   const index = chapter ? chapter.pageIds.indexOf(pageId) + 1 : 1;
+  const languages = project.languages ?? [];
   const speaker = characters.find(ch => ch.id === stored?.characterId)?.name;
   const menuBubble = bubbles.find(b => b.id === itemMenu);
   const isOrphan = !!stored && orphans.some(b => b.id === stored.id);
@@ -612,13 +659,18 @@ export function LetteringScreen() {
                 <PageView
                   pageId={pageId}
                   width={bw}
-                  options={{ bubbles: !hideBubbles, skipBubbleId: draft ? draft.id : undefined }}
+                  options={{
+                    bubbles: !hideBubbles,
+                    skipBubbleId: draft ? draft.id : undefined,
+                    lang: lang ?? undefined,
+                  }}
                 >
                   <Overlay
                     scale={scale}
                     k={k}
                     size={size}
                     fonts={fonts}
+                    lang={lang}
                     selected={hideBubbles ? null : selectedBubble}
                     floating={!!draft}
                     guides={guides}
@@ -631,6 +683,26 @@ export function LetteringScreen() {
                     danger={c.danger}
                   />
                 </PageView>
+                {!!lang &&
+                  !hideBubbles &&
+                  !draft &&
+                  translatableBubbles(bubbles, lang)
+                    .filter(bubble => !hasTranslation(bubble, lang))
+                    .map(bubble => (
+                      <View
+                        key={`untranslated-${bubble.id}`}
+                        pointerEvents="none"
+                        style={[
+                          styles.untranslated,
+                          {
+                            backgroundColor: c.warning,
+                            borderColor: c.ink,
+                            left: (bubble.x + bubble.w) * scale - 8,
+                            top: bubble.y * scale - 6,
+                          },
+                        ]}
+                      />
+                    ))}
                 {showOrder &&
                   !hideBubbles &&
                   order.map((bubble, i) => (
@@ -650,6 +722,12 @@ export function LetteringScreen() {
           </View>
         </GestureDetector>
         <View style={styles.top} pointerEvents="box-none">
+          {languages.length > 0 && !pending && (
+            <View style={styles.langBar} pointerEvents="box-none">
+              <Chip label={lang ?? 'Original'} icon={Languages} selected={!!lang} onPress={() => setLangMenu(true)} />
+              {!!lang && <Chip label={progressLabel(bubbles, lang)} onPress={() => setTranslateOpen(true)} />}
+            </View>
+          )}
           {pending ? (
             <Chip
               label={pending.kind === 'bubble' ? 'Tap the page to place · Cancel' : 'Tap a panel to apply · Cancel'}
@@ -683,6 +761,7 @@ export function LetteringScreen() {
             <BubbleCard
               bubble={stored}
               speaker={speaker}
+              lang={lang}
               onChange={(patch, tag) => changeBubble(stored.id, patch, tag)}
               onEdit={() => setEditing(true)}
               onDelete={() => removeBubble(stored.id)}
@@ -729,14 +808,49 @@ export function LetteringScreen() {
       </View>
       <ModeBar pageId={pageId} mode="lettering" />
 
-      <Sheet visible={editing && !!stored} onClose={closeEditor} title="Edit text">
+      <Sheet
+        visible={editing && !!stored}
+        onClose={closeEditor}
+        title={lang ? `Edit ${lang} text` : 'Edit text'}
+        subtitle={lang ? 'Leave it empty to show the original' : undefined}
+      >
         <View style={styles.sheetBody}>
+          {!!lang &&
+            (originalOpen || !stored?.text.trim() ? (
+              <>
+                <Text style={[styles.sheetLabel, { color: c.textSecondary }]}>Original</Text>
+                <TextField
+                  autoFocus={!stored?.text.trim()}
+                  multiline
+                  value={stored?.text ?? ''}
+                  placeholder={stored?.type === 'sfx' ? 'Original sound effect' : 'Original text'}
+                  onFocus={() => setOriginalOpen(true)}
+                  onChangeText={text => stored && changeBubble(stored.id, { text }, 'text')}
+                />
+                <Text style={[styles.sheetLabel, { color: c.textSecondary }]}>{lang}</Text>
+              </>
+            ) : (
+              <Pressable
+                onPress={() => setOriginalOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Edit the original text"
+                style={[styles.originalBox, { borderColor: c.border, backgroundColor: c.surface }]}
+              >
+                <Text style={[styles.sheetLabel, { color: c.textSecondary }]}>Original · tap to edit</Text>
+                <Text style={[styles.originalText, { color: c.text }]}>{stored?.text}</Text>
+              </Pressable>
+            ))}
           <TextField
-            autoFocus
+            key={lang ?? 'original'}
+            autoFocus={!lang || !!stored?.text.trim()}
             multiline
-            value={stored?.text ?? ''}
-            placeholder={stored?.type === 'sfx' ? 'Sound effect' : 'Type the text'}
-            onChangeText={text => stored && changeBubble(stored.id, { text }, 'text')}
+            value={lang ? stored?.translations?.[lang] ?? '' : stored?.text ?? ''}
+            placeholder={
+              lang && stored?.text.trim() ? stored.text : stored?.type === 'sfx' ? 'Sound effect' : 'Type the text'
+            }
+            onChangeText={text =>
+              stored && (lang ? changeTranslation(stored.id, text) : changeBubble(stored.id, { text }, 'text'))
+            }
             inputStyle={styles.input}
           />
           <Button title="Done" onPress={closeEditor} />
@@ -822,6 +936,12 @@ export function LetteringScreen() {
         items={[
           { label: 'Page dialogue list', icon: ListChecks, onPress: () => setListOpen(true) },
           {
+            label: 'Language versions',
+            subtitle: lang ? `Showing ${lang}` : 'Showing the original',
+            icon: Languages,
+            onPress: () => (languages.length ? setLangMenu(true) : setManageOpen(true)),
+          },
+          {
             label: showOrder ? 'Hide reading order' : 'Show reading order',
             icon: ListOrdered,
             onPress: () => setShowOrder(!showOrder),
@@ -842,7 +962,7 @@ export function LetteringScreen() {
         visible={!!menuBubble}
         onClose={() => setItemMenu(null)}
         title={menuBubble ? BUBBLE_TYPE_LABEL[menuBubble.type] : undefined}
-        subtitle={menuBubble?.text || undefined}
+        subtitle={menuBubble ? bubbleText(menuBubble, lang) || undefined : undefined}
         items={
           menuBubble
             ? [
@@ -854,6 +974,40 @@ export function LetteringScreen() {
             : []
         }
       />
+      <MenuSheet
+        visible={langMenu}
+        onClose={() => setLangMenu(false)}
+        title="Language"
+        items={[
+          { label: 'Original', icon: lang ? undefined : Check, onPress: () => setLang(null) },
+          ...languages.map(name => ({
+            label: name,
+            subtitle: progressLabel(bubbles, name),
+            icon: lang === name ? Check : undefined,
+            onPress: () => setLang(name),
+          })),
+          ...(lang ? [{ label: 'Translation list', icon: ListChecks, onPress: () => setTranslateOpen(true) }] : []),
+          { label: 'Manage languages…', icon: Languages, onPress: () => setManageOpen(true) },
+        ]}
+      />
+      <ManageLanguagesSheet
+        visible={manageOpen}
+        onClose={() => setManageOpen(false)}
+        project={project}
+        onAdded={setLang}
+        onRenamed={(from, to) => lang === from && setLang(to)}
+      />
+      {!!lang && (
+        <TranslationSheet
+          visible={translateOpen}
+          onClose={() => setTranslateOpen(false)}
+          lang={lang}
+          project={project}
+          chapter={chapter}
+          pageId={pageId}
+          onChangeCurrent={changeTranslation}
+        />
+      )}
       <CharacterPicker
         visible={speakerOpen}
         onClose={() => setSpeakerOpen(false)}
@@ -885,7 +1039,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: { fontSize: 11, fontWeight: '700' },
-  top: { position: 'absolute', top: space.sm, left: space.sm, right: space.sm, alignItems: 'center' },
+  top: { position: 'absolute', top: space.sm, left: space.sm, right: space.sm, alignItems: 'center', gap: space.sm },
+  langBar: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: space.sm },
+  untranslated: { position: 'absolute', width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
+  originalBox: { borderWidth: 1, borderRadius: radius.md, padding: space.md, gap: space.xs },
+  originalText: { ...font.body },
   bottom: { position: 'absolute', left: space.sm, right: space.sm, bottom: space.sm, gap: space.xs },
   orphan: {
     flexDirection: 'row',

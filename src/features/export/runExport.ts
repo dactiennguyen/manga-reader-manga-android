@@ -4,6 +4,7 @@ import { FONT_FAMILY, loadFonts } from '../../engine/fonts';
 import { loadImage } from '../../engine/images';
 import { isRtl, pageSize } from '../../engine/layout';
 import { pageContext, renderPageImage, renderPageToFile } from '../../engine/page';
+import { languageFileTag } from '../../engine/translation';
 import { DIRS, MIME, RNFS, ensureDirs, fileSize, removeFile, resetDir, zipDir, imagesToPdf } from '../../lib/files';
 import { slugify, uid } from '../../lib/id';
 import { dayKey } from '../../lib/time';
@@ -22,6 +23,7 @@ export type ExportOptions = {
   longWidth: 800 | 1080;
   autoCut: boolean;
   gap: number;
+  lang?: string | null;
 };
 
 export type ExportResult = {
@@ -159,7 +161,8 @@ export async function runExport(
   await ensureDirs();
   const tmpDir = `${DIRS.tmp}/export-${uid()}`;
   await resetDir(tmpDir);
-  const base = `${slugify(project.title)}-${dayKey()}`;
+  const lang = options.lang && project.languages?.includes(options.lang) ? options.lang : undefined;
+  const base = `${slugify(project.title)}${lang ? `-${languageFileTag(lang)}` : ''}-${dayKey()}`;
   const total = pageIds.length;
   let outPath: string | null = null;
   const step = async (done: number) => {
@@ -211,7 +214,7 @@ export async function runExport(
         canvas.drawColor(Skia.Color(PAPER));
         let y = 0;
         for (const index of segment.ids) {
-          const image = await renderPageImage(pageIds[index], width);
+          const image = await renderPageImage(pageIds[index], width, { lang });
           if (!image) {
             throw new Error(`Page ${index + 1} couldn't be rendered.`);
           }
@@ -258,7 +261,7 @@ export async function runExport(
       }
       for (let i = 0; i < total; i++) {
         const file = `${tmpDir}/${pad(i + 1)}.${imageFormat}`;
-        if (!(await renderPageToFile(pageIds[i], width, file, imageFormat))) {
+        if (!(await renderPageToFile(pageIds[i], width, file, imageFormat, { lang }))) {
           throw new Error(`Page ${i + 1} couldn't be rendered.`);
         }
         paths.push(file);

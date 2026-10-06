@@ -92,5 +92,9 @@ local.properties
 # Gói addon để đăng lên kho addon (npm run addons)
 /dist/
 
-# Screenshots taken while testing stay local
+# Screenshots taken while testing stay local, and docs hold no images
 /test-screenshots/
+/docs/**/*.png
+/docs/**/*.jpg
+/docs/**/*.jpeg
+/docs/**/*.webp

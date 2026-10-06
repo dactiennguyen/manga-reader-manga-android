@@ -4,7 +4,7 @@ Cập nhật: 2026-10-06 · nhánh `feature/first-version`
 
 Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch bản, nhân vật, chia khung, vẽ, đặt thoại, đọc thử, xuất file. Phần AI, tài khoản và credit chưa làm. Giao diện bằng tiếng Anh.
 
-Ảnh chụp từng màn hình nằm trong [screenshots/](screenshots/); hai ảnh tổng hợp là [overview-1.png](screenshots/overview-1.png) và [overview-2.png](screenshots/overview-2.png). Ảnh chụp khi test các tính năng đợt 2 không commit, xem mục "Ảnh chụp khi test" trong [README](../README.md).
+Ảnh chụp màn hình khi test không nằm trong repo, xem mục "Ảnh chụp khi test" trong [README](../README.md).
 
 ## Đã kiểm tra thế nào
 

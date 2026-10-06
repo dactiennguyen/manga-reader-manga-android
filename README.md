@@ -2,7 +2,7 @@
 
 App Android giúp một người tự làm trọn một chương manga trên điện thoại: viết kịch bản, dựng nhân vật, chia khung, vẽ tranh, đặt thoại và xuất file. Viết bằng React Native, giao diện tiếng Anh.
 
-Tài liệu sản phẩm nằm trong [docs/](docs/): [tổng quan](docs/mangaka-ai.md), [mô tả tính năng](docs/features.md), [mô tả 20 màn hình](docs/screens/README.md), [tình trạng triển khai](docs/status.md) và [ảnh chụp màn hình](docs/screenshots/).
+Tài liệu sản phẩm nằm trong [docs/](docs/): [tổng quan](docs/mangaka-ai.md), [mô tả tính năng](docs/features.md), [mô tả 20 màn hình](docs/screens/README.md) và [tình trạng triển khai](docs/status.md).
 
 Phần AI (gợi ý cốt truyện, vẽ khung, trợ lý) chưa làm; bản hiện tại gồm các tính năng làm tay, liệt kê trong [tình trạng triển khai](docs/status.md). App đọc truyện cũ còn ở tag `legacy-reader`.
 
@@ -26,7 +26,7 @@ npm test
 
 ## Ảnh chụp khi test
 
-Ảnh chụp màn hình tạo ra trong lúc test **không commit vào repo**. Lưu chúng vào thư mục `test-screenshots/` ở gốc project; thư mục này đã nằm trong `.gitignore`. Thư mục [docs/screenshots/](docs/screenshots/) chỉ dành cho ảnh minh họa của tài liệu.
+Ảnh chụp màn hình tạo ra trong lúc test **không commit vào repo**. Lưu chúng vào thư mục `test-screenshots/` ở gốc project; thư mục này đã nằm trong `.gitignore`. Thư mục `docs/` chỉ chứa văn bản: file ảnh đặt trong đó cũng bị `.gitignore` bỏ qua.
 
 ## Build APK hoặc AAB thủ công trên GitHub Actions
 

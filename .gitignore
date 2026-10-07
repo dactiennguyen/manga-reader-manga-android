@@ -98,3 +98,5 @@ local.properties
 /docs/**/*.jpg
 /docs/**/*.jpeg
 /docs/**/*.webp
+# Store listing assets for Google Play are kept
+!/docs/google-play/**

@@ -1,0 +1,60 @@
+MANGAKA AI — Google Play store listing (en-US)
+==============================================
+
+Google Play limits: app name 30 characters, short description 80 characters,
+full description 4000 characters. Every block below is within its limit.
+
+
+App name (30):
+Mangaka AI – Manga Maker
+
+Short description (80):
+Write, draw and letter your own manga. Script, panels, canvas, bubbles, export.
+
+Full description (4000):
+Mangaka AI is a complete manga studio for your phone. Start from a one-line idea, write the script, lay out the panels, draw with real inking tools, place the speech bubbles and export a finished chapter – all in one app, all saved on your device.
+
+WRITE YOUR STORY
+• Outline your story in acts and chapters on a drag-and-drop board.
+• Write scene by scene with setting, action, dialogue, narration and sound-effect blocks.
+• Type @ to tag a character in a line of dialogue.
+• Find and replace, word counts, page estimates, long-dialogue warnings.
+• Keep character profiles (role, traits, goal, voice, appearance) and a world wiki for places, factions, terms and events.
+
+LAY OUT YOUR PAGES
+• Auto-paginate a chapter: the script becomes pages and panels in one tap.
+• 25+ panel templates: grids, diagonal cuts, bleeds and 4-koma strips.
+• Drag panel borders, cut panels with a line, merge, tilt corners, set gutters.
+• Right-to-left manga pages (B5 or A5) or vertical webtoon strips.
+
+DRAW ON YOUR PHONE
+• G-pen, pencil, brush, eraser, shapes, lasso fill and a colour picker.
+• Screentone fills at 10/25/40/60% density.
+• Up to 8 layers per panel with opacity and lock, 50 undo steps.
+• Two-finger zoom and rotate, two-finger tap to undo, stylus pressure support.
+• Pin a character design sheet on the canvas as a reference.
+
+LETTER AND POLISH
+• Speech, thought, shout, whisper and machine bubbles, narration boxes and SFX text.
+• Auto-place bubbles from the script, then drag, resize and rotate them.
+• Speed lines, focus lines, tones, gradients and sparkles.
+• Add language versions of every bubble for translated editions.
+
+READ AND SHARE
+• Read your chapter like a real manga with page spreads in landscape.
+• Export to PDF, PNG pages (ZIP), CBZ or a long webtoon image.
+• Back up a whole story as a single .mangaka file and import it on another device.
+
+AI WRITING HELP (optional)
+Connect Mangaka AI to your own OpenAI-compatible server and get help with the words: shape a story from an idea, get three plot directions, break a chapter into scenes, continue or rewrite a scene, fix a character's voice, shorten a line, suggest sound effects, fill a character profile from a few keywords, find plot holes, translate bubbles and chat with an assistant that knows your story. Every AI result is a preview you accept or discard. Without a server the whole app works as a manual manga studio.
+
+PRIVATE BY DESIGN
+Your stories, drawings and characters stay on your device. No account is needed. Nothing is uploaded unless you set up an AI server yourself.
+
+Made for anyone who wants to make comics: first-time creators, webtoon artists, doujinshi circles and students of manga.
+
+
+Notes for the Play Console
+--------------------------
+- Suggested category: Art & Design (or Comics). Content rating: fill in the IARC questionnaire; the app has no user-generated content shared online.
+- Screenshots and graphics are in screenshots/ and graphics/ next to this file; README.md there lists the required sizes.

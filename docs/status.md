@@ -12,7 +12,7 @@ Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch b�
 | --- | --- |
 | `npx tsc --noEmit` | Không lỗi |
 | `npm run lint` | Không lỗi |
-| `npm test` | 164 test qua (chia khung, chia trang, kho dữ liệu, file dự án, sắp xếp kéo thả, công cụ kịch bản, phép biến đổi nét vẽ, bản ngôn ngữ, ghép trang đôi) |
+| `npm test` | 164 test qua (chia khung, chia trang, kho dữ liệu, file dự án, sắp xếp kéo thả, công cụ kịch bản, phép biến đổi nét vẽ, bản ngôn ngữ, ghép trang đôi); 1 test sinh truyện mẫu cho ảnh Google Play chỉ chạy khi đặt `SEED_OUT` |
 | Build Android debug (`./gradlew assembleDebug`) | Thành công |
 | Chạy trên máy ảo Android 14 (Pixel 6, API 34) | Đi trọn luồng: tạo truyện → kịch bản → tự chia trang → chỉnh khung → vẽ → đặt thoại → đọc thử → xuất file |
 | Xuất file trên máy ảo | PDF, ZIP ảnh PNG, CBZ, ảnh dài và file `.mangaka` đều tạo ra file đúng |
@@ -25,7 +25,7 @@ Chưa kiểm tra: máy thật, bản release, iOS, bút cảm ứng, truyện r�
 | # | Màn hình | Tình trạng | Ghi chú |
 | --- | --- | --- | --- |
 | 1 | Chào mừng | Xong | 3 slide, minh họa vẽ bằng SVG |
-| 2 | Đăng nhập | Thay bằng bước nhập bút danh | Chưa có tài khoản; truyện lưu trên máy |
+| 2 | Đăng nhập | Bỏ | Vào thẳng như khách, không hỏi tên; bút danh đặt trong Hồ sơ. Truyện lưu trên máy |
 | 3 | Chọn sở thích | Xong | Vai trò, thể loại, nét vẽ |
 | 4 | Trang chủ | Xong, không AI | Ô ý tưởng chỉ điền sẵn logline cho truyện mới |
 | 5 | Thư viện truyện | Xong | Có nhân bản truyện và nút Hoàn tác sau khi xóa |

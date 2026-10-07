@@ -36,7 +36,7 @@ Bản debug cho phép kết nối `http://`; bản release thì không, xem [tì
 
 ## Ảnh chụp khi test
 
-Ảnh chụp màn hình tạo ra trong lúc test **không commit vào repo**. Lưu chúng vào thư mục `test-screenshots/` ở gốc project; thư mục này đã nằm trong `.gitignore`. Thư mục `docs/` chỉ chứa văn bản: file ảnh đặt trong đó cũng bị `.gitignore` bỏ qua.
+Ảnh chụp màn hình tạo ra trong lúc test **không commit vào repo**. Lưu chúng vào thư mục `test-screenshots/` ở gốc project; thư mục này đã nằm trong `.gitignore`. Thư mục `docs/` chỉ chứa văn bản: file ảnh đặt trong đó cũng bị `.gitignore` bỏ qua. Ngoại lệ duy nhất là bộ ảnh đăng Google Play trong `docs/google-play/`.
 
 ## Build APK hoặc AAB thủ công trên GitHub Actions
 

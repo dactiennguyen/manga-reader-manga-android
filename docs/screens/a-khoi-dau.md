@@ -17,7 +17,7 @@ Giới thiệu trong 3 slide app làm được gì, rồi đưa người dùng t
 ### Đường vào và đường ra
 
 - **Vào:** mở app lần đầu, hoặc sau khi đăng xuất.
-- **Ra:** "Bắt đầu" → Đăng nhập (2). "Tôi đã có tài khoản" → Đăng nhập (2) ở chế độ đăng nhập.
+- **Ra:** "Bắt đầu" ở slide cuối hoặc Bỏ qua → Chọn sở thích (3). Không có bước đăng nhập hay nhập bút danh: người dùng vào thẳng như khách, bút danh đặt sau trong Hồ sơ (20).
 
 ### Bố cục
 
@@ -47,7 +47,7 @@ Giới thiệu trong 3 slide app làm được gì, rồi đưa người dùng t
 
 | Thành phần | Nội dung |
 | --- | --- |
-| Nút Bỏ qua | Góc trên phải, chữ thường. Nhảy thẳng tới Đăng nhập |
+| Nút Bỏ qua | Góc trên phải, chữ thường. Nhảy thẳng tới Chọn sở thích |
 | Minh họa | Mỗi slide là một trang manga thu nhỏ có 2–3 khung, viền mực, nền chấm tram |
 | Tiêu đề | Phông Anton, chữ hoa |
 | Mô tả | Một câu, tối đa 2 dòng |
@@ -69,8 +69,8 @@ Nội dung 3 slide:
 | --- | --- |
 | Vuốt ngang | Chuyển slide, minh họa trượt kiểu lật trang |
 | Bấm "Bắt đầu" ở slide 1 hoặc 2 | Sang slide kế tiếp |
-| Bấm "Bắt đầu" ở slide 3 | Tới Đăng nhập |
-| Bấm Bỏ qua | Tới Đăng nhập |
+| Bấm "Bắt đầu" ở slide 3 | Tới Chọn sở thích |
+| Bấm Bỏ qua | Tới Chọn sở thích |
 
 ### Trạng thái
 
@@ -82,6 +82,8 @@ Nội dung 3 slide:
 ## 2. Đăng nhập
 
 **Route:** `SignIn`
+
+> **Chưa có trong app.** Bản hiện tại không có bước này: mở app lần đầu đi thẳng từ Chào mừng sang Chọn sở thích, người dùng vào như khách. Bút danh (tên in ở trang credit khi xuất) đặt trong Hồ sơ (20). Phần dưới là thiết kế để dành cho khi có tài khoản.
 
 ### Mục đích
 

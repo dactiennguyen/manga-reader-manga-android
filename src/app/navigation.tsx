@@ -12,7 +12,6 @@ import { HomeScreen } from '../features/home/HomeScreen';
 import { LetteringScreen } from '../features/lettering/LetteringScreen';
 import { LibraryScreen } from '../features/library/LibraryScreen';
 import { PreferencesScreen } from '../features/onboarding/PreferencesScreen';
-import { SignInScreen } from '../features/onboarding/SignInScreen';
 import { WelcomeScreen } from '../features/onboarding/WelcomeScreen';
 import { OutlineScreen } from '../features/outline/OutlineScreen';
 import { PanelLayoutScreen } from '../features/page/PanelLayoutScreen';
@@ -119,7 +118,6 @@ export function RootNavigator() {
       }}
     >
       <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="SignIn" component={SignInScreen} />
       <Stack.Screen name="Preferences" component={PreferencesScreen} />
       <Stack.Screen name="Tabs" component={Tabs} options={{ animation: 'fade' }} />
       <Stack.Screen name="NewProject" component={NewProjectScreen} options={{ animation: 'slide_from_bottom' }} />

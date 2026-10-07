@@ -16,7 +16,6 @@ export type StoryDraft = { title: string; genres: string[]; logline: string };
 
 export type RootStackParamList = {
   Welcome: undefined;
-  SignIn: { from?: 'profile' } | undefined;
   Preferences: { edit?: boolean } | undefined;
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   NewProject: { idea?: string; blankCanvas?: boolean; draft?: StoryDraft } | undefined;

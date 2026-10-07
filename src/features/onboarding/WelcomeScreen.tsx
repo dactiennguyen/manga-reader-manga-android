@@ -54,24 +54,22 @@ export function WelcomeScreen() {
     }
     resumeChecked = true;
     const step = useSettings.getState().onboardingStep;
-    if (step >= 2) {
-      navigation.reset({ index: 2, routes: [{ name: 'Welcome' }, { name: 'SignIn' }, { name: 'Preferences' }] });
-    } else if (step === 1) {
-      navigation.reset({ index: 1, routes: [{ name: 'Welcome' }, { name: 'SignIn' }] });
+    if (step >= 1) {
+      navigation.reset({ index: 1, routes: [{ name: 'Welcome' }, { name: 'Preferences' }] });
     }
   }, [navigation]);
 
   const artHeight = Math.max(120, Math.min(areaHeight - COPY_SPACE, (width - space.xl * 4) * ART_RATIO));
   const artWidth = artHeight / ART_RATIO;
 
-  const goSignIn = () => {
+  const goPreferences = () => {
     useSettings.getState().set({ onboardingStep: 1 });
-    navigation.navigate('SignIn');
+    navigation.navigate('Preferences');
   };
 
   const onNext = () => {
     if (index >= SLIDES.length - 1) {
-      goSignIn();
+      goPreferences();
       return;
     }
     scroller.current?.scrollTo({ x: (index + 1) * width, animated: true });
@@ -86,7 +84,7 @@ export function WelcomeScreen() {
   return (
     <Screen>
       <View style={styles.top}>
-        <Pressable onPress={goSignIn} hitSlop={12} accessibilityRole="button">
+        <Pressable onPress={goPreferences} hitSlop={12} accessibilityRole="button">
           <Text style={[font.label, { color: c.textSecondary }]}>Skip</Text>
         </Pressable>
       </View>

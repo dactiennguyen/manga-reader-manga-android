@@ -59,12 +59,12 @@ export function PreferencesScreen({ navigation, route }: ScreenProps<'Preference
 
   const leave = useCallback(() => {
     if (!edit) {
-      useSettings.getState().set({ onboardingStep: 1 });
+      useSettings.getState().set({ onboardingStep: 0 });
     }
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      navigation.reset({ index: 1, routes: [{ name: 'Welcome' }, { name: 'SignIn' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
     }
   }, [edit, navigation]);
 

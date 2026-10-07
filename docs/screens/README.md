@@ -7,7 +7,7 @@ Bộ tài liệu này mô tả giao diện của 20 màn hình: bố cục, thà
 | # | Màn hình | Route | Tài liệu |
 | --- | --- | --- | --- |
 | 1 | Chào mừng | `Welcome` | [A · Khởi đầu](a-khoi-dau.md#1-chào-mừng) |
-| 2 | Đăng nhập | `SignIn` | [A · Khởi đầu](a-khoi-dau.md#2-đăng-nhập) |
+| 2 | Đăng nhập | `SignIn` (chưa có, vào như khách) | [A · Khởi đầu](a-khoi-dau.md#2-đăng-nhập) |
 | 3 | Chọn sở thích | `Preferences` | [A · Khởi đầu](a-khoi-dau.md#3-chọn-sở-thích) |
 | 4 | Trang chủ | `Home` (tab) | [B · Trang chủ và dự án](b-trang-chu-du-an.md#4-trang-chủ) |
 | 5 | Thư viện truyện | `Library` (tab) | [B · Trang chủ và dự án](b-trang-chu-du-an.md#5-thư-viện-truyện) |
@@ -30,8 +30,8 @@ Bộ tài liệu này mô tả giao diện của 20 màn hình: bố cục, thà
 ## Sơ đồ điều hướng
 
 ```
-Welcome ─▶ SignIn ─▶ Preferences ─▶ ┐
-                                    ▼
+Welcome ─▶ Preferences ─▶ ┐
+                          ▼
 ┌──────────────── Thanh tab ────────────────┐
 │ Home │ Library │ (+) │ Assistant │ Profile │
 └──┬───────┬───────┬────────────────────────┘

@@ -46,7 +46,10 @@ Workflow [Build Android (manual)](.github/workflows/build-android.yml) chỉ ch�
 2. Mở **Actions → Build Android (manual) → Run workflow**, chọn nhánh cần build.
 3. Chọn định dạng `apk` để cài trực tiếp lên thiết bị, hoặc `aab` để tạo Android App Bundle.
 4. Chọn `arm64` cho điện thoại Android 64-bit hoặc `universal` để gộp mọi kiến trúc.
-5. Khi job hoàn tất, tải file trong **Artifacts**. Artifact được giữ 14 ngày.
+5. Nhập **version_name** (tên bản hiển thị cho người dùng, ví dụ `1.0.1`) và **version_code** (số nguyên, phải tăng dần mỗi lần nộp Google Play). Để trống version_code thì workflow dùng số lần chạy (`run_number`), tự tăng theo mỗi lần bấm.
+6. Khi job hoàn tất, tải file trong **Artifacts** (tên dạng `mangaka-ai-1.0.1-12-aab-arm64`). Artifact được giữ 14 ngày.
+
+Build tại máy cũng truyền được hai giá trị này: `./gradlew bundleRelease -PversionName=1.0.1 -PversionCode=12`. Không truyền thì dùng `1.0` và `1` ghi trong `android/app/build.gradle`.
 
 Hiện `android/app/build.gradle` ký bản release bằng `android/app/debug.keystore` có sẵn trong repo, chỉ phù hợp thử nghiệm. Cần cấu hình khóa ký riêng trước khi phát hành lên Google Play.
 

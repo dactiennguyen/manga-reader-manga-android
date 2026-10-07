@@ -4,8 +4,8 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { useAppNavigation, type ScreenProps } from '../../app/routes';
 import { Avatar, MenuSheet, PromptDialog, SpeechBubble } from '../../components/comic';
 import { Sheet } from '../../components/Sheet';
-import { BookOpen, Check, ChevronDown, Copy, EllipsisVertical, Lock, Trash2 } from '../../components/icons';
-import { confirm, EmptyState, Header, IconButton, ListItem, Screen, TabBar, toast } from '../../components/ui';
+import { BookOpen, Check, ChevronDown, Copy, EllipsisVertical, Lock, Sparkles, Trash2 } from '../../components/icons';
+import { Button, confirm, EmptyState, Header, IconButton, ListItem, Screen, TabBar, toast } from '../../components/ui';
 import { LIMITS, ROLE_LABEL } from '../../model/constants';
 import { chapterLabel, characterUsage } from '../../model/selectors';
 import type { Character, CharacterRole } from '../../model/types';
@@ -13,6 +13,7 @@ import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { DesignTab } from './DesignTab';
 import { useDraft } from './fields';
+import { FillSheet } from './FillSheet';
 import { ProfileTab } from './ProfileTab';
 import { RelationsTab } from './RelationsTab';
 
@@ -49,7 +50,14 @@ function CharacterBody({ character }: { character: Character }) {
   const [roleMenu, setRoleMenu] = useState(false);
   const [ageDialog, setAgeDialog] = useState(false);
   const [usageSheet, setUsageSheet] = useState(false);
+  const [fillOpen, setFillOpen] = useState(false);
+  const [fillVersion, setFillVersion] = useState(0);
   const name = useDraft(character.name, value => update(character.id, { name: value.trim() }));
+
+  const openFill = () => {
+    name.onBlur();
+    setFillOpen(true);
+  };
 
   const usage = useMemo(
     () => (usageSheet ? characterUsage(useStory.getState(), character.id) : null),
@@ -138,7 +146,17 @@ function CharacterBody({ character }: { character: Character }) {
               </Text>
             </SpeechBubble>
           )}
-          {tab === 'profile' && <ProfileTab character={character} />}
+          {tab === 'profile' && (
+            <Button
+              title="Fill with AI"
+              icon={Sparkles}
+              variant="ai"
+              small
+              onPress={openFill}
+              style={styles.fillButton}
+            />
+          )}
+          {tab === 'profile' && <ProfileTab key={fillVersion} character={character} />}
           {tab === 'design' && <DesignTab character={character} />}
           {tab === 'relations' && <RelationsTab character={character} />}
         </View>
@@ -227,6 +245,18 @@ function CharacterBody({ character }: { character: Character }) {
           />
         ))}
       </Sheet>
+      {fillOpen && (
+        <FillSheet
+          character={character}
+          onClose={() => setFillOpen(false)}
+          onApplied={patch => {
+            if (patch.name !== undefined) {
+              name.setText(patch.name);
+            }
+            setFillVersion(version => version + 1);
+          }}
+        />
+      )}
     </Screen>
   );
 }
@@ -251,5 +281,6 @@ const styles = StyleSheet.create({
   metaButton: { flexDirection: 'row', alignItems: 'center', gap: 2, flexShrink: 1 },
   body: { padding: space.lg },
   hintBubble: { marginBottom: space.lg },
+  fillButton: { alignSelf: 'flex-start', marginBottom: space.sm },
   usageEmpty: { padding: space.lg },
 });

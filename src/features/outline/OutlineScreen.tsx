@@ -28,6 +28,7 @@ import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { ChapterEditSheet } from './ChapterEditSheet';
 import { DragCard, DragLayer, DragScroll, DragZone, useOutlineDrag } from './OutlineDrag';
+import { PlotHolesSheet } from './PlotHolesSheet';
 import { PlotIdeasSheet } from './PlotIdeasSheet';
 import { SceneIdeasSheet } from './SceneIdeasSheet';
 
@@ -63,6 +64,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
   const [editingId, setEditingId] = useState<ID | undefined>();
   const [renamingActId, setRenamingActId] = useState<ID | undefined>();
   const [plotOpen, setPlotOpen] = useState(false);
+  const [holesOpen, setHolesOpen] = useState(false);
   const [scenesForId, setScenesForId] = useState<ID | undefined>();
   const [logline, setLogline] = useState(project?.logline ?? '');
   useLastOpened(projectId, { screen: 'Outline' });
@@ -221,6 +223,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
             onPress: () => setListMode(value => !value),
           },
           { label: 'AI plot ideas', icon: Sparkles, onPress: () => setTimeout(openPlotIdeas, 250) },
+          { label: 'Find plot holes (AI)', icon: Sparkles, onPress: () => setTimeout(() => setHolesOpen(true), 250) },
           { label: 'Export outline as text', icon: Share2, onPress: shareOutline },
         ],
       };
@@ -508,6 +511,7 @@ export function OutlineScreen({ route }: ScreenProps<'Outline'>) {
         }}
       />
       {plotOpen && <PlotIdeasSheet projectId={projectId} onClose={() => setPlotOpen(false)} />}
+      {holesOpen && <PlotHolesSheet projectId={projectId} onClose={() => setHolesOpen(false)} />}
       {scenesForId !== undefined && (
         <SceneIdeasSheet
           chapterId={scenesForId}

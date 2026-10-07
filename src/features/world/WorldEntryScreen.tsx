@@ -12,6 +12,7 @@ import {
   ImagePlus,
   Plus,
   Shapes,
+  Sparkles,
   Star,
   Trash2,
   UserPlus,
@@ -34,10 +35,10 @@ import { useChapters } from '../../store/hooks';
 import { useStory } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
 import { AutoField, ImageViewer, useDraft } from '../characters/fields';
+import { BODY_MAX, DescribeSheet } from './DescribeSheet';
 import { anchorLabel, UNTITLED, WORLD_TYPE_ICON } from './worldShared';
 
 const TITLE_MAX = 80;
-const BODY_MAX = 4000;
 const IMAGE_SIZE = 168;
 
 export function WorldEntryScreen({ route }: ScreenProps<'WorldEntry'>) {
@@ -68,7 +69,15 @@ function EntryBody({ entry }: { entry: WorldEntry }) {
   const [viewing, setViewing] = useState<string | null>(null);
   const [picker, setPicker] = useState<'related' | 'leader' | null>(null);
   const [chipMenuId, setChipMenuId] = useState<ID | null>(null);
+  const [describeOpen, setDescribeOpen] = useState(false);
+  const [bodyVersion, setBodyVersion] = useState(0);
   const title = useDraft(entry.title, value => update(entry.id, { title: value.trim() }));
+  const titleText = title.text.trim();
+
+  const openDescribe = () => {
+    title.onBlur();
+    setDescribeOpen(true);
+  };
 
   const related = useMemo(
     () => entry.characterIds.map(id => characters[id]).filter(Boolean),
@@ -250,6 +259,7 @@ function EntryBody({ entry }: { entry: WorldEntry }) {
           )}
 
           <AutoField
+            key={bodyVersion}
             label="Content"
             value={entry.body}
             onCommit={body => update(entry.id, { body })}
@@ -258,6 +268,19 @@ function EntryBody({ entry }: { entry: WorldEntry }) {
             maxLength={BODY_MAX}
             minHeight={160}
           />
+          <View style={styles.aiRow}>
+            <Text style={[font.caption, styles.aiHint, { color: c.muted }]}>
+              {titleText ? 'Let the AI draft this entry from its title.' : 'Add a title to write this entry with AI.'}
+            </Text>
+            <Button
+              title="Write with AI"
+              icon={Sparkles}
+              variant="ai"
+              small
+              disabled={!titleText}
+              onPress={openDescribe}
+            />
+          </View>
 
           <SectionTitle>Related characters</SectionTitle>
           <View style={styles.chips}>
@@ -428,6 +451,14 @@ function EntryBody({ entry }: { entry: WorldEntry }) {
         }}
       />
       <ImageViewer path={viewing} title={entry.title.trim() || undefined} onClose={() => setViewing(null)} />
+      {describeOpen && (
+        <DescribeSheet
+          entryId={entry.id}
+          title={titleText}
+          onClose={() => setDescribeOpen(false)}
+          onApplied={() => setBodyVersion(version => version + 1)}
+        />
+      )}
     </Screen>
   );
 }
@@ -467,6 +498,14 @@ const styles = StyleSheet.create({
   body: { padding: space.lg },
   titleInput: { paddingVertical: space.sm, paddingHorizontal: 0, borderBottomWidth: 1, marginBottom: space.lg },
   block: { marginBottom: space.lg },
+  aiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginTop: -space.sm,
+    marginBottom: space.lg,
+  },
+  aiHint: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm },
   charChip: {
     flexDirection: 'row',

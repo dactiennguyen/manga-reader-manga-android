@@ -6,6 +6,7 @@ import type { ID, WorldType } from '../model/types';
 export type TabParamList = {
   Home: undefined;
   Library: undefined;
+  Assistant: undefined;
   Profile: undefined;
 };
 

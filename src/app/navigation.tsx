@@ -3,7 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { House, LibraryBig, Plus, User, type LucideIcon } from '../components/icons';
+import { House, LibraryBig, Plus, Sparkles, User, type LucideIcon } from '../components/icons';
+import { AssistantScreen } from '../features/assistant/AssistantScreen';
 import { CanvasScreen } from '../features/canvas/CanvasScreen';
 import { CharacterScreen } from '../features/characters/CharacterScreen';
 import { ExportScreen } from '../features/export/ExportScreen';
@@ -35,6 +36,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const TAB_META: Record<keyof TabParamList, { label: string; icon: LucideIcon }> = {
   Home: { label: 'Home', icon: House },
   Library: { label: 'Library', icon: LibraryBig },
+  Assistant: { label: 'Assistant', icon: Sparkles },
   Profile: { label: 'Profile', icon: User },
 };
 
@@ -86,6 +88,7 @@ function AppTabBar({ state, navigation }: BottomTabBarProps) {
         </Pressable>
       </View>
       {renderTab(2)}
+      {renderTab(3)}
     </View>
   );
 }
@@ -97,6 +100,7 @@ function Tabs() {
     <Tab.Navigator tabBar={renderTabBar} screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Library" component={LibraryScreen} />
+      <Tab.Screen name="Assistant" component={AssistantScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -143,7 +147,7 @@ export function RootNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: { flexDirection: 'row', borderTopWidth: 2 },
-  tab: { flex: 1, height: 60, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  tab: { flex: 1, height: 60, alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 },
   tabLabel: { fontSize: 11, fontWeight: '700' },
   createButton: {
     width: 54,

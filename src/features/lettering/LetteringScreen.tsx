@@ -429,6 +429,12 @@ export function LetteringScreen() {
     }
   };
 
+  const applyTranslations = (entries: Record<ID, string>) => {
+    if (lang) {
+      commit({ bubbles: bubbles.map(b => (entries[b.id] !== undefined ? setTranslation(b, lang, entries[b.id]) : b)) });
+    }
+  };
+
   const closeEditor = () => {
     setEditing(false);
     const editedOriginal = originalOpen;
@@ -1006,6 +1012,7 @@ export function LetteringScreen() {
           chapter={chapter}
           pageId={pageId}
           onChangeCurrent={changeTranslation}
+          onApplyCurrent={applyTranslations}
         />
       )}
       <CharacterPicker

@@ -21,11 +21,13 @@ import {
   Redo2,
   Search,
   Share2,
+  Sparkles,
   Trash2,
   Undo2,
 } from '../../components/icons';
 import { Button, Chip, confirm, EmptyState, Header, IconButton, Screen, snackbar, toast } from '../../components/ui';
 import { RNFS, shareFile } from '../../lib/files';
+import type { BlockDraft } from '../../lib/ai/writing';
 import { isRtl, panelOrder } from '../../engine/layout';
 import { plural } from '../../lib/format';
 import { uid } from '../../lib/id';
@@ -39,6 +41,9 @@ import type { ScriptVersion } from '../../store/scriptHistory';
 import { useStory } from '../../store/useStory';
 import type { SceneInit } from '../../store/useStory';
 import { font, radius, space, useTheme } from '../../theme';
+import { applyTexts, insertDrafts } from './aiDrafts';
+import type { AiAction, TextChange } from './aiDrafts';
+import { AiToolbarButton, AiWriteSheet } from './AiWriteSheet';
 import { BlockRow } from './BlockRow';
 import type { BlockApi } from './BlockRow';
 import { FindBar } from './FindBar';
@@ -174,6 +179,8 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
   const [statsOpen, setStatsOpen] = useState(false);
   const [blockMenuId, setBlockMenuId] = useState<ID | null>(null);
   const [moveFor, setMoveFor] = useState<ID | null>(null);
+  const [ai, setAi] = useState<{ blockId: ID | null; action: AiAction | null } | null>(null);
+  const menuAnchor = useRef<ID | null>(null);
   const [, setHistoryTick] = useState(0);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const inputs = useRef(new Map<ID, ComponentRef<typeof TextInput>>());
@@ -363,6 +370,11 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
           return { ...block, kind: DIALOGUE_KINDS[(at + 1) % DIALOGUE_KINDS.length] };
         }),
       openPanel: pageId => navigation.navigate('PanelLayout', { pageId }),
+      shorten: blockId => {
+        flush();
+        Keyboard.dismiss();
+        setAi({ blockId, action: 'shorten' });
+      },
     };
     const sceneApi: SceneApi = {
       toggle: sceneId => {
@@ -609,6 +621,57 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
     });
   };
 
+  const openAi = (blockId: ID | null, action: AiAction | null = null) => {
+    ops.flush();
+    Keyboard.dismiss();
+    setAi({ blockId, action });
+  };
+
+  const insertAiDrafts = (afterBlockId: ID | null, drafts: BlockDraft[]) => {
+    ops.flush();
+    const result = insertDrafts(ops.scenes(), drafts, afterBlockId, uid);
+    if (!result.changes.length) {
+      setAi(null);
+      return;
+    }
+    snapshotScript(chapterId);
+    ops.record();
+    const state = useStory.getState();
+    for (const change of result.changes) {
+      state.updateScene(change.sceneId, { blocks: change.blocks, collapsed: false });
+    }
+    setAi(null);
+    const sceneId = result.changes[0].sceneId;
+    const firstId = result.blockIds[0];
+    setTimeout(() => reveal(sceneId, firstId), 200);
+    snackbar({
+      message: `Inserted ${plural(result.blockIds.length, 'block')}`,
+      actionLabel: 'Undo',
+      onAction: ops.undo,
+    });
+  };
+
+  const replaceAiTexts = (changes: TextChange[]) => {
+    ops.flush();
+    const sceneChanges = applyTexts(ops.scenes(), changes);
+    setAi(null);
+    if (!sceneChanges.length) {
+      toast('Nothing changed');
+      return;
+    }
+    snapshotScript(chapterId);
+    ops.record();
+    const state = useStory.getState();
+    for (const change of sceneChanges) {
+      state.updateScene(change.sceneId, { blocks: change.blocks });
+    }
+    snackbar({
+      message: changes.length === 1 ? 'Line replaced' : `Replaced ${plural(changes.length, 'block')}`,
+      actionLabel: 'Undo',
+      onAction: ops.undo,
+    });
+  };
+
   const moveToScene = (blockId: ID, targetSceneId: ID) => {
     ops.flush();
     transferBlock(blockId, targetSceneId, false);
@@ -732,7 +795,14 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
                   disabled={future.current.length === 0}
                   accessibilityLabel="Redo"
                 />
-                <IconButton icon={EllipsisVertical} onPress={() => setMenuOpen(true)} accessibilityLabel="More" />
+                <IconButton
+                  icon={EllipsisVertical}
+                  onPress={() => {
+                    menuAnchor.current = focusedId;
+                    setMenuOpen(true);
+                  }}
+                  accessibilityLabel="More"
+                />
               </View>
             }
           />
@@ -810,6 +880,7 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
             keyboardShouldPersistTaps="always"
             contentContainerStyle={styles.toolbarRow}
           >
+            <AiToolbarButton onPress={() => openAi(focusedId)} />
             {BLOCK_TYPES.map(type => (
               <Chip
                 key={type}
@@ -860,6 +931,15 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
         onClose={() => setMenuOpen(false)}
         title="Script"
         items={[
+          {
+            label: 'AI writing help',
+            icon: Sparkles,
+            subtitle: 'Continue, rewrite, change voice, shorten, SFX ideas',
+            onPress: () => {
+              const blockId = menuAnchor.current;
+              setTimeout(() => openAi(blockId), 250);
+            },
+          },
           { label: 'Find and replace', icon: Search, onPress: () => setTimeout(openFind, 250) },
           { label: 'Paginate', icon: PanelsTopLeft, onPress: openStoryboard },
           { label: 'Version history', icon: History, onPress: () => setTimeout(() => setVersionsOpen(true), 250) },
@@ -961,6 +1041,21 @@ export function ScriptScreen({ route, navigation }: ScreenProps<'Script'>) {
         onClose={() => setVersionsOpen(false)}
         onRestore={restoreVersion}
       />
+      {ai && (
+        <AiWriteSheet
+          chapterId={chapterId}
+          projectId={chapter.projectId}
+          blockId={ai.blockId}
+          initialAction={ai.action ?? undefined}
+          onClose={() => setAi(null)}
+          onInsert={insertAiDrafts}
+          onReplace={replaceAiTexts}
+          onOpenProfile={() => {
+            setAi(null);
+            navigation.navigate('Tabs', { screen: 'Profile' });
+          }}
+        />
+      )}
       <CharacterPicker
         visible={pickFor !== null}
         onClose={() => {

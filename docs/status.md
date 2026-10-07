@@ -2,7 +2,7 @@
 
 Cập nhật: 2026-10-06 · nhánh `feature/first-version`
 
-Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch bản, nhân vật, chia khung, vẽ, đặt thoại, đọc thử, xuất file. Phần AI mới có nhóm gợi ý truyện bằng chữ (xem mục "Tính năng AI"); AI tạo ảnh, tài khoản và credit chưa làm. Giao diện bằng tiếng Anh.
+Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch bản, nhân vật, chia khung, vẽ, đặt thoại, đọc thử, xuất file. Phần AI bằng chữ đã làm gần đủ theo tài liệu (xem mục "Tính năng AI"); AI tạo ảnh, tài khoản và credit chưa làm. Giao diện bằng tiếng Anh.
 
 Ảnh chụp màn hình khi test không nằm trong repo, xem mục "Ảnh chụp khi test" trong [README](../README.md).
 
@@ -12,7 +12,7 @@ Bản hiện tại gồm toàn bộ phần làm tay của app: viết kịch b�
 | --- | --- |
 | `npx tsc --noEmit` | Không lỗi |
 | `npm run lint` | Không lỗi |
-| `npm test` | 127 test qua (chia khung, chia trang, kho dữ liệu, file dự án, sắp xếp kéo thả, công cụ kịch bản, phép biến đổi nét vẽ, bản ngôn ngữ, ghép trang đôi) |
+| `npm test` | 164 test qua (chia khung, chia trang, kho dữ liệu, file dự án, sắp xếp kéo thả, công cụ kịch bản, phép biến đổi nét vẽ, bản ngôn ngữ, ghép trang đôi) |
 | Build Android debug (`./gradlew assembleDebug`) | Thành công |
 | Chạy trên máy ảo Android 14 (Pixel 6, API 34) | Đi trọn luồng: tạo truyện → kịch bản → tự chia trang → chỉnh khung → vẽ → đặt thoại → đọc thử → xuất file |
 | Xuất file trên máy ảo | PDF, ZIP ảnh PNG, CBZ, ảnh dài và file `.mangaka` đều tạo ra file đúng |
@@ -32,17 +32,17 @@ Chưa kiểm tra: máy thật, bản release, iOS, bút cảm ứng, truyện r�
 | 6 | Tạo truyện mới | Xong, không AI | 3 bước |
 | 7 | Tổng quan truyện | Xong | "Bước tiếp theo" tính theo quy tắc từ dữ liệu |
 | 8 | Dàn ý | Xong | Kéo thả chương trong hồi và sang hồi khác; menu vẫn dùng được |
-| 9 | Soạn kịch bản | Xong, không AI | Tìm và thay thế, thống kê, chia sẻ kịch bản dạng văn bản, chuyển khối sang cảnh khác |
-| 10 | Hồ sơ nhân vật | Xong, không AI | Bảng thiết kế dùng ảnh tải từ máy |
-| 11 | Thế giới và ghi chú | Xong, không AI | Nội dung là văn bản thuần |
+| 9 | Soạn kịch bản | Xong | Tìm và thay thế, thống kê, chia sẻ kịch bản dạng văn bản, chuyển khối sang cảnh khác |
+| 10 | Hồ sơ nhân vật | Xong, trừ AI vẽ bảng thiết kế | Bảng thiết kế dùng ảnh tải từ máy |
+| 11 | Thế giới và ghi chú | Xong, trừ AI vẽ ảnh concept | Nội dung là văn bản thuần |
 | 12 | Storyboard | Xong | Tự chia trang theo quy tắc (không AI); kéo thả trang ở chế độ lưới, chế độ danh sách dùng menu |
 | 13 | Dàn khung trang | Xong | Mẫu khung, kéo đường chia, cắt chéo, gộp, rãnh, thứ tự đọc |
 | 14 | Canvas vẽ | Xong phần chính | G-pen, bút chì, bút lông, tẩy, lấy màu, lớp, hoàn tác, vẽ hình (đường thẳng, chữ nhật, elip), tô vùng khoanh tay, screentone, di chuyển và co giãn lớp. Chưa có chọn một phần lớp |
 | 15 | AI tạo ảnh khung | Chưa làm | Chờ phần AI |
-| 16 | Thoại và hiệu ứng | Xong | 5 kiểu bong bóng, lời dẫn, SFX, 5 hiệu ứng; tự đặt thoại theo quy tắc; bản ngôn ngữ nhập tay |
+| 16 | Thoại và hiệu ứng | Xong | 5 kiểu bong bóng, lời dẫn, SFX, 5 hiệu ứng; tự đặt thoại theo quy tắc; bản ngôn ngữ nhập tay hoặc dịch bằng AI |
 | 17 | Đọc thử | Xong | Phóng to (chạm đôi, chụm), trang đôi khi xoay ngang, chọn bản ngôn ngữ |
 | 18 | Xuất bản | Xong | PDF, PNG (ZIP), CBZ, ảnh dài; chọn bản ngôn ngữ; rời màn hình khi đang xuất thì hủy |
-| 19 | Trợ lý AI | Chưa làm | Chờ phần AI; tab này đang ẩn |
+| 19 | Trợ lý AI | Xong | Tab thứ tư; chat theo ngữ cảnh truyện, lưu hội thoại, lưu câu trả lời thành ghi chú |
 | 20 | Hồ sơ và cài đặt | Xong, không credit | Thùng rác, nhập dự án, chủ đề, tay thuận |
 
 ## Tính năng thêm ở đợt 2
@@ -78,6 +78,12 @@ App gọi AI qua một server tương thích API của OpenAI (`/v1/chat/complet
 | Từ một câu ý tưởng, AI điền tên truyện, thể loại, tóm tắt | Trang chủ: "Shape with AI"; Tạo truyện: "Suggest with AI" | Có |
 | 3 hướng cốt truyện, mỗi hướng có chương theo từng hồi; chọn thêm vào sau hoặc thay chương cũ | Dàn ý: "AI plot ideas" | Có, gồm cả Undo sau khi thêm |
 | Chia một chương thành 3–6 cảnh và thêm vào kịch bản | Dàn ý: menu chương → "Break into scenes (AI)" | Có |
+| Viết tiếp 3–5 khối, viết lại khối hoặc cả cảnh theo chỉ dẫn, đổi giọng theo nhân vật, rút gọn thoại, gợi ý SFX | Soạn kịch bản: nút "AI" trên thanh bàn phím, menu, link "Shorten with AI" dưới thoại dài | Viết tiếp, rút gọn, SFX: có. Viết lại, đổi giọng: thử qua test tự động với AI thật |
+| Điền hồ sơ nhân vật từ vài từ khóa (chỉ điền ô trống hoặc thay hết) | Hồ sơ nhân vật: "Fill with AI" | Có |
+| Viết nội dung mục wiki từ tiêu đề (thay hoặc nối thêm) | Mục thế giới: "Write with AI" | Có |
+| Tìm lỗ hổng cốt truyện, mở thẳng chương liên quan | Dàn ý: menu → "Find plot holes (AI)" | Có |
+| Dịch thoại sang bản ngôn ngữ, xem trước và sửa trước khi áp dụng | Thoại: danh sách dịch → "Translate missing with AI" | Có |
+| Trợ lý chat biết truyện đang mở, gợi ý câu hỏi theo màn, lưu hội thoại, lưu câu trả lời thành ghi chú | Tab Assistant | Có |
 | Báo lỗi khi không gọi được server, nút Retry, nút Cancel khi đang chờ | Mọi chỗ trên | Có |
 
 Lúc thử dùng [gemini-web2api](https://github.com/Sophomoresty/gemini-web2api) chạy trên máy tính ở chế độ không đăng nhập (model `gemini-3.6-flash`): mỗi lần gọi mất 3–13 giây. Khoảng một phần ba câu trả lời dài bị lỗi JSON nhẹ, nên app tự sửa JSON và tự gọi lại tối đa 3 lần; sau khi thêm bước này 14/14 lần thử đều ra kết quả.
@@ -86,8 +92,9 @@ Giới hạn:
 
 - Server đó là công cụ không chính thức, chỉ nên dùng khi phát triển. Nó không tạo được ảnh; mọi tính năng AI về ảnh chưa làm.
 - Bản release của Android chặn kết nối `http://` thường, nên server phải có `https` hoặc phải đổi cấu hình mạng trước khi phát hành.
-- Chương và cảnh do AI tạo không còn dấu AI sau khi đã chấp nhận.
-- Chưa có: viết tiếp, viết lại, rút gọn thoại, gợi ý SFX, dịch thoại tự động, trợ lý chat.
+- Nội dung do AI tạo không còn dấu AI sau khi đã chấp nhận (dữ liệu chưa có trường đánh dấu).
+- Nút Copy trong trợ lý mở bảng chia sẻ của Android vì app chưa có module clipboard.
+- Chưa có: AI chia kịch bản thành trang (đang dùng quy tắc), AI nhận xét chương khi đọc thử, mọi tính năng AI về ảnh.
 
 ## Khác với tài liệu thiết kế
 

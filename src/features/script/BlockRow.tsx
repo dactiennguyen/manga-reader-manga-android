@@ -17,6 +17,7 @@ export type BlockApi = {
   pickCharacter: (blockId: ID) => void;
   cycleKind: (blockId: ID) => void;
   openPanel: (pageId: ID) => void;
+  shorten: (blockId: ID) => void;
   flushRef: { current: (() => void) | null };
 };
 
@@ -213,7 +214,14 @@ function BlockRowBase({
           </Pressable>
         </View>
         {input}
-        {long && <Text style={[styles.warning, { color: c.warning }]}>Too long to fit a bubble</Text>}
+        {long && (
+          <View style={styles.warningRow}>
+            <Text style={[styles.warning, styles.flex, { color: c.warning }]}>Too long to fit a bubble</Text>
+            <Pressable onPress={() => api.shorten(id)} hitSlop={6} accessibilityRole="button">
+              <Text style={[styles.warning, styles.warningAction, { color: c.ai }]}>Shorten with AI</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     );
   } else if (type === 'narration') {
@@ -272,6 +280,8 @@ const styles = StyleSheet.create({
   kind: { borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 2 },
   kindText: { ...font.caption },
   warning: { ...font.caption, marginTop: 2 },
+  warningRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  warningAction: { fontWeight: '700' },
   narration: { borderWidth: 2, paddingHorizontal: space.md, paddingVertical: space.xs },
   narrationText: { fontStyle: 'italic' },
   sfx: { paddingLeft: space.md },

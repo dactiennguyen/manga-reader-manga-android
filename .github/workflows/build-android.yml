@@ -1,6 +1,6 @@
 name: Build Android (manual)
 
-run-name: Android ${{ inputs.format }} · ${{ inputs.architecture }} · ${{ github.ref_name }}
+run-name: Android ${{ inputs.format }} · ${{ inputs.architecture }} · ${{ inputs.version_name }} (${{ inputs.version_code || github.run_number }}) · ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
@@ -21,6 +21,16 @@ on:
         options:
           - arm64
           - universal
+      version_name:
+        description: 'Version name hiển thị cho người dùng, ví dụ 1.0.1'
+        required: true
+        type: string
+        default: '1.0'
+      version_code:
+        description: 'Version code (số nguyên, phải tăng dần mỗi lần nộp Play). Để trống thì dùng số lần chạy workflow'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -85,12 +95,34 @@ jobs:
         with:
           cache-provider: basic
 
+      - name: Resolve version
+        id: version
+        env:
+          VERSION_NAME: ${{ inputs.version_name }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          name="$(echo "$VERSION_NAME" | tr -d '[:space:]')"
+          code="$(echo "$VERSION_CODE" | tr -d '[:space:]')"
+          if [ -z "$code" ]; then code="$RUN_NUMBER"; fi
+          if ! [[ "$name" =~ ^[0-9]+(\.[0-9]+)*([-+][A-Za-z0-9.-]+)?$ ]]; then
+            echo "version_name không hợp lệ: '$name' (ví dụ hợp lệ: 1.0.1)" >&2; exit 1
+          fi
+          if ! [[ "$code" =~ ^[1-9][0-9]*$ ]] || [ "$code" -gt 2100000000 ]; then
+            echo "version_code phải là số nguyên dương nhỏ hơn 2100000000: '$code'" >&2; exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Building version $name ($code)" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build Android artifact
         id: build
         working-directory: android
         env:
           BUILD_FORMAT: ${{ inputs.format }}
           BUILD_ARCHITECTURE: ${{ inputs.architecture }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           case "$BUILD_FORMAT" in
             apk)
@@ -112,13 +144,15 @@ jobs:
             --no-daemon \
             --stacktrace \
             --max-workers=2 \
-            "-PreactNativeArchitectures=$architectures"
+            "-PreactNativeArchitectures=$architectures" \
+            "-PversionName=$VERSION_NAME" \
+            "-PversionCode=$VERSION_CODE"
           echo "artifact_path=$artifact_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v7
         with:
-          name: manga-reader-${{ inputs.format }}-${{ inputs.architecture }}-${{ github.run_number }}
+          name: manga-reader-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}-${{ inputs.format }}-${{ inputs.architecture }}
           path: ${{ steps.build.outputs.artifact_path }}
           if-no-files-found: error
           compression-level: 0

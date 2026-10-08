@@ -41,7 +41,10 @@ Workflow [Build Android (manual)](.github/workflows/build-android.yml) chỉ ch�
 2. Mở **Actions → Build Android (manual) → Run workflow**, chọn nhánh cần build.
 3. Chọn định dạng `apk` để cài trực tiếp lên thiết bị, hoặc `aab` để tạo Android App Bundle. AAB không cài trực tiếp như APK.
 4. Chọn `arm64` cho điện thoại Android 64-bit hoặc `universal` để gộp `armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`. Lựa chọn này áp dụng cho cả APK và AAB; bản universal lớn hơn và build lâu hơn.
-5. Khi job hoàn tất, tải `manga-reader-<format>-<architecture>-<run_number>` trong **Artifacts** và giải nén để lấy file `.apk` hoặc `.aab`. Artifact được giữ 14 ngày.
+5. Nhập **version_name** (tên bản hiển thị cho người dùng, ví dụ `1.0.1`) và **version_code** (số nguyên, phải tăng dần mỗi lần nộp Google Play). Để trống version_code thì workflow dùng số lần chạy (`run_number`), tự tăng theo mỗi lần bấm.
+6. Khi job hoàn tất, tải `manga-reader-<version_name>-<version_code>-<format>-<architecture>` (ví dụ `manga-reader-1.0.1-12-aab-arm64`) trong **Artifacts** và giải nén để lấy file `.apk` hoặc `.aab`. Artifact được giữ 14 ngày.
+
+Build tại máy cũng truyền được hai giá trị này: `./gradlew bundleRelease -PversionName=1.0.1 -PversionCode=12`. Không truyền thì dùng `1.0` và `1` ghi trong `android/app/build.gradle`.
 
 APK release có sẵn JavaScript bundle nên chạy độc lập, không cần Metro. Workflow dùng Node 22, JDK 17, SDK Platform 37.0, Build Tools 37.0.0, NDK 27.1.12297006 và CMake 3.22.1.
 

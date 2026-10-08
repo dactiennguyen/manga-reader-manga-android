@@ -64,6 +64,7 @@ local.properties
 *.keystore
 *.jks
 !debug.keystore
+!mangaka-upload.keystore
 
 # --- Ruby / CocoaPods ---
 **/Pods/

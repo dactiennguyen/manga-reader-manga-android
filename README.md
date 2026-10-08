@@ -51,7 +51,7 @@ Workflow [Build Android (manual)](.github/workflows/build-android.yml) chỉ ch�
 
 Build tại máy cũng truyền được hai giá trị này: `./gradlew bundleRelease -PversionName=1.0.1 -PversionCode=12`. Không truyền thì dùng `1.0` và `1` ghi trong `android/app/build.gradle`.
 
-Hiện `android/app/build.gradle` ký bản release bằng `android/app/debug.keystore` có sẵn trong repo, chỉ phù hợp thử nghiệm. Cần cấu hình khóa ký riêng trước khi phát hành lên Google Play.
+Bản release được ký bằng upload key `android/app/mangaka-upload.keystore` (alias `mangaka`) có sẵn trong repo, mật khẩu ghi thẳng trong `android/app/build.gradle`. Vì vậy build tại máy hay trên GitHub Actions đều không cần cấu hình Secrets.
 
 ## Cấu trúc
 

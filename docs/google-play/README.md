@@ -29,14 +29,11 @@ Yêu cầu ảnh ở bảng trên lấy theo trang [Add preview assets to showca
 
 ## 2. Việc phải làm trước khi lên Play (chưa xong)
 
-1. **Tạo khóa ký release.** Bản release hiện đang ký bằng `debug.keystore` (xem `android/app/build.gradle`, mục `signingConfigs`). Google không nhận file ký bằng khóa debug. Tạo khóa:
+1. **Khóa ký release (đã xong).** Bản release ký bằng upload key `android/app/mangaka-upload.keystore` (alias `mangaka`, PKCS12, RSA 2048, hạn tới 2054), mật khẩu ghi trong `signingConfigs.release` của `android/app/build.gradle`. Keystore được commit có chủ đích (repo public), nên workflow GitHub không cần Secrets. Khi tạo app trên Play Console, giữ Play App Signing (mặc định): Google giữ khóa ký thật, khóa này chỉ dùng để upload. Fingerprint SHA256 của upload key:
 
-   ```sh
-   keytool -genkeypair -v -storetype PKCS12 -keystore mangaka-upload.keystore \
-     -alias mangaka -keyalg RSA -keysize 2048 -validity 10000
+   ```text
+   FE:7E:B5:71:F7:6A:4E:18:31:75:F3:FD:F8:87:7E:B4:9E:C3:09:12:61:2B:5F:25:FD:AE:02:88:2B:81:14:85
    ```
-
-   Giữ file này và mật khẩu ở nơi an toàn, **không commit**. Rồi thêm vào `android/app/build.gradle` một `signingConfigs.release` đọc đường dẫn và mật khẩu từ `~/.gradle/gradle.properties` hoặc biến môi trường, và đổi `buildTypes.release.signingConfig` sang nó. Nếu build bằng GitHub Actions thì đưa keystore (base64) và mật khẩu vào Secrets của repo; workflow hiện tại chưa có bước này.
 
 2. **Tăng `versionCode`** mỗi lần nộp bản mới. Play từ chối bản có versionCode trùng hoặc nhỏ hơn bản đã nộp. Workflow GitHub có hai ô nhập `version_name` và `version_code` (để trống thì lấy số lần chạy workflow, tự tăng); build tại máy thì truyền `-PversionName=1.0.1 -PversionCode=12`. Không truyền gì thì dùng `1.0` và `1` trong `android/app/build.gradle`.
 
@@ -49,7 +46,7 @@ Yêu cầu ảnh ở bảng trên lấy theo trang [Add preview assets to showca
    # file: android/app/build/outputs/bundle/release/app-release.aab
    ```
 
-   Hoặc chạy workflow "Build Android (manual)" trên GitHub với tùy chọn `aab`, nhập version_name và version_code (sau khi đã thêm keystore vào Secrets).
+   Hoặc chạy workflow "Build Android (manual)" trên GitHub với tùy chọn `aab`, nhập version_name và version_code.
 
 5. **Target API:** hiện `targetSdkVersion 36`, đáp ứng yêu cầu app mới phải target Android 16/API 36 từ 31/08/2026. Kiểm tra lại khi Google công bố mốc mới.
 

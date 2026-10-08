@@ -45,7 +45,7 @@ Workflow [Build Android (manual)](.github/workflows/build-android.yml) chỉ ch�
 
 APK release có sẵn JavaScript bundle nên chạy độc lập, không cần Metro. Workflow dùng Node 22, JDK 17, SDK Platform 37.0, Build Tools 37.0.0, NDK 27.1.12297006 và CMake 3.22.1.
 
-Hiện `android/app/build.gradle` ký cả APK và AAB release bằng `android/app/debug.keystore` có sẵn trong repo, phù hợp thử nghiệm và không cần thêm GitHub Secrets. AAB này chưa dùng để phát hành Google Play; cần cấu hình khóa ký riêng trước khi build bản phát hành.
+APK và AAB release được ký bằng upload key `android/app/mangaka-upload.keystore` (alias `mangaka`) có sẵn trong repo, mật khẩu ghi thẳng trong `android/app/build.gradle`. Vì vậy build tại máy hay trên GitHub Actions đều không cần cấu hình Secrets.
 
 ## Cấu trúc
 

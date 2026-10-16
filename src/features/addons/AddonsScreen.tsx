@@ -1,10 +1,10 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useAppNavigation } from '../../app/routes';
+import { useAppNavigation, type RootStackParamList } from '../../app/routes';
 import { Favicon } from '../../components/Favicon';
-import { ChevronDown, EyeOff, Plus, Puzzle, Search, Settings2 } from '../../components/icons';
+import { ChevronDown, EyeOff, Plus, Puzzle, Search, Settings2, X } from '../../components/icons';
 import {
   Button,
   Checkbox,
@@ -34,9 +34,12 @@ const CONTENT_FILTERS: { value: ContentType; label: string }[] = [
 
 export function AddonsScreen() {
   const navigation = useAppNavigation();
+  const route = useRoute<RouteProp<RootStackParamList, 'Addons'>>();
+  const engineParam = route.params?.engine;
   const { c } = useTheme();
   const stored = useSources(s => s.sources);
-  const customEngines = useEngineSummaries().filter(e => e.allowCustomSites);
+  const engines = useEngineSummaries();
+  const customEngines = engines.filter(e => e.allowCustomSites);
   const updateSource = useSources(s => s.updateSource);
   const sources = useMemo(() => {
     const byId = new Map(catalogSources().map(s => [s.id, s]));
@@ -46,26 +49,37 @@ export function AddonsScreen() {
     return [...byId.values()];
   }, [stored]);
   const allowNsfw = useAllowNsfw();
+  const [engineFilter, setEngineFilter] = useState<EngineId | null>(engineParam ?? null);
   const [content, setContent] = useState<ContentType | null>(null);
   const [lang, setLang] = useState<string | null>(null);
   const [langOpen, setLangOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [text, setText] = useState('');
 
+  useEffect(() => {
+    if (engineParam) {
+      setEngineFilter(engineParam);
+    }
+  }, [engineParam]);
+
+  const engineLabel = engineFilter ? engines.find(e => e.id === engineFilter)?.label ?? engineFilter : null;
   const languages = useMemo(
     () =>
-      [...new Set(sources.filter(s => allowNsfw || !s.nsfw).map(s => s.lang))].sort((a, b) =>
-        languageName(a).localeCompare(languageName(b)),
-      ),
-    [sources, allowNsfw],
+      [
+        ...new Set(
+          sources.filter(s => (!engineFilter || s.engine === engineFilter) && (allowNsfw || !s.nsfw)).map(s => s.lang),
+        ),
+      ].sort((a, b) => languageName(a).localeCompare(languageName(b))),
+    [sources, engineFilter, allowNsfw],
   );
   const activeLang = lang && languages.includes(lang) ? lang : null;
   const q = searching ? text.trim().toLowerCase() : '';
-  const filtered = !!content || !!activeLang || !!q;
+  const filtered = !!engineFilter || !!content || !!activeLang || !!q;
 
   const { shown, hiddenNsfw } = useMemo(() => {
     const matching = sources.filter(
       s =>
+        (!engineFilter || s.engine === engineFilter) &&
         (!content || s.content === content) &&
         (!activeLang || s.lang === activeLang) &&
         (!q || s.name.toLowerCase().includes(q) || s.id.includes(q)),
@@ -74,7 +88,7 @@ export function AddonsScreen() {
       .filter(s => allowNsfw || !s.nsfw)
       .sort((a, b) => a.name.localeCompare(b.name));
     return { shown: visible, hiddenNsfw: matching.length - visible.length };
-  }, [sources, content, activeLang, q, allowNsfw]);
+  }, [sources, engineFilter, content, activeLang, q, allowNsfw]);
 
   const closeSearch = useCallback(() => {
     setSearching(false);
@@ -111,6 +125,7 @@ export function AddonsScreen() {
     [updateSource],
   );
   const clearFilters = () => {
+    setEngineFilter(null);
     setContent(null);
     setLang(null);
     setText('');
@@ -175,6 +190,7 @@ export function AddonsScreen() {
       ) : (
         <Header
           title="Site được hỗ trợ"
+          subtitle={engineLabel ?? undefined}
           right={
             <>
               <IconButton
@@ -188,7 +204,7 @@ export function AddonsScreen() {
                 icon={Settings2}
                 color={c.onAppBar}
                 onPress={() => navigation.navigate('AddonManager')}
-                accessibilityLabel="Quản lý addon"
+                accessibilityLabel="Add-ons"
               />
             </>
           }
@@ -197,6 +213,7 @@ export function AddonsScreen() {
 
       <View style={[styles.chips, { borderBottomColor: c.border }]}>
         <ChipRow style={styles.chipRow}>
+          {!!engineLabel && <Chip icon={X} label={engineLabel} selected onPress={() => setEngineFilter(null)} />}
           <DropdownChip
             label={activeLang ? languageName(activeLang) : 'Mọi ngôn ngữ'}
             selected={!!activeLang}

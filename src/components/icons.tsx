@@ -17,16 +17,23 @@ export type LucideIcon = IconComponent;
 const GLYPHS = {
   add: 0xe145,
   add_box: 0xe146,
+  apps: 0xe5c3,
   arrow_back: 0xe5c4,
   arrow_downward: 0xe5db,
+  arrow_drop_down_circle: 0xe5c6,
   arrow_forward: 0xe5c8,
   arrow_upward: 0xe5d8,
   article: 0xef42,
   auto_awesome: 0xe65f,
+  auto_stories: 0xe666,
   autorenew: 0xe863,
   backup: 0xe864,
   balance: 0xeaf6,
   bar_chart: 0xe26b,
+  battery_alert: 0xe19c,
+  battery_charging_full: 0xe1a3,
+  battery_full: 0xe1a4,
+  battery_std: 0xe1a5,
   block: 0xe14b,
   bolt: 0xea0b,
   bookmark: 0xe866,
@@ -41,9 +48,12 @@ const GLYPHS = {
   calendar_today: 0xe935,
   call_to_action: 0xe06c,
   cancel: 0xe5c9,
+  celebration: 0xea65,
   chat_bubble: 0xe0ca,
   chat_bubble_outline: 0xe0cb,
   check: 0xe5ca,
+  check_box: 0xe834,
+  check_box_outline_blank: 0xe835,
   check_circle: 0xe86c,
   check_circle_outline: 0xe92d,
   checklist: 0xe6b1,
@@ -55,6 +65,7 @@ const GLYPHS = {
   cloud_download: 0xe2c0,
   cloud_off: 0xe2c1,
   code: 0xe86f,
+  collections: 0xe3b6,
   content_copy: 0xe14d,
   contrast: 0xeb37,
   cookie: 0xeaac,
@@ -66,6 +77,7 @@ const GLYPHS = {
   delete: 0xe872,
   delete_outline: 0xe92e,
   description: 0xe873,
+  deselect: 0xebb6,
   desktop_windows: 0xe30c,
   devices: 0xe1b1,
   done_all: 0xe877,
@@ -85,6 +97,7 @@ const GLYPHS = {
   filter_list: 0xe152,
   flashlight_off: 0xf00a,
   flashlight_on: 0xf00b,
+  folder: 0xe2c7,
   folder_open: 0xe2c8,
   format_align_justify: 0xe235,
   format_list_bulleted: 0xe241,
@@ -105,10 +118,13 @@ const GLYPHS = {
   horizontal_rule: 0xf108,
   horizontal_split: 0xe947,
   hourglass_empty: 0xe88b,
+  https: 0xe88d,
   image: 0xe3f4,
+  indeterminate_check_box: 0xe909,
   info: 0xe88e,
   info_outline: 0xe88f,
   insert_drive_file: 0xe24d,
+  label: 0xe892,
   layers: 0xe53b,
   library_add_check: 0xe9b7,
   light_mode: 0xe518,
@@ -127,8 +143,10 @@ const GLYPHS = {
   more_vert: 0xe5d4,
   movie: 0xe02c,
   music_note: 0xe405,
+  new_label: 0xe609,
   new_releases: 0xe031,
   newspaper: 0xeb81,
+  no_encryption: 0xe641,
   no_photography: 0xf1a8,
   north_west: 0xf1e2,
   notifications: 0xe7f4,
@@ -148,6 +166,7 @@ const GLYPHS = {
   play_circle_outline: 0xe039,
   power_off: 0xe646,
   power_settings_new: 0xe8ac,
+  preview: 0xf1c5,
   public: 0xe80b,
   push_pin: 0xf10d,
   qr_code: 0xef6b,
@@ -167,6 +186,7 @@ const GLYPHS = {
   screen_rotation: 0xe1c1,
   search: 0xe8b6,
   search_off: 0xea76,
+  select_all: 0xe162,
   sell: 0xf05b,
   send: 0xe163,
   settings: 0xe8b8,
@@ -177,6 +197,7 @@ const GLYPHS = {
   smartphone: 0xe32c,
   sort: 0xe164,
   speed: 0xe9e4,
+  splitscreen: 0xf06d,
   star: 0xe838,
   star_border: 0xe83a,
   sticky_note_2: 0xf1fc,
@@ -185,6 +206,8 @@ const GLYPHS = {
   storage: 0xe1db,
   swap_horiz: 0xe8d4,
   swap_vert: 0xe8d5,
+  swipe: 0xe9ec,
+  tab: 0xe8d8,
   tablet: 0xe32f,
   text_decrease: 0xeadd,
   text_fields: 0xe262,
@@ -193,6 +216,7 @@ const GLYPHS = {
   timer: 0xe425,
   touch_app: 0xe913,
   translate: 0xe8e2,
+  travel_explore: 0xe2db,
   trending_up: 0xe8e5,
   tune: 0xe429,
   undo: 0xe166,
@@ -214,6 +238,8 @@ const GLYPHS = {
   wifi: 0xe63e,
   wifi_off: 0xe648,
   wrap_text: 0xe25b,
+  zoom_in: 0xe8ff,
+  zoom_out: 0xe900,
 } as const;
 
 type GlyphName = keyof typeof GLYPHS;
@@ -222,7 +248,7 @@ function isFilled(fill: string | undefined): boolean {
   return !!fill && fill !== 'none' && fill !== 'transparent';
 }
 
-function create(glyph: GlyphName, filled?: GlyphName): IconComponent {
+function create(glyph: GlyphName, filled?: GlyphName, flipY?: boolean): IconComponent {
   function MaterialIcon({ size = 24, color = '#000', fill, style, accessibilityLabel }: IconProps) {
     const px = Number(size);
     const name = filled && isFilled(fill) ? filled : glyph;
@@ -231,7 +257,12 @@ function create(glyph: GlyphName, filled?: GlyphName): IconComponent {
         allowFontScaling={false}
         accessible={!!accessibilityLabel}
         accessibilityLabel={accessibilityLabel}
-        style={[styles.icon, { fontSize: px, lineHeight: px, width: px, height: px, color }, style as StyleProp<TextStyle>]}
+        style={[
+          styles.icon,
+          { fontSize: px, lineHeight: px, width: px, height: px, color },
+          flipY && styles.flipY,
+          style as StyleProp<TextStyle>,
+        ]}
       >
         {String.fromCodePoint(GLYPHS[name])}
       </Text>
@@ -242,8 +273,8 @@ function create(glyph: GlyphName, filled?: GlyphName): IconComponent {
 
 export const AArrowDown = create('text_decrease');
 export const AArrowUp = create('text_increase');
-export const ALargeSmall = create('format_size');
 export const Activity = create('timeline');
+export const ALargeSmall = create('format_size');
 export const AlignJustify = create('format_align_justify');
 export const AppWindow = create('web_asset');
 export const ArrowDown = create('arrow_downward');
@@ -255,19 +286,24 @@ export const ArrowRight = create('arrow_forward');
 export const ArrowUp = create('arrow_upward');
 export const ArrowUpDown = create('swap_vert');
 export const ArrowUpLeft = create('north_west');
-export const ArrowUpNarrowWide = create('sort');
+export const ArrowUpNarrowWide = create('sort', undefined, true);
+export const AutoStories = create('auto_stories');
 export const BadgeAlert = create('new_releases');
 export const Ban = create('block');
 export const BarChart3 = create('bar_chart');
+export const Battery = create('battery_std');
+export const BatteryCharging = create('battery_charging_full');
+export const BatteryFull = create('battery_full');
+export const BatteryLow = create('battery_alert');
 export const Bell = create('notifications_none', 'notifications');
 export const BookCheck = create('library_add_check');
-export const BookMarked = create('bookmarks');
-export const BookOpen = create('menu_book');
-export const BookOpenText = create('menu_book');
 export const Bookmark = create('bookmark_border', 'bookmark');
 export const BookmarkCheck = create('bookmark_added');
+export const BookMarked = create('bookmarks');
 export const BookmarkMinus = create('bookmark_remove');
 export const BookmarkPlus = create('bookmark_add', 'bookmark_added');
+export const BookOpen = create('menu_book');
+export const BookOpenText = create('menu_book');
 export const Brush = create('brush');
 export const Calendar = create('calendar_today');
 export const CalendarDays = create('date_range');
@@ -283,6 +319,7 @@ export const ChevronUp = create('expand_less');
 export const Circle = create('radio_button_unchecked', 'circle');
 export const CircleAlert = create('error_outline', 'error');
 export const CircleCheck = create('check_circle_outline', 'check_circle');
+export const CircleChevronDown = create('arrow_drop_down_circle');
 export const CircleHelp = create('help_outline', 'help');
 export const CirclePause = create('pause_circle_outline', 'pause_circle');
 export const CirclePlay = create('play_circle_outline', 'play_circle');
@@ -300,6 +337,7 @@ export const Cookie = create('cookie');
 export const Copy = create('content_copy');
 export const Database = create('storage');
 export const DatabaseBackup = create('backup');
+export const Deselect = create('deselect');
 export const Download = create('download');
 export const Ellipsis = create('more_horiz');
 export const EllipsisVertical = create('more_vert');
@@ -317,10 +355,12 @@ export const Filter = create('filter_alt');
 export const Flame = create('local_fire_department');
 export const Flashlight = create('flashlight_on');
 export const FlashlightOff = create('flashlight_off');
+export const Folder = create('folder');
 export const FolderInput = create('drive_file_move');
 export const FolderOpen = create('folder_open');
 export const FolderPlus = create('create_new_folder');
 export const GalleryHorizontal = create('view_carousel');
+export const GalleryThumbnails = create('apps');
 export const GalleryVertical = create('view_day');
 export const Gauge = create('speed');
 export const Globe = create('public');
@@ -333,6 +373,7 @@ export const Hourglass = create('hourglass_empty');
 export const House = create('home');
 export const Image = create('image');
 export const ImageOff = create('hide_image');
+export const Images = create('collections');
 export const Info = create('info_outline', 'info');
 export const Languages = create('translate');
 export const Layers = create('layers');
@@ -347,6 +388,7 @@ export const ListFilter = create('filter_list');
 export const ListOrdered = create('format_list_numbered');
 export const LoaderCircle = create('autorenew');
 export const Lock = create('lock');
+export const LockKeyhole = create('https');
 export const LockOpen = create('lock_open');
 export const Mail = create('mail_outline', 'mail');
 export const Maximize = create('fullscreen');
@@ -364,6 +406,7 @@ export const Newspaper = create('newspaper');
 export const Palette = create('palette');
 export const PanelBottom = create('call_to_action');
 export const PanelTop = create('web_asset');
+export const PartyPopper = create('celebration');
 export const Pause = create('pause');
 export const Pencil = create('edit');
 export const Pin = create('push_pin');
@@ -382,6 +425,7 @@ export const RotateCw = create('refresh');
 export const Rows3 = create('view_agenda');
 export const Save = create('save');
 export const Scale = create('balance');
+export const ScanEye = create('preview');
 export const ScanQrCode = create('qr_code_scanner');
 export const ScreenLockLandscape = create('screen_lock_landscape');
 export const ScreenLockPortrait = create('screen_lock_portrait');
@@ -391,6 +435,7 @@ export const ScreenShareOff = create('screen_lock_rotation');
 export const ScrollText = create('article');
 export const Search = create('search');
 export const SearchX = create('search_off');
+export const SelectAll = create('select_all');
 export const Send = create('send');
 export const SeparatorHorizontal = create('horizontal_rule');
 export const Settings = create('settings');
@@ -407,8 +452,12 @@ export const SkipForward = create('skip_next');
 export const SlidersHorizontal = create('tune');
 export const Smartphone = create('smartphone');
 export const Sparkles = create('auto_awesome');
+export const SplitScreen = create('splitscreen');
 export const Square = create('crop_square', 'stop');
 export const SquareArrowOutUpRight = create('open_in_new');
+export const SquareCheck = create('check_box');
+export const SquareDashed = create('check_box_outline_blank');
+export const SquareMinus = create('indeterminate_check_box');
 export const SquarePlus = create('add_box');
 export const SquareSplitVertical = create('horizontal_split');
 export const Star = create('star_border', 'star');
@@ -416,18 +465,24 @@ export const StickyNote = create('sticky_note_2');
 export const Sun = create('light_mode');
 export const SunDim = create('brightness_low');
 export const SunMedium = create('brightness_medium');
+export const Swipe = create('swipe');
+export const Tab = create('tab');
 export const Tablet = create('tablet');
+export const Tag = create('label');
+export const TagPlus = create('new_label');
 export const Tags = create('sell');
 export const TextWrap = create('wrap_text');
 export const Timer = create('timer');
 export const Trash = create('delete_outline', 'delete');
 export const Trash2 = create('delete_outline', 'delete');
+export const TravelExplore = create('travel_explore');
 export const TrendingUp = create('trending_up');
 export const TriangleAlert = create('warning_amber', 'warning');
 export const Trophy = create('emoji_events');
 export const Type = create('text_fields');
 export const Undo2 = create('undo');
 export const UnfoldVertical = create('unfold_more');
+export const Unlock = create('no_encryption');
 export const Upload = create('upload');
 export const User = create('person_outline', 'person');
 export const VenetianMask = create('visibility_off');
@@ -437,7 +492,10 @@ export const Wifi = create('wifi');
 export const WifiOff = create('wifi_off');
 export const X = create('close');
 export const Zap = create('bolt');
+export const ZoomIn = create('zoom_in');
+export const ZoomOut = create('zoom_out');
 
 const styles = StyleSheet.create({
   icon: { fontFamily: 'MaterialIcons-Regular', textAlign: 'center', includeFontPadding: false },
+  flipY: { transform: [{ scaleY: -1 }] },
 });

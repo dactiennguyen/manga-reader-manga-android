@@ -52,7 +52,9 @@ export function SuggestionsPanel({
   engine,
   currentUrl,
   currentTitle,
+  siteName,
   onSubmitText,
+  onSearchSite,
   onOpenUrl,
   onFill,
   onChangeCategory,
@@ -63,7 +65,9 @@ export function SuggestionsPanel({
   engine: SearchEngineId;
   currentUrl: string;
   currentTitle: string;
+  siteName?: string;
   onSubmitText: (text: string) => void;
+  onSearchSite: (text: string) => void;
   onOpenUrl: (url: string) => void;
   onFill: (text: string) => void;
   onChangeCategory: (category: SearchCategory) => void;
@@ -134,6 +138,23 @@ export function SuggestionsPanel({
             </ChipRow>
           )}
         </View>
+
+        {!!siteName && (!q || q === currentUrl) && (
+          <Row
+            left={<Favicon url={currentUrl} label={siteName} size={20} />}
+            title={`Tìm truyện trên ${siteName}`}
+            subtitle="Gõ tên truyện để tìm trong site đang xem"
+            onPress={q ? () => onFill('') : undefined}
+          />
+        )}
+        {!!siteName && !!q && !looksLikeUrl(q) && (
+          <Row
+            left={<Favicon url={currentUrl} label={siteName} size={20} />}
+            title={`Tìm "${q}" trên ${siteName}`}
+            subtitle="Tìm truyện trong site đang xem"
+            onPress={() => onSearchSite(q)}
+          />
+        )}
 
         {!q && !!currentUrl && (
           <Row
@@ -272,11 +293,16 @@ function Row({
   title: string;
   subtitle?: string;
   right?: ReactNode;
-  onPress: () => void;
+  onPress?: () => void;
 }) {
   const { c } = useTheme();
   return (
-    <Pressable onPress={onPress} android_ripple={{ color: c.border }} style={styles.row}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      android_ripple={onPress ? { color: c.border } : undefined}
+      style={styles.row}
+    >
       <View style={styles.rowIcon}>{left ?? (Icon && <Icon size={19} color={c.muted} />)}</View>
       <View style={styles.flex}>
         <Text numberOfLines={1} style={[font.body, { color: c.text }]}>

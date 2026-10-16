@@ -3,13 +3,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
 import { BookmarkMinus, Check } from '../../components/icons';
-import { Button, Divider, Radio, TextField, toast } from '../../components/ui';
+import { Button, Divider, toast } from '../../components/ui';
 import type { Chapter, ContentType } from '../../sources/types';
 import { useLibrary } from '../../store/useLibrary';
 import { font, space, useTheme } from '../../theme';
+import { GroupCheck, NewGroupField } from '../library/GroupSheet';
 import { countUnread } from '../library/updates';
-
-const NEW_GROUP = '\u0000new';
 
 export type BookmarkTarget = {
   key: string;
@@ -35,31 +34,35 @@ export function BookmarkDialog({
   const bookmark = useLibrary(s => s.bookmarks[target.key]);
   const groups = useLibrary(s => s.groups);
   const [saved] = useState(() => !!bookmark);
-  const [group, setGroup] = useState(() => bookmark?.group ?? '');
+  const [chosen, setChosen] = useState<string[]>(() => bookmark?.groups ?? []);
   const [newName, setNewName] = useState('');
 
-  const resolveGroup = (): string | undefined => {
-    if (group !== NEW_GROUP) {
-      return group;
-    }
+  const toggleGroup = (name: string) =>
+    setChosen(current => (current.includes(name) ? current.filter(g => g !== name) : [...current, name]));
+
+  const createGroup = () => {
     const name = newName.trim();
     if (!name) {
-      toast('Nhập tên nhóm mới.');
-      return undefined;
+      return;
     }
-    return name;
+    useLibrary.getState().addGroup(name);
+    setChosen(current => (current.includes(name) ? current : [...current, name]));
+    setNewName('');
   };
 
   const save = () => {
-    const chosen = resolveGroup();
-    if (chosen === undefined) {
-      return;
+    const names = groups.filter(g => chosen.includes(g));
+    const pending = newName.trim();
+    if (pending && !names.includes(pending)) {
+      names.push(pending);
     }
+    const label = names.map(name => `"${name}"`).join(', ');
     const library = useLibrary.getState();
     if (bookmark) {
-      if (chosen !== bookmark.group) {
-        library.setGroup([target.key], chosen);
-        toast(chosen ? `Đã chuyển sang nhóm "${chosen}"` : 'Đã bỏ khỏi nhóm');
+      const changed = names.length !== bookmark.groups.length || names.some(g => !bookmark.groups.includes(g));
+      if (changed) {
+        library.setGroupsFor(target.key, names);
+        toast(names.length ? `Đã lưu vào nhóm ${label}` : 'Đã bỏ khỏi nhóm');
       }
     } else {
       const { chapters } = target;
@@ -71,12 +74,12 @@ export function BookmarkDialog({
         cover: target.cover,
         content: target.content,
         nsfw: target.nsfw || undefined,
-        group: chosen,
+        groups: names,
         chapterCount: chapters.length,
         latestChapter: chapters[0]?.name,
         unread: countUnread(target.key, chapters),
       });
-      toast(chosen ? `Đã lưu vào nhóm "${chosen}"` : 'Đã thêm vào bookmark');
+      toast(names.length ? `Đã lưu vào nhóm ${label}` : 'Đã thêm vào bookmark');
     }
     onClose();
   };
@@ -95,25 +98,18 @@ export function BookmarkDialog({
       subtitle={target.title}
     >
       <Text style={[font.overline, styles.label, { color: c.muted }]}>Nhóm bookmark</Text>
-      <Radio selected={group === ''} label="Không nhóm" onPress={() => setGroup('')} />
       {groups.map(name => (
-        <Radio key={name} selected={group === name} label={name} onPress={() => setGroup(name)} />
-      ))}
-      <Radio selected={group === NEW_GROUP} label="Tạo nhóm mới" onPress={() => setGroup(NEW_GROUP)} />
-      {group === NEW_GROUP && (
-        <TextField
-          value={newName}
-          onChangeText={setNewName}
-          placeholder="Tên nhóm, ví dụ: Đang theo dõi"
-          autoFocus
-          returnKeyType="done"
-          onSubmitEditing={save}
-          style={styles.newGroup}
+        <GroupCheck
+          key={name}
+          label={name}
+          state={chosen.includes(name) ? 'checked' : 'unchecked'}
+          onPress={() => toggleGroup(name)}
         />
-      )}
+      ))}
+      <NewGroupField value={newName} onChangeText={setNewName} onCreate={createGroup} />
 
       <Text style={[font.caption, styles.note, { color: c.muted }]}>
-        Truyện đã bookmark sẽ được tự kiểm tra chương mới.
+        Có thể chọn nhiều nhóm. Truyện đã bookmark sẽ được tự kiểm tra chương mới.
       </Text>
 
       <View style={styles.actions}>
@@ -135,8 +131,7 @@ export function BookmarkDialog({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   label: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.xs },
-  newGroup: { marginHorizontal: space.lg, marginBottom: space.sm },
-  note: { paddingHorizontal: space.lg, paddingTop: space.sm },
+  note: { paddingHorizontal: space.lg },
   actions: { flexDirection: 'row', gap: space.sm, padding: space.lg },
   removeWrap: { padding: space.lg },
 });

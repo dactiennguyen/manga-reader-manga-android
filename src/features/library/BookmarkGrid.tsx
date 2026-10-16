@@ -77,7 +77,7 @@ function BookmarkItemBase({
     const meta = [
       host || sourceName || bookmark.sourceId,
       bookmark.chapterCount ? `${bookmark.chapterCount} chương` : '',
-      bookmark.group,
+      bookmark.groups.join(', '),
     ]
       .filter(Boolean)
       .join(' · ');

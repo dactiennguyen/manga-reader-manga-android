@@ -1,52 +1,127 @@
-import { useMemo, useState, type ReactNode, type Ref } from 'react';
+import { Children, useMemo, useState, type ReactNode, type Ref } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
-import { MangaGridItem, type CoverRibbon } from '../../components/MangaCard';
+import { Cover, CoverOverlays, MangaGridItem, type CoverRibbon } from '../../components/MangaCard';
 import { Dialog, Sheet } from '../../components/Sheet';
-import { Pencil, Plus, Trash2 } from '../../components/icons';
-import { Button, FieldLabel, ListItem, TextField, toast } from '../../components/ui';
-import { displayUrl, ensureScheme, getHost, looksLikeUrl } from '../../lib/url';
-import { getEngine, languageName, type ContentType, type SourceConfig } from '../../sources';
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  CircleHelp,
+  Pencil,
+  Plus,
+  Settings,
+  Trash2,
+} from '../../components/icons';
+import { Button, IconButton, ListItem } from '../../components/ui';
+import { displayUrl } from '../../lib/url';
+import { getEngine, type ContentType, type SourceConfig } from '../../sources';
 import { getProgress } from '../../store/progress';
 import { useBrowser, type QuickAccessItem } from '../../store/useBrowser';
 import { useHistory, type ReadingEntry } from '../../store/useHistory';
 import { sortBookmarks, useLibrary } from '../../store/useLibrary';
-import { useAllowNsfw } from '../../store/useSettings';
+import { HOME_WIDGET_LIMITS, useAllowNsfw, useSettings, type HomeWidget } from '../../store/useSettings';
 import { sourceIn, useSources, withCatalog } from '../../store/useSources';
 import { font, radius, space, useTheme } from '../../theme';
 import { Favicon } from '../../components/Favicon';
+import { OptionSheet, type Option } from '../settings/OptionSheet';
+import { ShortcutDialog } from '../settings/ShortcutDialog';
 import type { ViewRef } from './Tour';
+
+const GRID_COLUMNS = 5;
+
+const LIMIT_OPTIONS: Option<number>[] = HOME_WIDGET_LIMITS.map(n => ({ value: n, label: `${n} mục` }));
+
+const gridFill = (count: number, limit: number) => {
+  if (count >= limit) {
+    return 0;
+  }
+  const rest = count % GRID_COLUMNS;
+  return rest ? GRID_COLUMNS - rest : 1;
+};
 
 
 export function WidgetSection({
+  widget,
   title,
-  action,
+  help,
+  onTitlePress,
+  flush,
   children,
   ref,
 }: {
+  widget: HomeWidget;
   title: string;
-  action?: { label: string; onPress: () => void };
+  help: string;
+  onTitlePress?: () => void;
+  flush?: boolean;
   children: ReactNode;
   ref?: Ref<ViewRef>;
 }) {
   const { c } = useTheme();
+  const updateHomeWidget = useSettings(s => s.updateHomeWidget);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [limitOpen, setLimitOpen] = useState(false);
+  const collapsed = !!widget.collapsed;
+
   return (
     <View ref={ref} collapsable={false} style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, styles.flex, { color: c.text }]}>{title}</Text>
-        {action && (
-          <Pressable
-            onPress={action.onPress}
-            hitSlop={8}
-            android_ripple={{ color: c.border, borderless: true }}
-            style={styles.textButton}
-          >
-            <Text style={[font.label, { color: c.accent }]}>{action.label}</Text>
-          </Pressable>
-        )}
+        <Pressable
+          onPress={onTitlePress}
+          disabled={!onTitlePress}
+          accessibilityRole={onTitlePress ? 'button' : 'header'}
+          style={({ pressed }) => [styles.titleButton, pressed && styles.pressed]}
+        >
+          <Text numberOfLines={1} style={[styles.sectionTitle, { color: c.text }]}>
+            {title}
+          </Text>
+          {onTitlePress && <ChevronRight size={20} color={c.muted} />}
+        </Pressable>
+        <IconButton
+          icon={CircleHelp}
+          size={20}
+          color={c.muted}
+          onPress={() => setHelpOpen(true)}
+          accessibilityLabel={`Giới thiệu ${title}`}
+          style={styles.headerButton}
+        />
+        <IconButton
+          icon={Settings}
+          size={20}
+          color={c.muted}
+          onPress={() => setLimitOpen(true)}
+          accessibilityLabel={`Số mục hiển thị của ${title}`}
+          style={styles.headerButton}
+        />
+        <IconButton
+          icon={collapsed ? ChevronUp : ChevronDown}
+          size={22}
+          color={c.muted}
+          onPress={() => updateHomeWidget(widget.id, { collapsed: !collapsed })}
+          accessibilityLabel={collapsed ? `Mở rộng ${title}` : `Thu gọn ${title}`}
+          style={styles.headerButton}
+        />
       </View>
-      {children}
+      {!collapsed && <View style={[styles.box, flush && styles.flush, { borderColor: c.muted }]}>{children}</View>}
+
+      <Dialog
+        visible={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        title={title}
+        message={help}
+        actions={[{ label: 'Đã hiểu', onPress: () => setHelpOpen(false), variant: 'secondary' }]}
+      />
+      <OptionSheet
+        visible={limitOpen}
+        onClose={() => setLimitOpen(false)}
+        title="Số mục hiển thị"
+        subtitle="Chọn số mục hiển thị cho widget này."
+        options={LIMIT_OPTIONS}
+        value={widget.limit}
+        onSelect={limit => updateHomeWidget(widget.id, { limit })}
+      />
     </View>
   );
 }
@@ -54,19 +129,52 @@ export function WidgetSection({
 function EmptyHint({ text, action }: { text: string; action?: { label: string; onPress: () => void } }) {
   const { c } = useTheme();
   return (
-    <View style={[styles.emptyCard, { backgroundColor: c.surfaceAlt }]}>
+    <View style={styles.empty}>
       <Text style={[font.body, { color: c.textSecondary }]}>{text}</Text>
-      {action && (
-        <Button
-          title={action.label}
-          icon={Plus}
-          variant="secondary"
-          small
-          onPress={action.onPress}
-          style={styles.emptyButton}
-        />
-      )}
+      {action && <Button title={action.label} variant="secondary" onPress={action.onPress} style={styles.emptyButton} />}
     </View>
+  );
+}
+
+function TileGrid({ children }: { children: ReactNode }) {
+  const cells = Children.toArray(children);
+  const rows: ReactNode[][] = [];
+  for (let i = 0; i < cells.length; i += GRID_COLUMNS) {
+    rows.push(cells.slice(i, i + GRID_COLUMNS));
+  }
+  return (
+    <View>
+      {rows.map((row, i) => (
+        <View key={i} style={styles.gridRow}>
+          {row}
+          {Array.from({ length: GRID_COLUMNS - row.length }, (_, j) => (
+            <View key={`pad-${j}`} style={styles.tile} />
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+type AddTileProps = { label: string; cover?: boolean; onPress: () => void };
+
+function addTiles(count: number, props: AddTileProps) {
+  return Array.from({ length: count }, (_, i) => <AddTile key={`add-${i}`} {...props} />);
+}
+
+function AddTile({ label, cover, onPress }: AddTileProps) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
+    >
+      <View style={[cover ? styles.coverAdd : styles.iconTile, styles.addTile, { borderColor: c.border }]}>
+        <Plus size={22} color={c.muted} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -86,43 +194,44 @@ function useSourceInfo(): (sourceId: string) => SourceInfo | undefined {
 const typeLabelOf = (content: ContentType) => (content === 'novel' ? 'N' : 'M');
 
 
-export function QuickAccessWidget({ limit, onOpenUrl }: { limit: number; onOpenUrl: (url: string) => void }) {
+export function QuickAccessWidget({ widget, onOpenUrl }: { widget: HomeWidget; onOpenUrl: (url: string) => void }) {
   const { c } = useTheme();
   const items = useBrowser(s => s.quickAccess);
   const [selected, setSelected] = useState<QuickAccessItem | null>(null);
   const [editing, setEditing] = useState<QuickAccessItem | 'new' | null>(null);
+  const shown = items.slice(0, widget.limit);
 
   return (
-    <WidgetSection title="Truy cập nhanh">
-      <View style={styles.grid}>
-        {items.slice(0, limit).map(item => (
-          <Pressable
-            key={item.id}
-            onPress={() => onOpenUrl(item.url)}
-            onLongPress={() => setSelected(item)}
-            style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
-          >
-            <View style={[styles.tileIcon, { backgroundColor: c.surfaceAlt }]}>
-              <Favicon url={item.url} label={item.title} size={28} />
-            </View>
-            <Text numberOfLines={1} style={[styles.tileLabel, { color: c.textSecondary }]}>
-              {item.title}
-            </Text>
-          </Pressable>
-        ))}
-        <Pressable
-          onPress={() => setEditing('new')}
-          style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
-          accessibilityLabel="Thêm lối tắt"
-        >
-          <View style={[styles.tileIcon, styles.addTile, { borderColor: c.border }]}>
-            <Plus size={24} color={c.muted} />
-          </View>
-          <Text numberOfLines={1} style={[styles.tileLabel, { color: c.muted }]}>
-            Thêm lối tắt
-          </Text>
-        </Pressable>
-      </View>
+    <WidgetSection
+      widget={widget}
+      title="Truy cập nhanh"
+      help="Lối tắt tới các trang web bạn hay mở. Bấm ô + để thêm lối tắt, nhấn giữ một lối tắt để sửa hoặc xoá."
+    >
+      {shown.length ? (
+        <TileGrid>
+          {shown.map(item => (
+            <Pressable
+              key={item.id}
+              onPress={() => onOpenUrl(item.url)}
+              onLongPress={() => setSelected(item)}
+              style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
+            >
+              <View style={[styles.iconTile, { backgroundColor: c.surfaceAlt }]}>
+                <Favicon url={item.url} label={item.title} size={26} />
+              </View>
+              <Text numberOfLines={1} style={[styles.tileLabel, { color: c.textSecondary }]}>
+                {item.title}
+              </Text>
+            </Pressable>
+          ))}
+          {addTiles(gridFill(shown.length, widget.limit), { label: 'Thêm lối tắt', onPress: () => setEditing('new') })}
+        </TileGrid>
+      ) : (
+        <EmptyHint
+          text="Bạn chưa có trang web nào trong Truy cập nhanh. Bấm nút bên dưới để bắt đầu thêm trang web."
+          action={{ label: 'Thêm trang web', onPress: () => setEditing('new') }}
+        />
+      )}
 
       <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected?.title} subtitle={selected ? displayUrl(selected.url) : undefined}>
         <ListItem
@@ -146,69 +255,23 @@ export function QuickAccessWidget({ limit, onOpenUrl }: { limit: number; onOpenU
         />
       </Sheet>
 
-      {editing && (
-        <QuickAccessDialog item={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />
-      )}
+      <ShortcutDialog
+        visible={editing !== null}
+        item={editing === 'new' || editing === null ? undefined : editing}
+        onClose={() => setEditing(null)}
+      />
     </WidgetSection>
   );
 }
 
-function QuickAccessDialog({ item, onClose }: { item?: QuickAccessItem; onClose: () => void }) {
-  const [title, setTitle] = useState(item?.title ?? '');
-  const [url, setUrl] = useState(item?.url ?? '');
-  const valid = looksLikeUrl(url) || /^https?:\/\/\S+$/i.test(url.trim());
 
-  const save = () => {
-    if (!valid) {
-      toast('Địa chỉ web không hợp lệ');
-      return;
-    }
-    const fixed = ensureScheme(url);
-    const name = title.trim() || getHost(fixed) || fixed;
-    const store = useBrowser.getState();
-    if (item) {
-      store.updateQuickAccess(item.id, { title: name, url: fixed });
-    } else {
-      store.addQuickAccess({ title: name, url: fixed });
-    }
-    onClose();
-  };
-
-  return (
-    <Dialog
-      visible
-      onClose={onClose}
-      title={item ? 'Sửa lối tắt' : 'Lối tắt mới'}
-      actions={[
-        { label: 'Huỷ', onPress: onClose },
-        { label: 'Lưu', onPress: save, variant: 'primary', disabled: !url.trim() },
-      ]}
-    >
-      <View>
-        <FieldLabel>Tên</FieldLabel>
-        <TextField value={title} onChangeText={setTitle} placeholder="Ví dụ: MangaDex" autoFocus={!item} />
-        <FieldLabel>URL</FieldLabel>
-        <TextField
-          value={url}
-          onChangeText={setUrl}
-          placeholder="https://…"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          onSubmitEditing={save}
-        />
-      </View>
-    </Dialog>
-  );
-}
-
-
-export function ContinueReadingWidget({ limit }: { limit: number }) {
+export function ContinueReadingWidget({ widget }: { widget: HomeWidget }) {
   const navigation = useAppNavigation();
   const reading = useHistory(s => s.reading);
   const sources = useSources(s => s.sources);
   const allowNsfw = useAllowNsfw();
   const sourceInfo = useSourceInfo();
+  const limit = widget.limit;
 
   const items = useMemo(() => {
     const visible: { entry: ReadingEntry; source: SourceConfig }[] = [];
@@ -240,7 +303,13 @@ export function ContinueReadingWidget({ limit }: { limit: number }) {
   };
 
   return (
-    <WidgetSection title="Đọc tiếp" action={{ label: 'Lịch sử', onPress: () => navigation.navigate('History', { tab: 'reading' }) }}>
+    <WidgetSection
+      widget={widget}
+      title="Đọc tiếp"
+      help="Các truyện bạn đang đọc dở, mới đọc gần đây nhất ở đầu. Bấm để đọc tiếp từ chỗ đã dừng, nhấn giữ để mở trang truyện."
+      onTitlePress={() => navigation.navigate('History', { tab: 'reading' })}
+      flush
+    >
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
         {items.map(({ entry }) => {
           const info = sourceInfo(entry.sourceId);
@@ -272,51 +341,51 @@ export function ContinueReadingWidget({ limit }: { limit: number }) {
 }
 
 
-export function MediaSitesWidget({ limit, tourRef }: { limit: number; tourRef?: Ref<ViewRef> }) {
+export function MediaSitesWidget({ widget, tourRef }: { widget: HomeWidget; tourRef?: Ref<ViewRef> }) {
   const { c } = useTheme();
   const navigation = useAppNavigation();
   const sources = useSources(s => s.sources);
   const allowNsfw = useAllowNsfw();
+  const limit = widget.limit;
   const visible = useMemo(
     () => sources.filter(s => s.enabled && (!s.nsfw || allowNsfw)).slice(0, limit),
     [sources, allowNsfw, limit],
   );
+  const addSite = () => navigation.navigate('Addons');
 
   return (
     <WidgetSection
       ref={tourRef}
+      widget={widget}
       title="Site truyện đã lưu"
-      action={visible.length ? { label: 'Quản lý', onPress: () => navigation.navigate('Addons') } : undefined}
+      help="Các site truyện bạn đã ghim từ danh sách site được hỗ trợ. Bấm một site để xem truyện của site đó, bấm ô + để ghim thêm site."
+      onTitlePress={() => navigation.navigate('Bookmarks', { tab: 'sites' })}
     >
       {visible.length ? (
-        <View style={styles.siteGrid}>
+        <TileGrid>
           {visible.map(src => (
             <Pressable
               key={src.id}
               onPress={() => navigation.navigate('Catalog', { sourceId: src.id })}
-              style={({ pressed }) => [styles.site, { backgroundColor: c.surfaceAlt }, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
             >
-              <View>
-                <Favicon url={src.baseUrl} label={src.name} size={32} />
-                <View style={[styles.siteType, { backgroundColor: c.badgeType, borderColor: c.surfaceAlt }]}>
+              <View style={[styles.iconTile, { backgroundColor: c.surfaceAlt }]}>
+                <Favicon url={src.baseUrl} label={src.name} size={26} />
+                <View style={[styles.siteType, { backgroundColor: c.badgeType, borderColor: c.bg }]}>
                   <Text style={styles.siteTypeText}>{typeLabelOf(src.content)}</Text>
                 </View>
               </View>
-              <View style={styles.flex}>
-                <Text numberOfLines={1} style={[font.label, { color: c.text }]}>
-                  {src.name}
-                </Text>
-                <Text numberOfLines={1} style={[styles.small, { color: c.muted }]}>
-                  {`${src.content === 'novel' ? 'Tiểu thuyết' : 'Truyện tranh'} · ${languageName(src.lang)}`}
-                </Text>
-              </View>
+              <Text numberOfLines={1} style={[styles.tileLabel, { color: c.textSecondary }]}>
+                {src.name}
+              </Text>
             </Pressable>
           ))}
-        </View>
+          {addTiles(gridFill(visible.length, limit), { label: 'Thêm site', onPress: addSite })}
+        </TileGrid>
       ) : (
         <EmptyHint
           text="Chưa ghim site truyện nào. Chọn site trong danh sách site được hỗ trợ để ghim vào đây."
-          action={{ label: 'Chọn site', onPress: () => navigation.navigate('Addons') }}
+          action={{ label: 'Chọn site', onPress: addSite }}
         />
       )}
     </WidgetSection>
@@ -324,12 +393,14 @@ export function MediaSitesWidget({ limit, tourRef }: { limit: number; tourRef?: 
 }
 
 
-export function BookmarksWidget({ content, limit }: { content: ContentType; limit: number }) {
+export function BookmarksWidget({ widget, content }: { widget: HomeWidget; content: ContentType }) {
+  const { c } = useTheme();
   const navigation = useAppNavigation();
   const bookmarks = useLibrary(s => s.bookmarks);
   const sort = useLibrary(s => s.sort);
   const allowNsfw = useAllowNsfw();
   const sourceInfo = useSourceInfo();
+  const limit = widget.limit;
   const list = useMemo(
     () =>
       sortBookmarks(
@@ -339,36 +410,39 @@ export function BookmarksWidget({ content, limit }: { content: ContentType; limi
     [bookmarks, content, sort, limit],
   );
   const novel = content === 'novel';
+  const findMore = () => navigation.navigate('MangaSearch');
 
   return (
     <WidgetSection
+      widget={widget}
       title={novel ? 'Tiểu thuyết đã lưu' : 'Truyện tranh đã lưu'}
-      action={list.length ? { label: 'Xem tất cả', onPress: () => navigation.navigate('Bookmarks', { tab: 'media' }) } : undefined}
+      help={`${novel ? 'Tiểu thuyết' : 'Truyện tranh'} bạn đã bookmark, dấu ở góc bìa cho biết có chương mới hoặc chương chưa đọc. Mở trang truyện và bấm bookmark để thêm vào đây.`}
+      onTitlePress={() => navigation.navigate('Bookmarks', { tab: 'media' })}
     >
       {list.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
+        <TileGrid>
           {list.map(b => {
-            const info = sourceInfo(b.sourceId);
             const ribbon: CoverRibbon | undefined = b.newChapters ? 'new' : b.unread ? 'unread' : undefined;
             return (
-              <View key={b.key} style={styles.coverCard}>
-                <MangaGridItem
-                  title={b.title}
-                  subtitle={b.unread ? `${b.unread} chương chưa đọc` : b.latestChapter}
-                  cover={b.cover}
-                  headers={info?.headers}
-                  ribbon={ribbon}
-                  siteLabel={info?.name}
-                  typeLabel={typeLabelOf(b.content)}
-                  blur={!!b.nsfw && !allowNsfw}
-                  onPress={() =>
-                    navigation.navigate('MangaDetail', { sourceId: b.sourceId, url: b.url, title: b.title, cover: b.cover })
-                  }
-                />
-              </View>
+              <Pressable
+                key={b.key}
+                onPress={() =>
+                  navigation.navigate('MangaDetail', { sourceId: b.sourceId, url: b.url, title: b.title, cover: b.cover })
+                }
+                style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
+              >
+                <View style={styles.coverTile}>
+                  <Cover uri={b.cover} headers={sourceInfo(b.sourceId)?.headers} blur={!!b.nsfw && !allowNsfw} />
+                  <CoverOverlays ribbon={ribbon} />
+                </View>
+                <Text numberOfLines={2} style={[styles.coverLabel, { color: c.text }]}>
+                  {b.title}
+                </Text>
+              </Pressable>
             );
           })}
-        </ScrollView>
+          {addTiles(gridFill(list.length, limit), { cover: true, label: 'Tìm truyện', onPress: findMore })}
+        </TileGrid>
       ) : (
         <EmptyHint
           text={
@@ -376,6 +450,7 @@ export function BookmarksWidget({ content, limit }: { content: ContentType; limi
               ? 'Chưa có tiểu thuyết nào được lưu. Mở trang truyện và bấm bookmark để theo dõi chương mới.'
               : 'Chưa có truyện nào được lưu. Mở trang truyện và bấm bookmark để theo dõi chương mới.'
           }
+          action={{ label: 'Tìm truyện', onPress: findMore }}
         />
       )}
     </WidgetSection>
@@ -383,29 +458,29 @@ export function BookmarksWidget({ content, limit }: { content: ContentType; limi
 }
 
 
-export function WebBookmarksWidget({ limit, onOpenUrl }: { limit: number; onOpenUrl: (url: string) => void }) {
-  const { c } = useTheme();
+export function WebBookmarksWidget({ widget, onOpenUrl }: { widget: HomeWidget; onOpenUrl: (url: string) => void }) {
   const navigation = useAppNavigation();
   const bookmarks = useBrowser(s => s.webBookmarks);
-  const shown = bookmarks.slice(0, limit);
+  const shown = bookmarks.slice(0, widget.limit);
 
   return (
     <WidgetSection
+      widget={widget}
       title="Trang đã đánh dấu"
-      action={shown.length ? { label: 'Xem tất cả', onPress: () => navigation.navigate('Bookmarks', { tab: 'web' }) } : undefined}
+      help="Các trang web bạn đã đánh dấu, mới nhất ở đầu. Khi đang xem trang, mở menu ⋮ và bấm biểu tượng ngôi sao để thêm vào đây."
+      onTitlePress={() => navigation.navigate('Bookmarks', { tab: 'web' })}
+      flush={shown.length > 0}
     >
       {shown.length ? (
-        <View style={[styles.card, { backgroundColor: c.surfaceAlt }]}>
-          {shown.map(b => (
-            <ListItem
-              key={b.id}
-              left={<Favicon url={b.url} label={b.title} size={22} />}
-              title={b.title || displayUrl(b.url)}
-              subtitle={displayUrl(b.url)}
-              onPress={() => onOpenUrl(b.url)}
-            />
-          ))}
-        </View>
+        shown.map(b => (
+          <ListItem
+            key={b.id}
+            left={<Favicon url={b.url} label={b.title} size={22} />}
+            title={b.title || displayUrl(b.url)}
+            subtitle={displayUrl(b.url)}
+            onPress={() => onOpenUrl(b.url)}
+          />
+        ))
       ) : (
         <EmptyHint text="Chưa có trang nào được đánh dấu. Khi đang xem trang, mở menu ⋮ và bấm biểu tượng ngôi sao." />
       )}
@@ -414,48 +489,49 @@ export function WebBookmarksWidget({ limit, onOpenUrl }: { limit: number; onOpen
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   pressed: { opacity: 0.7 },
-  small: { fontSize: 11 },
-  section: { gap: space.sm },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, minHeight: 32 },
-  sectionTitle: { fontSize: 17, fontWeight: '600' },
-  textButton: { paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.pill },
-  emptyCard: {
-    marginHorizontal: space.md,
+  section: { gap: space.xs },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingLeft: space.lg, paddingRight: space.sm },
+  titleButton: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 36 },
+  sectionTitle: { flexShrink: 1, fontSize: 18, fontWeight: '700' },
+  headerButton: { width: 34, height: 34, borderRadius: 17 },
+  box: {
+    marginHorizontal: space.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed',
     borderRadius: radius.lg,
-    padding: space.lg,
-    gap: space.md,
+    padding: space.sm,
   },
-  emptyButton: { alignSelf: 'flex-start' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: space.sm },
-  tile: { width: '25%', alignItems: 'center', gap: 6, paddingVertical: space.sm },
-  tileIcon: {
-    width: 56,
-    height: 56,
+  flush: { padding: 0, overflow: 'hidden' },
+  empty: { padding: space.sm, gap: space.md },
+  emptyButton: { alignSelf: 'stretch' },
+  gridRow: { flexDirection: 'row' },
+  tile: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6, paddingHorizontal: 3, paddingVertical: space.xs },
+  iconTile: {
+    width: 48,
+    height: 48,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addTile: { borderWidth: 1.5, borderStyle: 'dashed' },
-  tileLabel: { fontSize: 12, maxWidth: 76, textAlign: 'center' },
-  hList: { paddingHorizontal: space.sm + 2 },
-  coverCard: { width: 118 },
-  siteGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: space.md, gap: space.sm },
-  site: {
-    flexDirection: 'row',
+  tileLabel: { alignSelf: 'stretch', fontSize: 12, textAlign: 'center' },
+  coverTile: { width: '100%', maxWidth: 120 },
+  coverAdd: {
+    width: '100%',
+    maxWidth: 120,
+    aspectRatio: 2 / 3,
+    borderRadius: radius.md,
     alignItems: 'center',
-    gap: space.sm,
-    flexBasis: '47%',
-    flexGrow: 1,
-    maxWidth: '50%',
-    padding: space.md,
-    borderRadius: radius.lg,
+    justifyContent: 'center',
   },
+  coverLabel: { alignSelf: 'stretch', fontSize: 11, lineHeight: 14, fontWeight: '600', textAlign: 'center' },
+  hList: { padding: space.xs },
+  coverCard: { width: 108 },
   siteType: {
     position: 'absolute',
-    right: -5,
-    bottom: -5,
+    right: -4,
+    bottom: -4,
     width: 17,
     height: 17,
     borderRadius: 4,
@@ -464,5 +540,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   siteTypeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  card: { borderRadius: radius.lg, overflow: 'hidden', marginHorizontal: space.md },
 });

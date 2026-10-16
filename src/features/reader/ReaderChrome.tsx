@@ -1,63 +1,65 @@
 import { memo, useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useShallow } from 'zustand/react/shallow';
 
-import { AddonBar } from '../../components/AddressBarParts';
 import {
+  ArrowLeft,
   ArrowLeftRight,
   ArrowUpDown,
-  CircleHelp,
+  Bookmark,
+  CircleChevronDown,
+  Download,
+  GalleryThumbnails,
   Hand,
-  LayoutGrid,
   List,
-  Maximize2,
-  Minimize2,
-  PanelBottom,
   Pause,
   Play,
   ScreenLockLandscape,
   ScreenLockPortrait,
   ScreenRotation,
-  SkipBack,
-  SkipForward,
+  Settings,
+  SplitScreen,
+  Square,
   Sun,
 } from '../../components/icons';
 import type { OrientationLock } from '../../lib/screen';
-import type { ViewMode } from '../../store/useReaderSettings';
-import { space } from '../../theme';
+import type { DownloadStatus } from '../../store/useDownloads';
+import { useReaderSettings, type ViewMode } from '../../store/useReaderSettings';
+import { radius, space } from '../../theme';
 import {
   BrightnessSlider,
   CHROME_ACCENT,
-  CHROME_BAR,
   CHROME_FG,
   CHROME_SCRIM,
   ChromeButton,
+  ChromeSlider,
   ProgressSlider,
+  SIDE_TOOLBAR_WIDTH,
   SideToolbar,
   useChromeAnimation,
 } from './chromeParts';
 import type { ValueStore } from './valueStore';
 
 export type ReaderChromeActions = {
-  onPrev: () => void;
-  onNext: () => void;
+  onBack: () => void;
   onSeek: (page: number) => void;
   onOpenChapters: () => void;
-  onOpenSettings: () => void;
+  onOpenOverview: () => void;
   onOpenMenu: () => void;
   onOpenModes: () => void;
-  onOpenHelp: () => void;
+  onBookmark: () => void;
+  onDownload: () => void;
   onToggleTapToScroll: () => void;
+  onToggleViewMode: () => void;
   onToggleDirection: () => void;
   onToggleGap: () => void;
   onToggleAutoScroll: () => void;
-  onToggleImmersive: () => void;
   onToggleOrientation: () => void;
 };
 
 type Props = {
   visible: boolean;
-  chapterUrl: string;
   chapterName: string;
   pageStore: ValueStore<number>;
   total: number;
@@ -65,19 +67,25 @@ type Props = {
   rtl: boolean;
   pageGap: boolean;
   autoPlaying: boolean;
-  immersive: boolean;
   tapToScroll: boolean;
+  bookmarked: boolean;
+  downloadStatus?: DownloadStatus;
   orientationLock?: OrientationLock;
-  hasPrev: boolean;
-  hasNext: boolean;
   actions: ReaderChromeActions;
 };
 
 const on = (active: boolean) => (active ? CHROME_ACCENT : CHROME_FG);
 
+const DOWNLOAD_LABEL: Record<DownloadStatus, string> = {
+  queued: 'Chương đang chờ tải',
+  downloading: 'Đang tải chương',
+  paused: 'Đã tạm dừng tải chương',
+  done: 'Đã tải chương',
+  error: 'Tải chương lỗi, bấm để thử lại',
+};
+
 export const ReaderChrome = memo(function ReaderChromeView({
   visible,
-  chapterUrl,
   chapterName,
   pageStore,
   total,
@@ -85,20 +93,21 @@ export const ReaderChrome = memo(function ReaderChromeView({
   rtl,
   pageGap,
   autoPlaying,
-  immersive,
   tapToScroll,
+  bookmarked,
+  downloadStatus,
   orientationLock,
-  hasPrev,
-  hasNext,
   actions,
 }: Props) {
   const insets = useSafeAreaInsets();
   const anim = useChromeAnimation(visible);
   const [brightness, setBrightness] = useState(false);
+  const [speedOpen, setSpeedOpen] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setBrightness(false);
+      setSpeedOpen(false);
     }
   }, [visible]);
 
@@ -107,57 +116,45 @@ export const ReaderChrome = memo(function ReaderChromeView({
 
   return (
     <>
-      <Animated.View pointerEvents={anim.pointerEvents} style={[styles.top, anim.top]}>
-        <AddonBar url={chapterUrl} onMenu={actions.onOpenMenu} />
-        <View style={styles.titleRow}>
+      <Animated.View pointerEvents={anim.pointerEvents} style={[styles.top, { paddingTop: insets.top }, anim.top]}>
+        <View style={styles.topRow}>
+          <ChromeButton icon={ArrowLeft} onPress={actions.onBack} accessibilityLabel="Quay lại" />
           <Text numberOfLines={1} style={styles.title}>
             {chapterName}
           </Text>
+          <ChromeButton
+            icon={Bookmark}
+            color={on(bookmarked)}
+            filled={bookmarked}
+            onPress={actions.onBookmark}
+            accessibilityLabel={bookmarked ? 'Đã lưu bookmark' : 'Thêm vào bookmark'}
+          />
           <ChromeButton
             icon={Hand}
             color={on(tapToScroll)}
             onPress={actions.onToggleTapToScroll}
             accessibilityLabel={tapToScroll ? 'Tắt chạm để cuộn' : 'Bật chạm để cuộn'}
           />
-          <ChromeButton icon={CircleHelp} onPress={actions.onOpenHelp} accessibilityLabel="Vùng chạm và cử chỉ" />
+          <ChromeButton
+            icon={CircleChevronDown}
+            color={on(autoPlaying || speedOpen)}
+            onPress={() => setSpeedOpen(value => !value)}
+            accessibilityLabel="Tự cuộn"
+          />
+          <ChromeButton icon={Settings} onPress={actions.onOpenMenu} accessibilityLabel="Cài đặt đọc" />
         </View>
       </Animated.View>
 
       {total > 0 && (
         <Animated.View pointerEvents={anim.pointerEvents} style={[styles.layer, anim.side]}>
           <SideToolbar>
-            <ChromeButton icon={LayoutGrid} onPress={actions.onOpenModes} accessibilityLabel="Chế độ xem" />
-            {vertical ? (
-              <ChromeButton
-                icon={ArrowUpDown}
-                color={on(pageGap)}
-                onPress={actions.onToggleGap}
-                accessibilityLabel={pageGap ? 'Bỏ khoảng cách giữa trang' : 'Thêm khoảng cách giữa trang'}
-              />
-            ) : (
-              <ChromeButton
-                icon={horizontalAxis ? ArrowLeftRight : ArrowUpDown}
-                color={on(horizontalAxis && rtl)}
-                disabled={!horizontalAxis}
-                onPress={actions.onToggleDirection}
-                accessibilityLabel={rtl ? 'Đọc từ trái sang phải' : 'Đọc từ phải sang trái'}
-              />
-            )}
-            {vertical ? (
-              <ChromeButton
-                icon={autoPlaying ? Pause : Play}
-                color={on(autoPlaying)}
-                onPress={actions.onToggleAutoScroll}
-                accessibilityLabel={autoPlaying ? 'Dừng tự cuộn' : 'Tự cuộn'}
-              />
-            ) : (
-              <ChromeButton
-                icon={immersive ? Minimize2 : Maximize2}
-                color={on(immersive)}
-                onPress={actions.onToggleImmersive}
-                accessibilityLabel={immersive ? 'Tắt toàn màn hình' : 'Toàn màn hình'}
-              />
-            )}
+            <ChromeButton icon={GalleryThumbnails} onPress={actions.onOpenOverview} accessibilityLabel="Tổng quan trang" />
+            <ChromeButton
+              icon={vertical ? ArrowUpDown : ArrowLeftRight}
+              onPress={actions.onToggleViewMode}
+              onLongPress={actions.onOpenModes}
+              accessibilityLabel={vertical ? 'Chuyển sang lật trang ngang' : 'Chuyển sang cuộn dọc'}
+            />
             {orientationLock && (
               <OrientationButton lock={orientationLock} color={CHROME_FG} onPress={actions.onToggleOrientation} />
             )}
@@ -165,34 +162,46 @@ export const ReaderChrome = memo(function ReaderChromeView({
         </Animated.View>
       )}
 
+      {speedOpen && visible && (
+        <View pointerEvents="box-none" style={styles.center}>
+          <AutoScrollCard playing={autoPlaying} enabled={vertical} onToggle={actions.onToggleAutoScroll} />
+        </View>
+      )}
+
       <Animated.View pointerEvents={anim.pointerEvents} style={[styles.bottom, anim.bottom]}>
         {brightness && (
-          <View style={[styles.scrimRow, styles.brightness]}>
+          <View style={[styles.sliderRow, styles.inset]}>
             <BrightnessSlider />
           </View>
         )}
         {total > 0 && (
-          <View style={styles.scrimRow}>
-            <ChromeButton
-              icon={SkipBack}
-              size={20}
-              disabled={!hasPrev}
-              onPress={actions.onPrev}
-              accessibilityLabel="Chương trước"
-            />
+          <View style={[styles.sliderRow, styles.inset]}>
             <ProgressSlider store={pageStore} total={total} onSeek={actions.onSeek} />
-            <ChromeButton
-              icon={SkipForward}
-              size={20}
-              disabled={!hasNext}
-              onPress={actions.onNext}
-              accessibilityLabel="Chương sau"
-            />
           </View>
         )}
         <View style={[styles.toolbar, { paddingBottom: insets.bottom }]}>
           <ChromeButton icon={List} onPress={actions.onOpenChapters} accessibilityLabel="Chọn chương" />
-          <ChromeButton icon={PanelBottom} onPress={actions.onOpenSettings} accessibilityLabel="Cài đặt trình xem" />
+          <ChromeButton
+            icon={Download}
+            color={on(downloadStatus === 'done')}
+            onPress={actions.onDownload}
+            accessibilityLabel={downloadStatus ? DOWNLOAD_LABEL[downloadStatus] : 'Tải chương này'}
+          />
+          {vertical ? (
+            <ChromeButton
+              icon={pageGap ? SplitScreen : Square}
+              onPress={actions.onToggleGap}
+              accessibilityLabel={pageGap ? 'Bỏ khoảng cách giữa trang' : 'Thêm khoảng cách giữa trang'}
+            />
+          ) : (
+            <ChromeButton
+              icon={ArrowLeftRight}
+              color={on(horizontalAxis && rtl)}
+              disabled={!horizontalAxis}
+              onPress={actions.onToggleDirection}
+              accessibilityLabel={rtl ? 'Đọc từ trái sang phải' : 'Đọc từ phải sang trái'}
+            />
+          )}
           <ChromeButton
             icon={Sun}
             color={on(brightness)}
@@ -204,6 +213,42 @@ export const ReaderChrome = memo(function ReaderChromeView({
     </>
   );
 });
+
+function AutoScrollCard({ playing, enabled, onToggle }: { playing: boolean; enabled: boolean; onToggle: () => void }) {
+  const { speed, setSpeed } = useReaderSettings(
+    useShallow(state => ({ speed: state.autoScrollSpeed, setSpeed: state.setAutoScrollSpeed })),
+  );
+  const [preview, setPreview] = useState<number | null>(null);
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>Tốc độ tự cuộn (chỉ chế độ dọc)</Text>
+      <View style={styles.cardRow}>
+        <ChromeSlider
+          value={speed}
+          min={10}
+          max={400}
+          step={5}
+          disabled={!enabled}
+          onChange={setPreview}
+          onComplete={value => {
+            setPreview(null);
+            setSpeed(value);
+          }}
+          style={styles.flex}
+        />
+        <Text style={styles.cardValue}>{preview ?? speed} px/giây</Text>
+        <ChromeButton
+          icon={playing ? Pause : Play}
+          color={on(playing)}
+          disabled={!enabled}
+          onPress={onToggle}
+          accessibilityLabel={playing ? 'Dừng tự cuộn' : 'Bắt đầu tự cuộn'}
+        />
+      </View>
+      {!enabled && <Text style={styles.cardNote}>Chuyển sang chế độ cuộn dọc để dùng tự cuộn.</Text>}
+    </View>
+  );
+}
 
 const ORIENTATION_ICONS = {
   auto: ScreenRotation,
@@ -231,31 +276,40 @@ export function OrientationButton({
 }
 
 const styles = StyleSheet.create({
-  top: { position: 'absolute', top: 0, left: 0, right: 0 },
+  flex: { flex: 1 },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: CHROME_SCRIM },
+  topRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: space.xs },
+  title: { flex: 1, color: CHROME_FG, fontSize: 17, fontWeight: '500', paddingHorizontal: space.xs },
   layer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 44,
-    paddingLeft: space.lg,
-    paddingRight: space.xs,
-    backgroundColor: CHROME_SCRIM,
+  center: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    paddingLeft: space.xl,
+    paddingRight: SIDE_TOOLBAR_WIDTH + space.sm,
   },
-  title: { flex: 1, color: CHROME_FG, fontSize: 16, fontWeight: '500', paddingRight: space.sm },
-  scrimRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 48,
-    paddingHorizontal: space.xs,
-    backgroundColor: CHROME_SCRIM,
-  },
-  brightness: { paddingHorizontal: space.lg },
+  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: CHROME_SCRIM },
+  sliderRow: { flexDirection: 'row', alignItems: 'center', minHeight: 48 },
+  inset: { paddingHorizontal: space.lg },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     minHeight: 52,
-    backgroundColor: CHROME_BAR,
   },
+  card: {
+    borderRadius: radius.lg,
+    paddingLeft: space.lg,
+    paddingRight: space.xs,
+    paddingVertical: space.md,
+    gap: space.xs,
+    backgroundColor: 'rgba(28,28,28,0.94)',
+  },
+  cardTitle: { color: CHROME_FG, fontSize: 15 },
+  cardValue: { color: 'rgba(255,255,255,0.7)', fontSize: 12, minWidth: 64, textAlign: 'right' },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  cardNote: { color: 'rgba(255,255,255,0.65)', fontSize: 12, paddingRight: space.md },
 });

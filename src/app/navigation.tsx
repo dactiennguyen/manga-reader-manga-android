@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { AddonDetailScreen } from '../features/addons/AddonDetailScreen';
 import { AddonManagerScreen } from '../features/addons/AddonManagerScreen';
 import { AddonsScreen } from '../features/addons/AddonsScreen';
 import { AddSiteScreen } from '../features/addons/AddSiteScreen';
@@ -50,6 +51,7 @@ export function RootNavigator() {
       <Stack.Screen name="Downloads" component={DownloadsScreen} />
       <Stack.Screen name="Addons" component={AddonsScreen} />
       <Stack.Screen name="AddonManager" component={AddonManagerScreen} />
+      <Stack.Screen name="AddonDetail" component={AddonDetailScreen} />
       <Stack.Screen name="AddSite" component={AddSiteScreen} />
       <Stack.Screen name="SourceSettings" component={SourceSettingsScreen} />
       <Stack.Screen name="Catalog" component={CatalogScreen} options={{ animation: 'fade' }} />

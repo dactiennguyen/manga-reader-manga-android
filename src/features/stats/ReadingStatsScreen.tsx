@@ -11,6 +11,7 @@ import {
   EllipsisVertical,
   Flame,
   History,
+  Hourglass,
   Layers,
   RotateCcw,
   Search,
@@ -146,6 +147,11 @@ export function ReadingStatsScreen() {
               <StatTile icon={BookOpen} label="Chương đã đọc" value={formatCount(stats.totalChapters)} />
               <StatTile icon={Layers} label="Phiên đọc" value={formatCount(stats.totalSessions)} />
               <StatTile icon={Timer} label="Phiên dài nhất" value={formatDuration(stats.longestSession)} />
+              <StatTile
+                icon={Hourglass}
+                label="Thời gian TB mỗi phiên"
+                value={formatDuration(stats.totalSessions ? stats.totalSeconds / stats.totalSessions : 0)}
+              />
             </View>
           </Section>
 

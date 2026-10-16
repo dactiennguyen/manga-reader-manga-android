@@ -13,6 +13,7 @@ import type { Page } from '../../sources/types';
 import { PageImage } from './PageImage';
 import { useAutoScroll, type ScrollMetrics } from './useAutoScroll';
 import type { ViewerProps } from './viewerTypes';
+import { ZoomContainer, type ZoomHandle } from './ZoomContainer';
 
 type Props = ViewerProps & {
   pageGap: boolean;
@@ -72,6 +73,7 @@ export const VerticalViewer = memo(function VerticalViewerView({
   onVerify,
 }: Props) {
   const listRef = useRef<FlashListRef<Page>>(null);
+  const zoomRef = useRef<ZoomHandle>(null);
   const [initialPage] = useState(getInitialPage);
   const metrics = useRef<ScrollMetrics>({
     offset: 0,
@@ -109,6 +111,11 @@ export const VerticalViewer = memo(function VerticalViewerView({
       onEndVisible(atEnd);
     }
   }, [pages.length, onPageChange, onEndVisible]);
+
+  const listEdges = useCallback(() => {
+    const m = metrics.current;
+    return { atTop: m.offset <= 1, atBottom: m.offset >= m.contentHeight - m.viewport - 1 };
+  }, []);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -185,7 +192,8 @@ export const VerticalViewer = memo(function VerticalViewerView({
         if ((direction > 0 && m.offset >= max - 1) || (direction < 0 && m.offset <= 1)) {
           return false;
         }
-        const target = Math.min(max, Math.max(0, m.offset + direction * m.viewport * STEP_RATIO));
+        const visible = m.viewport / (zoomRef.current?.scale() ?? 1);
+        const target = Math.min(max, Math.max(0, m.offset + direction * visible * STEP_RATIO));
         if (autoScrollRef.current) {
           m.offset = target;
           m.resync = true;
@@ -195,6 +203,7 @@ export const VerticalViewer = memo(function VerticalViewerView({
         }
         return true;
       },
+      toggleZoom: (pageX, pageY) => zoomRef.current?.toggleAt(pageX, pageY),
     }),
     [pages.length, onPageChange],
   );
@@ -232,23 +241,25 @@ export const VerticalViewer = memo(function VerticalViewerView({
   );
 
   return (
-    <FlashList
-      ref={listRef}
-      data={pages}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      initialScrollIndex={initialPage > 0 ? initialPage : undefined}
-      ItemSeparatorComponent={pageGap ? PageGap : undefined}
-      ListFooterComponent={footerNode}
-      drawDistance={Math.max(250, height * Math.max(1, preloadPages))}
-      onScroll={handleScroll}
-      scrollEventThrottle={16}
-      onContentSizeChange={handleContentSize}
-      onScrollBeginDrag={onBeginDrag}
-      onScrollEndDrag={onEndDrag}
-      onMomentumScrollEnd={onMomentumEnd}
-      showsVerticalScrollIndicator={false}
-    />
+    <ZoomContainer ref={zoomRef} width={width} height={height} mode="vertical" listEdges={listEdges}>
+      <FlashList
+        ref={listRef}
+        data={pages}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        initialScrollIndex={initialPage > 0 ? initialPage : undefined}
+        ItemSeparatorComponent={pageGap ? PageGap : undefined}
+        ListFooterComponent={footerNode}
+        drawDistance={Math.max(250, height * Math.max(1, preloadPages))}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onContentSizeChange={handleContentSize}
+        onScrollBeginDrag={onBeginDrag}
+        onScrollEndDrag={onEndDrag}
+        onMomentumScrollEnd={onMomentumEnd}
+        showsVerticalScrollIndicator={false}
+      />
+    </ZoomContainer>
   );
 });
 

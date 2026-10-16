@@ -237,11 +237,13 @@ export function Button({
 export function Fab({
   icon: Icon,
   label,
+  accessibilityLabel,
   onPress,
   style,
 }: {
   icon: LucideIcon;
   label?: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -251,7 +253,7 @@ export function Fab({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       style={({ pressed }) => [
         styles.fab,
         { backgroundColor: c.primaryContainer, bottom: insets.bottom + 20, opacity: pressed ? 0.85 : 1 },

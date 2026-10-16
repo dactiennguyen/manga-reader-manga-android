@@ -1,14 +1,24 @@
-import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  RefreshControl,
+  ScrollView,
+  Share,
+  StatusBar,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { openInBrowser, useAppNavigation, type RootStackParamList } from '../../app/routes';
-import { AddonBar } from '../../components/AddressBarParts';
 import { ErrorView } from '../../components/ErrorView';
 import { MangaGridItem } from '../../components/MangaCard';
-import { Bookmark, BookmarkPlus, BookOpen, Lock, Play, SearchX, X } from '../../components/icons';
-import { EmptyState, Fab, Header, IconButton, LoadingView, Screen, TabBar, toast } from '../../components/ui';
+import { PreviewSheet } from '../../components/PreviewSheet';
+import { BookOpen, CirclePlay, Lock, SearchX } from '../../components/icons';
+import { EmptyState, Fab, Header, LoadingView, Screen, toast } from '../../components/ui';
 import { getEngine, mangaKey } from '../../sources';
 import type { Chapter, Genre, MangaItem, SourceConfig } from '../../sources/types';
 import { getProgress, useProgress } from '../../store/progress';
@@ -16,13 +26,15 @@ import { useDownloads, type DownloadManga } from '../../store/useDownloads';
 import { useIsBookmarked } from '../../store/useLibrary';
 import { useAllowNsfw, useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
-import { space, useTheme } from '../../theme';
+import { radius, space, useTheme } from '../../theme';
 import { BookmarkDialog, type BookmarkTarget } from './BookmarkDialog';
 import { ChapterRow } from './ChapterRow';
+import { ChapterSelectDialog } from './ChapterSelectDialog';
 import { READ_LABEL, readTarget, scanlatorGroups } from './chapters';
 import { ChapterSummaryDialog } from './ChapterSummaryDialog';
 import { ChapterToolbar } from './ChapterToolbar';
-import { DetailBottomBar, DetailMenu, ToolButton } from './DetailActions';
+import { DetailBottomBar, DetailMenu } from './DetailActions';
+import { DetailHeader, HEADER_BAR_HEIGHT, HEADER_TABS_HEIGHT } from './DetailHeader';
 import { DetailInfo } from './DetailInfo';
 import { DownloadChapterDialog } from './DownloadChapterDialog';
 import { MarkChapterDialog, type ChapterTarget } from './MarkChapterDialog';
@@ -78,6 +90,7 @@ export function MangaDetailScreen() {
 function DetailBody({ source, params }: { source: SourceConfig; params: DetailParams }) {
   const navigation = useAppNavigation();
   const { c } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const allowNsfw = useAllowNsfw();
   const newTab = useSettings(s => s.openNativeLinksInNewTab);
@@ -101,6 +114,8 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
   const pageUrl = detail?.url ?? params.url;
 
   const listRef = useRef<FlashListRef<Row>>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [headerHeight, setHeaderHeight] = useState(0);
   const [tab, setTab] = useState<Tab>('info');
   const [ascending, setAscending] = useState(false);
   const [scanlator, setScanlator] = useState<string | null>(null);
@@ -108,8 +123,26 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
   const [markTarget, setMarkTarget] = useState<ChapterTarget>();
   const [markOpen, setMarkOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const bookmarkSheet = useSheetState();
   const downloadSheet = useSheetState();
+  const selectSheet = useSheetState();
+
+  const selectOpen = selectSheet.visible;
+  useFocusEffect(
+    useCallback(() => {
+      if (selectOpen) {
+        return undefined;
+      }
+      const entry = StatusBar.pushStackEntry({ barStyle: 'light-content' });
+      return () => StatusBar.popStackEntry(entry);
+    }, [selectOpen]),
+  );
+
+  const onScroll = useMemo(
+    () => Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false }),
+    [scrollY],
+  );
 
   const groups = useMemo(() => scanlatorGroups(chapters), [chapters]);
   const activeGroup = scanlator && groups.some(g => g.name === scanlator) ? scanlator : null;
@@ -123,6 +156,11 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     });
     return ascending ? rows.reverse() : rows;
   }, [chapters, activeGroup, ascending]);
+
+  const visibleChapters = useMemo(
+    () => (activeGroup ? chapters.filter(ch => ch.scanlator === activeGroup) : chapters),
+    [chapters, activeGroup],
+  );
 
   const similarWidth = Math.min(140, Math.max(100, Math.floor(width / 3.4)));
   const similarRows = useMemo<Row[]>(() => (similar.length ? [{ type: 'similar', items: similar }] : []), [similar]);
@@ -170,9 +208,11 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
   );
 
   const openWeb = useCallback(
-    (url: string) => openInBrowser(navigation, url, { newTab }),
+    (url: string) => openInBrowser(navigation, url, { newTab, original: true }),
     [navigation, newTab],
   );
+
+  const openTab = useCallback((url: string) => openInBrowser(navigation, url, { newTab: true }), [navigation]);
 
   const openCatalog = useCallback(
     (genre?: Genre) => navigation.navigate('Catalog', genre ? { sourceId: source.id, genre } : { sourceId: source.id }),
@@ -227,10 +267,14 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     Share.share({ title, message: `${title}\n${params.url}` }).catch(() => {});
   }, [title, params.url]);
 
-  const switchTab = useCallback((next: Tab) => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-    setTab(next);
-  }, []);
+  const switchTab = useCallback(
+    (next: Tab) => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      scrollY.setValue(0);
+      setTab(next);
+    },
+    [scrollY],
+  );
 
   const toggleOrder = useCallback(() => {
     setAscending(v => !v);
@@ -337,28 +381,10 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
     );
   }
 
+  const topInset = headerHeight || insets.top + HEADER_BAR_HEIGHT + HEADER_TABS_HEIGHT + 56;
+
   return (
     <Screen edges={[]}>
-      <AddonBar url={pageUrl} onMenu={() => setMenuOpen(true)} />
-      <TabBar
-        tabs={TABS}
-        value={tab}
-        onChange={switchTab}
-        right={
-          <>
-            <ToolButton
-              icon={bookmarked ? Bookmark : BookmarkPlus}
-              filled={bookmarked}
-              color={bookmarked ? c.accent : undefined}
-              disabled={locked}
-              onPress={bookmarkSheet.open}
-              accessibilityLabel={bookmarked ? 'Đã lưu bookmark' : 'Thêm vào bookmark'}
-            />
-            <IconButton icon={X} size={24} onPress={() => navigation.goBack()} accessibilityLabel="Đóng" />
-          </>
-        }
-      />
-
       <View style={styles.flex}>
         <FlashList
           ref={listRef}
@@ -368,7 +394,14 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
           getItemType={item => item.type}
           extraData={progress}
           maintainVisibleContentPosition={{ disabled: true }}
-          ListHeaderComponent={listHeader}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          ListHeaderComponent={
+            <>
+              <View style={{ height: topInset }} />
+              {listHeader}
+            </>
+          }
           ListEmptyComponent={empty}
           ListFooterComponent={<View style={styles.footer} />}
           refreshControl={
@@ -376,6 +409,7 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={refresh}
+                progressViewOffset={topInset}
                 colors={[c.accent]}
                 tintColor={c.accent}
                 progressBackgroundColor={c.surface}
@@ -383,8 +417,23 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
             )
           }
         />
+        <DetailHeader
+          title={title}
+          cover={cover}
+          headers={headers}
+          bookmarked={bookmarked}
+          locked={locked}
+          tabs={TABS}
+          tab={tab}
+          scrollY={scrollY}
+          onTab={switchTab}
+          onBack={() => navigation.goBack()}
+          onBookmark={bookmarkSheet.open}
+          onMenu={() => setMenuOpen(true)}
+          onHeight={setHeaderHeight}
+        />
         {!locked && target && (
-          <Fab icon={Play} label={READ_LABEL[target.kind]} onPress={read} style={styles.fab} />
+          <Fab icon={CirclePlay} label={READ_LABEL[target.kind]} onPress={read} style={styles.fab} />
         )}
       </View>
 
@@ -393,10 +442,9 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
         ascending={ascending}
         locked={locked}
         hasChapters={chapters.length > 0}
-        canRead={!!target}
         onBookmark={bookmarkSheet.open}
         onDownload={downloadSheet.open}
-        onRead={read}
+        onUpdateProgress={selectSheet.open}
         onToggleOrder={toggleOrder}
       />
 
@@ -405,14 +453,17 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
         onClose={() => setMenuOpen(false)}
         url={pageUrl}
         sourceName={source.name}
+        mangaTitle={detail?.title || params.title}
+        hasChapters={!locked && chapters.length > 0}
         onOpenWeb={() => openWeb(pageUrl)}
         onShare={share}
         onCatalog={() => openCatalog()}
         onSourceSettings={() => navigation.navigate('SourceSettings', { sourceId: source.id })}
+        onUpdateProgress={selectSheet.open}
       />
       {bookmarkSheet.seq > 0 && (
         <BookmarkDialog
-          key={bookmarkSheet.seq}
+          key={`bookmark-${bookmarkSheet.seq}`}
           visible={bookmarkSheet.visible}
           onClose={bookmarkSheet.close}
           target={bookmarkTarget}
@@ -420,11 +471,22 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
       )}
       {downloadSheet.seq > 0 && (
         <DownloadChapterDialog
-          key={downloadSheet.seq}
+          key={`download-${downloadSheet.seq}`}
           visible={downloadSheet.visible}
           onClose={downloadSheet.close}
           manga={downloadManga}
           chapters={chapters}
+        />
+      )}
+      {selectSheet.seq > 0 && (
+        <ChapterSelectDialog
+          key={`select-${selectSheet.seq}`}
+          visible={selectSheet.visible}
+          onClose={selectSheet.close}
+          mangaKey={key}
+          chapters={visibleChapters}
+          group={activeGroup}
+          ascending={ascending}
         />
       )}
       <ChapterSummaryDialog
@@ -441,7 +503,10 @@ function DetailBody({ source, params }: { source: SourceConfig; params: DetailPa
         mangaKey={key}
         onDownload={downloadOne}
         onOpenWeb={chapter => openWeb(chapter.url)}
+        onOpenTab={chapter => openTab(chapter.url)}
+        onPreview={chapter => setPreviewUrl(chapter.url)}
       />
+      <PreviewSheet url={previewUrl} onClose={() => setPreviewUrl(null)} onOpenInTab={openTab} />
     </Screen>
   );
 }
@@ -480,6 +545,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   inline: { flex: 0, paddingVertical: space.xl },
   footer: { height: 96 },
-  fab: { bottom: space.lg },
+  fab: { bottom: space.lg, height: 48, borderRadius: radius.pill, paddingHorizontal: space.lg + 2 },
   similarRow: { paddingHorizontal: space.lg - 6, paddingTop: space.sm },
 });

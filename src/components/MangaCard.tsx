@@ -1,6 +1,7 @@
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { withUserAgent } from '../lib/http';
 import { font, radius, space, useTheme } from '../theme';
 import { BadgeAlert, BookOpen, ImageOff } from './icons';
 
@@ -14,11 +15,15 @@ type CoverProps = {
 function CoverView({ uri, headers, style, blur }: CoverProps) {
   const { c } = useTheme();
   const [failed, setFailed] = useState(false);
+  const source = useMemo(
+    () => (uri && /^https?:/i.test(uri) ? { uri, headers: withUserAgent(headers) } : { uri, headers }),
+    [uri, headers],
+  );
   return (
     <View style={[styles.cover, { backgroundColor: c.skeleton }, style]}>
       {uri && !failed ? (
         <Image
-          source={{ uri, headers }}
+          source={source}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           resizeMethod="resize"

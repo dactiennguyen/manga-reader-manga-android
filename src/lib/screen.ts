@@ -12,3 +12,17 @@ export function setSecureScreen(enabled: boolean): void {
 }
 
 export const orientationSupported = !!NativeScreen;
+
+export type BatteryState = { level: number; charging: boolean };
+
+export function getBatteryState(): BatteryState | undefined {
+  try {
+    const level = NativeScreen?.getBatteryLevel?.();
+    if (typeof level !== 'number' || level < 0) {
+      return undefined;
+    }
+    return { level: Math.round(level), charging: !!NativeScreen?.isCharging?.() };
+  } catch {
+    return undefined;
+  }
+}

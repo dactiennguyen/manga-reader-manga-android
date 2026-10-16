@@ -64,7 +64,7 @@ export function ErrorView({
               title="Mở trang gốc"
               icon={Globe}
               variant="secondary"
-              onPress={() => openInBrowser(navigation, target)}
+              onPress={() => openInBrowser(navigation, target, { original: true })}
             />
           ))}
         {onRetry && (

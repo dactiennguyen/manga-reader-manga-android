@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Image } from 'react-native';
 
+import { withUserAgent } from '../../lib/http';
 import type { Page } from '../../sources/types';
 
 
@@ -54,7 +55,7 @@ export function preloadPages(pages: readonly Page[], from: number, count: number
     } else if (measure && page.headers && !ratios.has(page.uri) && !measuring.has(page.uri)) {
       const { uri } = page;
       measuring.add(uri);
-      Image.getSizeWithHeaders(uri, page.headers)
+      Image.getSizeWithHeaders(uri, withUserAgent(page.headers))
         .then(size => rememberPageRatio(uri, size.height / size.width))
         .catch(() => {})
         .finally(() => measuring.delete(uri));

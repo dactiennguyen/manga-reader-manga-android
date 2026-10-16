@@ -35,7 +35,7 @@ export function ChapterToolbar({
           style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
         >
           <Text style={[font.label, { color: c.text }]}>{count} chương</Text>
-          <ChartPie size={16} color={c.muted} />
+          <ChartPie size={15} color={c.muted} />
         </Pressable>
         {unread > 0 && (
           <View style={[styles.unread, { backgroundColor: c.accentSoft }]}>
@@ -48,7 +48,7 @@ export function ChapterToolbar({
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Đảo thứ tự chương"
-          style={({ pressed }) => [styles.order, { backgroundColor: c.surfaceAlt }, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.order, pressed && styles.pressed]}
         >
           <ArrowDownUp size={14} color={c.textSecondary} />
           <Text style={[font.caption, styles.bold, { color: c.textSecondary }]}>
@@ -89,19 +89,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   summary: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   bold: { fontWeight: '700' },
-  wrap: { paddingTop: space.md, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth },
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg },
+  wrap: { paddingVertical: space.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 32, paddingHorizontal: space.lg },
   unread: { paddingHorizontal: space.sm, paddingVertical: 2, borderRadius: radius.pill },
-  order: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: space.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-  },
+  order: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
   pressed: { opacity: 0.6 },
-  groups: { paddingBottom: 0 },
+  groups: { paddingTop: space.sm, paddingBottom: 0 },
   notice: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -109,7 +102,7 @@ const styles = StyleSheet.create({
     marginHorizontal: space.lg,
     marginTop: space.sm,
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
+    paddingVertical: 6,
     borderRadius: radius.md,
   },
 });

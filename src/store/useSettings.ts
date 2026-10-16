@@ -9,6 +9,10 @@ export type SearchEngineId = 'google' | 'bing' | 'duckduckgo' | 'yahoo' | 'yande
 
 export type SearchCategory = 'web' | 'manga';
 
+export type SafeSearch = 'strict' | 'moderate' | 'off';
+
+export type StartPage = 'home' | 'lastTab' | 'custom';
+
 export type HomeWidgetId =
   | 'quickAccess'
   | 'mediaSites'
@@ -17,7 +21,12 @@ export type HomeWidgetId =
   | 'novelBookmarks'
   | 'webBookmarks';
 
-export type HomeWidget = { id: HomeWidgetId; enabled: boolean; limit: number };
+export type HomeWidget = { id: HomeWidgetId; enabled: boolean; limit: number; collapsed?: boolean };
+
+export const HOME_WIDGET_LIMITS = [5, 10, 15, 20] as const;
+
+export const snapWidgetLimit = (limit: number): number =>
+  HOME_WIDGET_LIMITS.find(n => n >= limit) ?? HOME_WIDGET_LIMITS[HOME_WIDGET_LIMITS.length - 1];
 
 export type NovelFont =
   | 'system'
@@ -44,9 +53,10 @@ export type AppSettings = {
   themeMode: ThemeMode;
   searchEngine: SearchEngineId;
   searchCategory: SearchCategory;
-  safeSearch: boolean;
+  safeSearch: SafeSearch;
   homeWidgets: HomeWidget[];
-  startPage: 'home' | 'lastTab';
+  startPage: StartPage;
+  startPageUrl: string;
   autoCloseTabs: 'never' | 'day' | 'week' | 'month';
   adblock: boolean;
   trackingProtection: boolean;
@@ -61,6 +71,7 @@ export type AppSettings = {
   catalogLayout: 'grid' | 'list';
   checkUpdatesOnLaunch: boolean;
   promptBookmark: boolean;
+  streakPopup: boolean;
   notifyUpdates: boolean;
   addonRepoUrl: string;
   autoUpdateAddons: boolean;
@@ -72,11 +83,11 @@ export type AppSettings = {
 
 export const DEFAULT_HOME_WIDGETS: HomeWidget[] = [
   { id: 'quickAccess', enabled: true, limit: 10 },
-  { id: 'continueReading', enabled: true, limit: 6 },
-  { id: 'mediaSites', enabled: true, limit: 8 },
-  { id: 'mangaBookmarks', enabled: true, limit: 9 },
-  { id: 'novelBookmarks', enabled: true, limit: 6 },
-  { id: 'webBookmarks', enabled: true, limit: 8 },
+  { id: 'continueReading', enabled: true, limit: 10 },
+  { id: 'mediaSites', enabled: true, limit: 10 },
+  { id: 'mangaBookmarks', enabled: true, limit: 10 },
+  { id: 'novelBookmarks', enabled: true, limit: 5 },
+  { id: 'webBookmarks', enabled: true, limit: 5 },
 ];
 
 export const DEFAULT_NOVEL_SETTINGS: NovelSettings = {
@@ -92,9 +103,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   themeMode: 'system',
   searchEngine: 'google',
   searchCategory: 'web',
-  safeSearch: true,
+  safeSearch: 'strict',
   homeWidgets: DEFAULT_HOME_WIDGETS,
   startPage: 'home',
+  startPageUrl: '',
   autoCloseTabs: 'never',
   adblock: true,
   trackingProtection: true,
@@ -109,6 +121,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   catalogLayout: 'grid',
   checkUpdatesOnLaunch: true,
   promptBookmark: true,
+  streakPopup: true,
   notifyUpdates: false,
   addonRepoUrl: '',
   autoUpdateAddons: true,
@@ -154,7 +167,17 @@ export const useSettings = create<AppSettings & SettingsActions>()(
     {
       name: 'settings',
       storage: persistStorage,
-      version: 1,
+      version: 3,
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as { safeSearch?: boolean | SafeSearch; homeWidgets?: HomeWidget[] };
+        if (version < 2 && typeof state.safeSearch === 'boolean') {
+          state.safeSearch = state.safeSearch ? 'strict' : 'off';
+        }
+        if (version < 3 && Array.isArray(state.homeWidgets)) {
+          state.homeWidgets = state.homeWidgets.map(w => ({ ...w, limit: snapWidgetLimit(w.limit) }));
+        }
+        return state as AppSettings & SettingsActions;
+      },
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<AppSettings>;
         const widgets = saved.homeWidgets ?? current.homeWidgets;

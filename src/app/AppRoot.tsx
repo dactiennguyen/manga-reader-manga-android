@@ -1,4 +1,10 @@
-import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  NavigationContainer,
+  useNavigationContainerRef,
+  type Theme,
+} from '@react-navigation/native';
 import { useEffect, useMemo } from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,21 +14,36 @@ import { toast } from '../components/ui';
 import { startDownloader } from '../features/downloads/downloader';
 import { applyUpdateSchedule } from '../features/library/backgroundUpdates';
 import { checkLibraryUpdates } from '../features/library/updates';
+import { StreakCelebration } from '../features/stats/StreakCelebration';
 import { setWebUserAgent } from '../lib/http';
 import { setSecureScreen } from '../lib/screen';
 import { storage } from '../lib/storage';
 import { DAY_MS } from '../lib/time';
+import { sameUrl } from '../lib/url';
 import { configureSources } from '../sources/runtime';
 import { useBrowser } from '../store/useBrowser';
 import { useLibrary } from '../store/useLibrary';
 import { useSettings } from '../store/useSettings';
 import { useTheme } from '../theme';
 import { RootNavigator } from './navigation';
+import type { RootStackParamList } from './routes';
 
 const LAST_UPDATE_CHECK = 'updates:lastRun';
 const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000;
 
 const TAB_MAX_AGE = { never: 0, day: DAY_MS, week: 7 * DAY_MS, month: 30 * DAY_MS } as const;
+
+function openStartPage(url: string) {
+  const browser = useBrowser.getState();
+  const existing = browser.tabs.find(t => !t.incognito && sameUrl(t.url || t.request.url, url));
+  if (existing) {
+    browser.activateTab(existing.id);
+    browser.showHome(existing.id, false);
+    return;
+  }
+  const active = browser.tabs.find(t => t.id === browser.activeTabId);
+  browser.openUrl(url, { newTab: !!(active?.url || active?.request.url) });
+}
 
 function useBootstrap() {
   useEffect(() => {
@@ -47,9 +68,12 @@ function useBootstrap() {
     setWebUserAgent(useBrowser.getState().userAgent);
     const unsubscribeBrowser = useBrowser.subscribe(state => setWebUserAgent(state.userAgent));
 
-    const { autoCloseTabs, checkUpdatesOnLaunch } = useSettings.getState();
+    const { autoCloseTabs, checkUpdatesOnLaunch, startPage, startPageUrl } = useSettings.getState();
     if (autoCloseTabs !== 'never') {
       useBrowser.getState().closeTabsOlderThan(TAB_MAX_AGE[autoCloseTabs]);
+    }
+    if (startPage === 'custom' && startPageUrl) {
+      openStartPage(startPageUrl);
     }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -88,6 +112,7 @@ function useBootstrap() {
 export function AppRoot() {
   const { c, dark } = useTheme();
   const hideStatusBar = useSettings(s => s.hideStatusBar);
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
   useBootstrap();
 
   const navigationTheme = useMemo<Theme>(() => {
@@ -109,9 +134,10 @@ export function AppRoot() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} hidden={hideStatusBar} />
-      <NavigationContainer theme={navigationTheme}>
+      <NavigationContainer ref={navigationRef} theme={navigationTheme}>
         <RootNavigator />
       </NavigationContainer>
+      <StreakCelebration navigation={navigationRef} />
     </SafeAreaProvider>
   );
 }

@@ -1,13 +1,13 @@
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  AutoStories,
   Bookmark,
-  BookmarkPlus,
-  BookOpen,
   Download,
   Globe,
   History,
   LayoutGrid,
+  Search,
   Settings,
   Settings2,
   Share2,
@@ -61,20 +61,18 @@ export function DetailBottomBar({
   ascending,
   locked,
   hasChapters,
-  canRead,
   onBookmark,
   onDownload,
-  onRead,
+  onUpdateProgress,
   onToggleOrder,
 }: {
   bookmarked: boolean;
   ascending: boolean;
   locked: boolean;
   hasChapters: boolean;
-  canRead: boolean;
   onBookmark: () => void;
   onDownload: () => void;
-  onRead: () => void;
+  onUpdateProgress: () => void;
   onToggleOrder: () => void;
 }) {
   const { c } = useTheme();
@@ -84,7 +82,7 @@ export function DetailBottomBar({
       style={[styles.bar, { backgroundColor: c.surface, borderTopColor: c.border, paddingBottom: insets.bottom }]}
     >
       <ToolButton
-        icon={bookmarked ? Bookmark : BookmarkPlus}
+        icon={Bookmark}
         filled={bookmarked}
         color={bookmarked ? c.accent : undefined}
         disabled={locked}
@@ -100,10 +98,10 @@ export function DetailBottomBar({
         style={styles.barItem}
       />
       <ToolButton
-        icon={BookOpen}
-        disabled={locked || !canRead}
-        onPress={onRead}
-        accessibilityLabel="Đọc"
+        icon={AutoStories}
+        disabled={locked || !hasChapters}
+        onPress={onUpdateProgress}
+        accessibilityLabel="Cập nhật tiến độ đọc"
         style={styles.barItem}
       />
       <ToolButton
@@ -122,19 +120,25 @@ export function DetailMenu({
   onClose,
   url,
   sourceName,
+  mangaTitle,
+  hasChapters,
   onOpenWeb,
   onShare,
   onCatalog,
   onSourceSettings,
+  onUpdateProgress,
 }: {
   visible: boolean;
   onClose: () => void;
   url: string;
   sourceName: string;
+  mangaTitle?: string;
+  hasChapters: boolean;
   onOpenWeb: () => void;
   onShare: () => void;
   onCatalog: () => void;
   onSourceSettings: () => void;
+  onUpdateProgress: () => void;
 }) {
   const navigation = useAppNavigation();
   const go = (action: () => void) => {
@@ -147,6 +151,21 @@ export function DetailMenu({
       <ListItem icon={Share2} title="Chia sẻ" onPress={() => go(onShare)} />
       <ListItem icon={LayoutGrid} title={`Catalog ${sourceName}`} onPress={() => go(onCatalog)} />
       <ListItem icon={Settings2} title="Cài đặt nguồn" onPress={() => go(onSourceSettings)} />
+      <Divider />
+      <ListItem
+        icon={AutoStories}
+        title="Cập nhật tiến độ đọc"
+        subtitle="Đánh dấu nhiều chương đã đọc hoặc chưa đọc"
+        disabled={!hasChapters}
+        onPress={() => go(onUpdateProgress)}
+      />
+      <ListItem
+        icon={Search}
+        title="Tìm trên nguồn khác"
+        subtitle="Tìm truyện này trên các site đã thêm"
+        disabled={!mangaTitle}
+        onPress={() => go(() => navigation.navigate('MangaSearch', { query: mangaTitle }))}
+      />
       <Divider />
       <ListItem icon={Bookmark} title="Bookmark" onPress={() => go(() => navigation.navigate('Bookmarks'))} />
       <ListItem icon={History} title="Lịch sử" onPress={() => go(() => navigation.navigate('History'))} />

@@ -7,15 +7,17 @@ import { Eraser } from '../../components/icons';
 import { Button, Checkbox, Divider, Header, Screen, Section, confirm, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { clearDetailCache } from '../../sources/cache';
+import { useBrowser } from '../../store/useBrowser';
 import { useDownloads } from '../../store/useDownloads';
 import { useHistory } from '../../store/useHistory';
 import { font, space, useTheme } from '../../theme';
 import { removeDownloads } from '../downloads/downloader';
 import { formatBytes, formatCount } from '../../lib/format';
 
-type ItemId = 'web' | 'cookies' | 'cache' | 'reading' | 'searches' | 'downloads';
+type ItemId = 'tabs' | 'web' | 'cookies' | 'cache' | 'reading' | 'searches' | 'downloads';
 
-const ITEMS: { id: ItemId; title: string; description: string }[] = [
+const ITEMS: { id: ItemId; title: string; description?: string }[] = [
+  { id: 'tabs', title: 'Đóng tất cả tab' },
   { id: 'web', title: 'Lịch sử duyệt web', description: 'Các trang web đã mở trong trình duyệt.' },
   { id: 'cookies', title: 'Cookie & dữ liệu trang', description: 'Đăng xuất bạn khỏi hầu hết các trang.' },
   {
@@ -32,7 +34,7 @@ const ITEMS: { id: ItemId; title: string; description: string }[] = [
   },
 ];
 
-async function folderSize(path: string, depth = 0): Promise<number> {
+export async function folderSize(path: string, depth = 0): Promise<number> {
   let items: ReadDirResItemT[];
   try {
     items = await readDir(path);
@@ -57,12 +59,14 @@ async function clearCacheFolder(): Promise<void> {
 
 export function ClearDataScreen() {
   const { c } = useTheme();
+  const tabCount = useBrowser(s => s.tabs.length);
   const webCount = useHistory(s => s.web.length);
   const readingCount = useHistory(s => s.reading.length);
   const searchCount = useHistory(s => s.searches.length + s.webSearches.length);
   const tasks = useDownloads(s => s.tasks);
   const [cacheSize, setCacheSize] = useState<number | null>(null);
   const [checked, setChecked] = useState<Record<ItemId, boolean>>({
+    tabs: false,
     web: true,
     cookies: false,
     cache: true,
@@ -83,7 +87,12 @@ export function ClearDataScreen() {
   const taskList = Object.values(tasks);
   const downloadBytes = taskList.reduce((sum, t) => sum + t.bytes, 0);
 
+  const description: Partial<Record<ItemId, string>> = {
+    tabs: `Đóng ${formatCount(tabCount)} tab đang mở`,
+  };
+
   const detail: Record<ItemId, string | undefined> = {
+    tabs: undefined,
     web: `${formatCount(webCount)} mục`,
     cookies: undefined,
     cache: cacheSize === null ? 'Đang tính dung lượng…' : formatBytes(cacheSize),
@@ -116,6 +125,11 @@ export function ClearDataScreen() {
       }
     };
     const history = useHistory.getState();
+    await run('tabs', () => {
+      const browser = useBrowser.getState();
+      browser.closeAllTabs(true);
+      browser.closeAllTabs(false);
+    });
     await run('web', () => history.clearWeb());
     await run('reading', () => history.clearReading());
     await run('searches', () => history.clearSearches());
@@ -152,7 +166,7 @@ export function ClearDataScreen() {
                 />
                 <View style={styles.flex}>
                   <Text style={[font.body, { color: c.text }]}>{item.title}</Text>
-                  <Text style={[font.caption, { color: c.muted }]}>{item.description}</Text>
+                  <Text style={[font.caption, { color: c.muted }]}>{description[item.id] ?? item.description}</Text>
                   {!!detail[item.id] && (
                     <Text style={[font.caption, styles.detail, { color: c.textSecondary }]}>
                       {detail[item.id]}

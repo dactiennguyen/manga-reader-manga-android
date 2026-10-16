@@ -16,8 +16,10 @@ type StatsState = {
   totalChapters: number;
   totalSessions: number;
   longestSession: number;
+  streakShownDay: string;
   addSession: (seconds: number) => void;
   addChapterRead: () => void;
+  markStreakShown: () => void;
   reset: () => void;
   importStats: (data: Partial<StatsData>) => void;
 };
@@ -42,6 +44,7 @@ export const useStats = create<StatsState>()(
   persist(
     set => ({
       ...INITIAL,
+      streakShownDay: '',
       addSession: seconds =>
         set(state => {
           const s = Math.round(seconds);
@@ -69,6 +72,7 @@ export const useStats = create<StatsState>()(
             totalChapters: state.totalChapters + 1,
           };
         }),
+      markStreakShown: () => set({ streakShownDay: dayKey() }),
       reset: () => set(INITIAL),
       importStats: data => set(data),
     }),

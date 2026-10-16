@@ -24,6 +24,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppNavigation, type RootStackParamList } from '../../app/routes';
 import { AddonBar } from '../../components/AddressBarParts';
@@ -34,10 +35,12 @@ import {
   Button,
   ChipRow,
   EmptyState,
+  Fab,
   Header,
   IconButton,
   LoadingView,
   Screen,
+  SearchField,
   TabBar,
 } from '../../components/ui';
 import { isChallengeError } from '../../lib/http';
@@ -49,6 +52,7 @@ import { useAllowNsfw, useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
 import { font, radius, space, useTheme } from '../../theme';
 import { CatalogFilterSheet } from './CatalogFilterSheet';
+import { RecentSearches } from './RecentSearches';
 import { toggleQuickBookmark } from './quickBookmark';
 import { usePagedList } from './usePagedList';
 
@@ -61,6 +65,8 @@ const SORT_LABEL: Record<ListSort, string> = {
 };
 
 type CatalogTab = ListSort | 'search';
+
+const FAB_SPACE = 88;
 
 function ribbonOf(bookmark: LibraryBookmark | undefined): CoverRibbon | undefined {
   if (!bookmark) {
@@ -139,6 +145,7 @@ function CatalogBody({
 }) {
   const navigation = useAppNavigation();
   const { c } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const engine = getEngine(source.engine);
   const layout = useSettings(s => s.catalogLayout);
@@ -150,6 +157,8 @@ function CatalogBody({
   const [genre, setGenre] = useState<Genre | undefined>(initialGenre);
   const [query, setQuery] = useState(initialQuery?.trim() ?? '');
   const [filter, setFilter] = useState({ visible: false, seq: 0 });
+  const [searchInput, setSearchInput] = useState<string | null>(null);
+  const searching = searchInput !== null;
   const filtered = !!query || !!genre;
 
   const listKey = JSON.stringify([
@@ -189,6 +198,13 @@ function CatalogBody({
     setGenre(undefined);
     setQuery('');
   }, []);
+  const submitSearch = (raw: string) => {
+    const q = raw.trim();
+    if (q) {
+      search(q);
+      setSearchInput(null);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -201,6 +217,19 @@ function CatalogBody({
       });
       return () => sub.remove();
     }, [query, initialQuery]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!searching) {
+        return;
+      }
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        setSearchInput(null);
+        return true;
+      });
+      return () => sub.remove();
+    }, [searching]),
   );
 
   const tabs = useMemo(
@@ -329,50 +358,103 @@ function CatalogBody({
 
   return (
     <Screen edges={['bottom']}>
-      <AddonBar url={source.baseUrl} />
-      <TabBar
-        tabs={tabs}
-        value={query ? 'search' : sort}
-        onChange={changeTab}
-        right={
-          <>
-            <IconButton
-              icon={Bookmark}
-              onPress={() => navigation.navigate('Bookmarks', { tab: 'media' })}
-              accessibilityLabel="Bookmark"
-              style={styles.tool}
+      {searching ? (
+        <View style={{ paddingTop: insets.top, backgroundColor: c.appBar }}>
+          <Header onBack={() => setSearchInput(null)}>
+            <SearchField
+              value={searchInput}
+              onChangeText={setSearchInput}
+              onClear={() => setSearchInput('')}
+              onSubmitEditing={() => submitSearch(searchInput)}
+              placeholder={`Tìm trên ${source.name}`}
+              autoFocus
+              style={[styles.headerSearch, { backgroundColor: c.appBarField }]}
+              inputStyle={{ color: c.onAppBar }}
             />
-            <IconButton
-              icon={grid ? List : LayoutGrid}
-              onPress={() => setSettings({ catalogLayout: grid ? 'list' : 'grid' })}
-              accessibilityLabel={grid ? 'Xem dạng danh sách' : 'Xem dạng lưới'}
-              style={styles.tool}
-            />
-            <IconButton
-              icon={ListFilter}
-              active={filtered}
-              onPress={() => setFilter(f => ({ visible: true, seq: f.seq + 1 }))}
-              accessibilityLabel="Tìm và lọc theo thể loại"
-              style={styles.tool}
-            />
-          </>
-        }
-      />
-
-      {filtered && (
-        <View style={[styles.filters, { borderBottomColor: c.border }]}>
-          <ChipRow style={styles.filterChips}>
-            {!!query && (
-              <FilterChip icon={Search} label={`"${query}"`} onRemove={() => setQuery('')} accessibilityLabel="Bỏ tìm kiếm" />
-            )}
-            {genre && (
-              <FilterChip icon={Tags} label={genre.name} onRemove={() => setGenre(undefined)} accessibilityLabel="Bỏ lọc thể loại" />
-            )}
-          </ChipRow>
+          </Header>
         </View>
+      ) : (
+        <>
+          <AddonBar url={source.baseUrl} />
+          <TabBar
+            tabs={tabs}
+            value={query ? 'search' : sort}
+            onChange={changeTab}
+            right={
+              <>
+                <IconButton
+                  icon={Bookmark}
+                  onPress={() => navigation.navigate('Bookmarks', { tab: 'media' })}
+                  accessibilityLabel="Bookmark"
+                  style={styles.tool}
+                />
+                <IconButton
+                  icon={grid ? List : LayoutGrid}
+                  onPress={() => setSettings({ catalogLayout: grid ? 'list' : 'grid' })}
+                  accessibilityLabel={grid ? 'Xem dạng danh sách' : 'Xem dạng lưới'}
+                  style={styles.tool}
+                />
+                <IconButton
+                  icon={ListFilter}
+                  active={filtered}
+                  onPress={() => setFilter(f => ({ visible: true, seq: f.seq + 1 }))}
+                  accessibilityLabel="Tìm và lọc theo thể loại"
+                  style={styles.tool}
+                />
+              </>
+            }
+          />
+
+          {filtered && (
+            <View style={[styles.filters, { borderBottomColor: c.border }]}>
+              <ChipRow style={styles.filterChips}>
+                {!!query && (
+                  <FilterChip
+                    icon={Search}
+                    label={`"${query}"`}
+                    onRemove={() => setQuery('')}
+                    accessibilityLabel="Bỏ tìm kiếm"
+                  />
+                )}
+                {genre && (
+                  <FilterChip
+                    icon={Tags}
+                    label={genre.name}
+                    onRemove={() => setGenre(undefined)}
+                    accessibilityLabel="Bỏ lọc thể loại"
+                  />
+                )}
+              </ChipRow>
+            </View>
+          )}
+        </>
       )}
 
-      <View style={styles.flex}>{content}</View>
+      <View style={styles.flex}>
+        {content}
+        {searching ? (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]}>
+            <RecentSearches
+              filter={searchInput}
+              onPick={submitSearch}
+              empty={
+                <EmptyState
+                  icon={Search}
+                  title="Tìm truyện"
+                  message={`Nhập tên truyện rồi nhấn tìm để tìm trên ${source.name}.`}
+                />
+              }
+            />
+          </View>
+        ) : (
+          <Fab
+            icon={Search}
+            accessibilityLabel="Tìm truyện"
+            onPress={() => setSearchInput(query)}
+            style={[styles.fab, { backgroundColor: c.accentSoft }]}
+          />
+        )}
+      </View>
 
       {filter.seq > 0 && (
         <CatalogFilterSheet
@@ -493,6 +575,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
   tool: { width: 40 },
+  headerSearch: { marginRight: space.sm, minHeight: 42 },
+  fab: { bottom: space.lg },
   filters: { borderBottomWidth: StyleSheet.hairlineWidth },
   filterChips: { paddingVertical: 6 },
   filterChip: {
@@ -505,8 +589,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm + 2,
   },
   filterLabel: { flexShrink: 1, fontSize: 13, fontWeight: '600' },
-  gridContent: { paddingHorizontal: space.xs, paddingTop: space.sm },
-  listContent: { paddingVertical: space.xs },
+  gridContent: { paddingHorizontal: space.xs, paddingTop: space.sm, paddingBottom: FAB_SPACE },
+  listContent: { paddingTop: space.xs, paddingBottom: FAB_SPACE },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

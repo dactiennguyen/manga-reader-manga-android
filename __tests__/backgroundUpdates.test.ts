@@ -36,7 +36,7 @@ describe('kiểm tra chương mới ở nền', () => {
     useSettings.setState({ notifyUpdates: true });
     useLibrary.setState({
       bookmarks: {
-        [KEY]: { key: KEY, sourceId: 'mangadex.org', url: URL, title: 'Truyện A', content: 'manga', group: '', addedAt: 1 },
+        [KEY]: { key: KEY, sourceId: 'mangadex.org', url: URL, title: 'Truyện A', content: 'manga', groups: [], addedAt: 1 },
       },
     });
     (getCachedChapters as jest.Mock).mockReturnValue([chapter(1)]);

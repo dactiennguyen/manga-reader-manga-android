@@ -2,7 +2,17 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { Share } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
-import { Copy, Download, ExternalLink, File, Image as ImageIcon, Layers, Share2, Type } from '../../components/icons';
+import {
+  Copy,
+  Download,
+  ExternalLink,
+  File,
+  Image as ImageIcon,
+  Layers,
+  ScanEye,
+  Share2,
+  Type,
+} from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { displayUrl } from '../../lib/url';
@@ -15,16 +25,19 @@ export function LinkMenu({
   target,
   pageUrl,
   incognito,
+  onPreview,
   onClose,
 }: {
   target: LinkTarget | null;
   pageUrl: string;
   incognito: boolean;
+  onPreview?: (url: string) => void;
   onClose: () => void;
 }) {
   const href = target?.href ?? '';
   const src = target?.src ?? '';
   const isDataImage = /^data:/i.test(src);
+  const isWeb = /^https?:/i.test(href);
 
   const run = (action: () => void) => () => {
     onClose();
@@ -65,12 +78,15 @@ export function LinkMenu({
         <>
           <ListItem icon={ExternalLink} title="Mở link trong tab mới" onPress={run(() => openTab(href))} />
           <ListItem icon={Layers} title="Mở link ở tab nền" onPress={run(() => openTab(href, true))} />
+          {isWeb && onPreview && (
+            <ListItem icon={ScanEye} title="Xem trước trang" onPress={run(() => onPreview(href))} />
+          )}
           <ListItem icon={Copy} title="Sao chép địa chỉ link" onPress={run(() => copy(href, 'Đã sao chép link'))} />
           {!!target?.text && (
             <ListItem icon={Type} title="Sao chép chữ của link" onPress={run(() => copy(target.text, 'Đã sao chép chữ'))} />
           )}
           <ListItem icon={Share2} title="Chia sẻ link" onPress={run(() => share(href))} />
-          {/^https?:/i.test(href) && (
+          {isWeb && (
             <ListItem icon={File} title="Tải tệp của link" onPress={run(() => download(href, false))} />
           )}
         </>

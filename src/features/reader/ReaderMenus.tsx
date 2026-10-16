@@ -1,4 +1,5 @@
 import Clipboard from '@react-native-clipboard/clipboard';
+import type { ReactNode } from 'react';
 import { Share } from 'react-native';
 
 import { openInBrowser, useAppNavigation } from '../../app/routes';
@@ -6,6 +7,7 @@ import { Sheet } from '../../components/Sheet';
 import {
   Bookmark,
   BookOpen,
+  CircleHelp,
   Copy,
   Download,
   ExternalLink,
@@ -16,10 +18,11 @@ import {
   Share2,
   SlidersHorizontal,
 } from '../../components/icons';
-import { Divider, ListItem, toast } from '../../components/ui';
+import { Divider, ListItem, SwitchRow, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { displayUrl } from '../../lib/url';
 import type { Chapter, Page } from '../../sources/types';
+import { useSettings } from '../../store/useSettings';
 import {
   useChapterDownload,
   useDownloads,
@@ -36,6 +39,8 @@ type MenuProps = {
   chapter: Chapter;
   onOpenManga: () => void;
   settings?: { label: string; onPress: () => void };
+  onHelp?: () => void;
+  toggles?: ReactNode;
 };
 
 const DOWNLOAD_STATUS: Record<DownloadStatus, string> = {
@@ -46,7 +51,16 @@ const DOWNLOAD_STATUS: Record<DownloadStatus, string> = {
   error: 'Lần tải trước bị lỗi — bấm để thử lại',
 };
 
-export function ReaderMenuSheet({ visible, onClose, manga, chapter, onOpenManga, settings }: MenuProps) {
+export function ReaderMenuSheet({
+  visible,
+  onClose,
+  manga,
+  chapter,
+  onOpenManga,
+  settings,
+  onHelp,
+  toggles,
+}: MenuProps) {
   const navigation = useAppNavigation();
   const task = useChapterDownload(manga.mangaKey, chapter.url);
   const status = task ? DOWNLOAD_STATUS[task.status] : undefined;
@@ -59,10 +73,14 @@ export function ReaderMenuSheet({ visible, onClose, manga, chapter, onOpenManga,
 
   return (
     <Sheet visible={visible} onClose={onClose} title={chapter.name} subtitle={displayUrl(chapter.url)}>
+      {settings && <ListItem icon={SlidersHorizontal} title={settings.label} onPress={run(settings.onPress)} />}
+      {onHelp && <ListItem icon={CircleHelp} title="Vùng chạm và cử chỉ" onPress={run(onHelp)} />}
+      {toggles}
+      <Divider inset={52} />
       <ListItem
         icon={Globe}
         title="Mở trang gốc trên web"
-        onPress={run(() => openInBrowser(navigation, chapter.url))}
+        onPress={run(() => openInBrowser(navigation, chapter.url, { original: true }))}
       />
       <ListItem
         icon={Download}
@@ -82,7 +100,6 @@ export function ReaderMenuSheet({ visible, onClose, manga, chapter, onOpenManga,
         })}
       />
       <ListItem icon={BookOpen} title="Trang truyện" subtitle={manga.mangaTitle} onPress={run(onOpenManga)} />
-      {settings && <ListItem icon={SlidersHorizontal} title={settings.label} onPress={run(settings.onPress)} />}
       <Divider inset={52} />
       <ListItem icon={Bookmark} title="Bookmark" onPress={run(() => navigation.navigate('Bookmarks'))} />
       <ListItem icon={History} title="Lịch sử" onPress={run(() => navigation.navigate('History'))} />
@@ -150,6 +167,19 @@ export function PageMenuSheet({ page, index, onClose }: PageMenuProps) {
         })}
       />
       <ListItem icon={RotateCw} title="Tải lại ảnh" onPress={run(target => requestPageReload(target.uri))} />
+      <Divider />
+      <SwitchRow
+        title="Tắt menu nhấn giữ"
+        subtitle="Có thể bật lại trong Cài đặt trình xem"
+        value={false}
+        onValueChange={disable => {
+          if (disable) {
+            onClose();
+            useSettings.getState().set({ disableLongPressMenu: true });
+            toast('Đã tắt menu nhấn giữ ảnh');
+          }
+        }}
+      />
     </Sheet>
   );
 }

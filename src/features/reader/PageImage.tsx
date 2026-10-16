@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { ImageOff, RotateCw, ShieldCheck } from '../../components/icons';
+import { withUserAgent } from '../../lib/http';
 import type { Page } from '../../sources/types';
 import { space } from '../../theme';
 import { getPageRatio, rememberPageRatio, usePageReload } from './pageImageCache';
@@ -60,7 +61,10 @@ export const PageImage = memo(function PageImageView({
   );
   usePageReload(uri, onReloadRequest);
 
-  const source = useMemo(() => ({ uri, headers }), [uri, headers]);
+  const source = useMemo(
+    () => (uri.startsWith('file://') ? { uri } : { uri, headers: withUserAgent(headers) }),
+    [uri, headers],
+  );
 
   const onLoad = useCallback(
     (event: ImageLoadEvent) => {

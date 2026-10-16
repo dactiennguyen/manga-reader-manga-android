@@ -8,6 +8,17 @@ export function formatMinutesShort(minutes: number): string {
   return rest ? `${h}g${String(rest).padStart(2, '0')}` : `${h}g`;
 }
 
+export function formatDurationShort(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) {
+    return `${s} giây`;
+  }
+  if (s < 3600) {
+    return `${Math.floor(s / 60)} phút`;
+  }
+  return formatMinutesShort(Math.floor(s / 60));
+}
+
 export function niceTicks(maxValue: number, target = 3, minStep = 1): number[] {
   if (maxValue <= 0) {
     return [0, minStep];

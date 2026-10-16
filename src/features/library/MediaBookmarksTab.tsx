@@ -3,30 +3,27 @@ import { Animated, BackHandler, Easing, Pressable, StyleSheet, Text, View } from
 import { useShallow } from 'zustand/react/shallow';
 
 import { useAppNavigation } from '../../app/routes';
+import { DropdownButton } from '../../components/Dropdown';
 import { Sheet } from '../../components/Sheet';
 import {
-  ArrowUpDown,
   BookOpen,
   CheckCheck,
   EllipsisVertical,
-  FolderInput,
   FolderPlus,
   LayoutGrid,
   List,
   ListChecks,
-  Plus,
   Puzzle,
   RefreshCw,
   ScrollText,
   Search,
   SearchX,
+  Tag,
   Trash2,
   type LucideIcon,
 } from '../../components/icons';
 import {
   Button,
-  Chip,
-  ChipRow,
   EmptyState,
   Header,
   IconButton,
@@ -41,22 +38,18 @@ import { getEngine } from '../../sources';
 import { getCachedChapters } from '../../sources/cache';
 import type { ContentType } from '../../sources/types';
 import { markChaptersRead } from '../../store/progress';
-import { sortBookmarks, useLibrary, type Bookmark, type LibrarySort } from '../../store/useLibrary';
+import { sortBookmarks, useLibrary, type Bookmark, type GroupChanges, type LibrarySort } from '../../store/useLibrary';
 import { useAllowNsfw, useSettings } from '../../store/useSettings';
 import { useSources, withCatalog } from '../../store/useSources';
 import { font, space, useTheme } from '../../theme';
-import { OptionSheet, type Option } from '../settings/OptionSheet';
 import { BookmarkGrid, type BookmarkSourceInfo } from './BookmarkGrid';
 import { EditGroupDialog, GroupSheet, NewGroupDialog } from './GroupSheet';
+import { LibraryBar, LibrarySheet, libraryLabel, type BookmarkView, type GroupFilter } from './LibraryFilter';
 import { runLibraryUpdateCheck } from './runUpdateCheck';
 import { refreshUnread, useUpdateCheck } from './updates';
 
-const SORT_OPTIONS: Option<LibrarySort>[] = [
-  {
-    value: 'updated',
-    label: 'Mới cập nhật',
-    description: 'Truyện có chương mới lên đầu',
-  },
+const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
+  { value: 'updated', label: 'Mới cập nhật' },
   { value: 'added', label: 'Mới thêm' },
   { value: 'title', label: 'Tên (A–Z)' },
   { value: 'unread', label: 'Chưa đọc nhiều' },
@@ -67,19 +60,23 @@ const CONTENT_NAME: Record<ContentType, string> = {
   novel: 'tiểu thuyết',
 };
 
-type GroupFilter = string | null;
-
-export function MediaBookmarksTab({ content, dropdown }: { content: ContentType; dropdown: ReactNode }) {
+export function MediaBookmarksTab({
+  content,
+  onViewChange,
+}: {
+  content: ContentType;
+  onViewChange: (view: BookmarkView) => void;
+}) {
   const navigation = useAppNavigation();
   const { c } = useTheme();
-  const { bookmarks, groups, sort, setSort, removeBookmarks, setGroup, updateBookmark } = useLibrary(
+  const { bookmarks, groups, sort, setSort, removeBookmarks, setBookmarkGroups, updateBookmark } = useLibrary(
     useShallow(s => ({
       bookmarks: s.bookmarks,
       groups: s.groups,
       sort: s.sort,
       setSort: s.setSort,
       removeBookmarks: s.removeBookmarks,
-      setGroup: s.setGroup,
+      setBookmarkGroups: s.setBookmarkGroups,
       updateBookmark: s.updateBookmark,
     })),
   );
@@ -94,8 +91,9 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [groupSheet, setGroupSheet] = useState(false);
+  const [groupKeys, setGroupKeys] = useState<string[]>([]);
   const [newGroup, setNewGroup] = useState(false);
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
 
@@ -106,16 +104,18 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
   const groupCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const b of all) {
-      counts[b.group] = (counts[b.group] ?? 0) + 1;
+      for (const name of b.groups.length ? b.groups : ['']) {
+        counts[name] = (counts[name] ?? 0) + 1;
+      }
     }
     return counts;
   }, [all]);
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = all.filter(
-      b => (activeGroup === null || b.group === activeGroup) && (!q || b.title.toLowerCase().includes(q)),
-    );
+    const inGroup = (b: Bookmark) =>
+      activeGroup === null || (activeGroup === '' ? !b.groups.length : b.groups.includes(activeGroup));
+    const list = all.filter(b => inGroup(b) && (!q || b.title.toLowerCase().includes(q)));
     return sortBookmarks(list, sort);
   }, [all, activeGroup, query, sort]);
 
@@ -195,14 +195,14 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
     action();
   };
 
-  const commonGroup = useMemo(() => {
-    const set = new Set(selectedKeys.map(key => bookmarks[key].group));
-    return set.size === 1 ? [...set][0] : undefined;
-  }, [selectedKeys, bookmarks]);
+  const openGroupSheet = () => {
+    setGroupKeys(selectedKeys);
+    setGroupSheet(true);
+  };
 
-  const moveToGroup = (target: string) => {
-    setGroup(selectedKeys, target);
-    toast(target ? `Đã chuyển ${selectedKeys.length} truyện vào “${target}”` : 'Đã bỏ nhóm các truyện đã chọn');
+  const applyGroups = (changes: GroupChanges) => {
+    setBookmarkGroups(groupKeys, changes);
+    toast(`Đã đặt nhóm cho ${groupKeys.length} truyện`);
     clearSelection();
   };
 
@@ -258,10 +258,33 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
     }
   };
 
+  const library = (
+    <LibrarySheet
+      visible={libraryOpen}
+      onClose={() => setLibraryOpen(false)}
+      view={content}
+      onViewChange={onViewChange}
+      groups={
+        all.length
+          ? {
+              names: groups,
+              counts: groupCounts,
+              total: all.length,
+              active: activeGroup,
+              onSelect: setGroupFilter,
+              onEdit: setEditingGroup,
+              onNew: () => setNewGroup(true),
+            }
+          : undefined
+      }
+    />
+  );
+
   if (!all.length) {
     return (
       <>
-        <Header title="Bookmark" right={dropdown} />
+        <Header title="Bookmark" />
+        <LibraryBar label={libraryLabel(content)} onPress={() => setLibraryOpen(true)} />
         <View style={styles.flex}>
           <EmptyState
             icon={content === 'novel' ? ScrollText : BookOpen}
@@ -282,12 +305,14 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
             style={styles.emptySecondary}
           />
         </View>
+        {library}
       </>
     );
   }
 
-  const noGroupCount = groupCounts[''] ?? 0;
   const sortLabel = SORT_OPTIONS.find(o => o.value === sort)?.label;
+  const filterLabel =
+    activeGroup === null ? libraryLabel(content) : `${libraryLabel(content)} · ${activeGroup || 'Không nhóm'}`;
 
   let header: ReactNode;
   if (selecting) {
@@ -325,7 +350,6 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
         title="Bookmark"
         right={
           <>
-            {dropdown}
             <RefreshButton running={update.running} onPress={refresh} />
             <IconButton
               icon={EllipsisVertical}
@@ -343,35 +367,21 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
     <>
       {header}
 
-      {groups.length > 0 && (
-        <View>
-          <ChipRow>
-            <Chip
-              label="Tất cả"
-              count={all.length}
-              selected={activeGroup === null}
-              onPress={() => setGroupFilter(null)}
+      <LibraryBar
+        label={filterLabel}
+        onPress={() => setLibraryOpen(true)}
+        right={
+          <>
+            <Text style={[font.caption, { color: c.muted }]}>Sắp xếp</Text>
+            <DropdownButton
+              value={sort}
+              options={SORT_OPTIONS}
+              onChange={setSort}
+              accessibilityLabel={`Sắp xếp: ${sortLabel}`}
             />
-            {groups.map(name => (
-              <Chip
-                key={name}
-                label={name}
-                count={groupCounts[name] ?? 0}
-                selected={activeGroup === name}
-                onPress={() => setGroupFilter(name)}
-                onLongPress={() => setEditingGroup(name)}
-              />
-            ))}
-            <Chip
-              label="Không nhóm"
-              count={noGroupCount}
-              selected={activeGroup === ''}
-              onPress={() => setGroupFilter('')}
-            />
-            <Chip label="Nhóm mới" icon={Plus} onPress={() => setNewGroup(true)} />
-          </ChipRow>
-        </View>
-      )}
+          </>
+        }
+      />
 
       {update.running && (
         <View style={styles.progress}>
@@ -402,7 +412,7 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
             message={
               query.trim()
                 ? 'Không có bookmark nào khớp với từ khoá.'
-                : 'Nhóm này chưa có truyện. Nhấn giữ một truyện rồi chọn “Chuyển nhóm”.'
+                : 'Nhóm này chưa có truyện. Nhấn giữ một truyện rồi chọn “Đặt nhóm”.'
             }
           />
         )}
@@ -410,7 +420,7 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
 
       {selecting && (
         <View style={[styles.actionBar, { backgroundColor: c.surface, borderTopColor: c.border }]}>
-          <ActionButton icon={FolderInput} label="Chuyển nhóm" onPress={() => setGroupSheet(true)} />
+          <ActionButton icon={Tag} label="Đặt nhóm" onPress={openGroupSheet} />
           <ActionButton icon={CheckCheck} label="Đã đọc hết" onPress={markAllRead} />
           <ActionButton icon={RefreshCw} label="Kiểm tra" onPress={checkSelected} disabled={update.running} />
           <ActionButton icon={Trash2} label="Xoá" onPress={removeSelected} danger />
@@ -420,19 +430,13 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Bookmark">
         <ListItem title="Tìm trong bookmark" icon={Search} onPress={closeMenuThen(() => setSearching(true))} />
         <ListItem
-          title="Sắp xếp"
-          subtitle={sortLabel}
-          icon={ArrowUpDown}
-          onPress={closeMenuThen(() => setSortOpen(true))}
-        />
-        <ListItem
           title={layout === 'grid' ? 'Xem dạng danh sách' : 'Xem dạng lưới'}
           icon={layout === 'grid' ? List : LayoutGrid}
           onPress={closeMenuThen(() => setSettings({ libraryLayout: layout === 'grid' ? 'list' : 'grid' }))}
         />
         <ListItem
           title="Chọn tất cả"
-          subtitle="Chuyển nhóm, đánh dấu đã đọc, kiểm tra hoặc xoá nhiều truyện"
+          subtitle="Đặt nhóm, đánh dấu đã đọc, kiểm tra hoặc xoá nhiều truyện"
           icon={ListChecks}
           disabled={!items.length}
           onPress={closeMenuThen(() => setSelected(new Set(items.map(b => b.key))))}
@@ -440,20 +444,8 @@ export function MediaBookmarksTab({ content, dropdown }: { content: ContentType;
         <ListItem title="Nhóm mới" icon={FolderPlus} onPress={closeMenuThen(() => setNewGroup(true))} />
       </Sheet>
 
-      <OptionSheet
-        visible={sortOpen}
-        onClose={() => setSortOpen(false)}
-        title="Sắp xếp bookmark"
-        options={SORT_OPTIONS}
-        value={sort}
-        onSelect={setSort}
-      />
-      <GroupSheet
-        visible={groupSheet}
-        onClose={() => setGroupSheet(false)}
-        current={commonGroup}
-        onSelect={moveToGroup}
-      />
+      {library}
+      <GroupSheet visible={groupSheet} onClose={() => setGroupSheet(false)} keys={groupKeys} onApply={applyGroups} />
       <NewGroupDialog visible={newGroup} onClose={() => setNewGroup(false)} />
       <EditGroupDialog
         group={editingGroup}

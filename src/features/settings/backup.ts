@@ -21,6 +21,7 @@ import {
   DEFAULT_HOME_WIDGETS,
   DEFAULT_NOVEL_SETTINGS,
   DEFAULT_SETTINGS,
+  snapWidgetLimit,
   useSettings,
   type AppSettings,
   type HomeWidget,
@@ -83,6 +84,12 @@ function pickKeys<T extends object>(state: object, template: T): Partial<T> {
   }
   return out as Partial<T>;
 }
+
+const SETTING_CHOICES: Record<'safeSearch' | 'startPage' | 'appLinks', readonly string[]> = {
+  safeSearch: ['strict', 'moderate', 'off'],
+  startPage: ['home', 'lastTab', 'custom'],
+  appLinks: ['ask', 'allow', 'block'],
+};
 
 function pickTyped<T extends object>(raw: Json, template: T): Partial<T> {
   const out: Record<string, unknown> = {};
@@ -200,6 +207,18 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter(isString) : [];
 }
 
+function bookmarkGroups(value: Json): string[] {
+  if (Array.isArray(value.groups)) {
+    return uniqueBy(
+      stringList(value.groups)
+        .map(g => g.trim())
+        .filter(Boolean),
+      g => g,
+    );
+  }
+  return isString(value.group) && value.group.trim() ? [value.group.trim()] : [];
+}
+
 function validBookmark(value: unknown): value is Bookmark {
   return (
     isRecord(value) &&
@@ -274,7 +293,23 @@ export function parseBackup(text: string): BackupData {
   };
 
   if (isRecord(raw.settings)) {
-    data.settings = pickTyped(raw.settings, DEFAULT_SETTINGS);
+    const settings = pickTyped(raw.settings, DEFAULT_SETTINGS);
+    if (typeof raw.settings.safeSearch === 'boolean') {
+      settings.safeSearch = raw.settings.safeSearch ? 'strict' : 'off';
+    }
+    for (const key of Object.keys(SETTING_CHOICES) as (keyof typeof SETTING_CHOICES)[]) {
+      const value = settings[key];
+      if (value !== undefined && !SETTING_CHOICES[key].includes(value)) {
+        delete settings[key];
+      }
+    }
+    if (settings.homeWidgets) {
+      settings.homeWidgets = settings.homeWidgets.filter(isRecord).map(widget => ({
+        ...widget,
+        limit: snapWidgetLimit(isNumber(widget.limit) ? widget.limit : 0),
+      }));
+    }
+    data.settings = settings;
   }
   if (isRecord(raw.readerSettings)) {
     data.readerSettings = pickTyped(raw.readerSettings, DEFAULT_READER_SETTINGS);
@@ -287,15 +322,18 @@ export function parseBackup(text: string): BackupData {
     if (isRecord(raw.library.bookmarks)) {
       for (const value of Object.values(raw.library.bookmarks)) {
         if (validBookmark(value)) {
-          bookmarks[value.key] = {
+          const bookmark: Bookmark & { group?: unknown } = {
             ...value,
-            group: isString(value.group) ? value.group : '',
+            groups: bookmarkGroups(value),
             addedAt: isNumber(value.addedAt) ? value.addedAt : Date.now(),
           };
+          delete bookmark.group;
+          bookmarks[value.key] = bookmark;
         }
       }
     }
-    data.library = { bookmarks, groups: stringList(raw.library.groups) };
+    const used = Object.values(bookmarks).flatMap(b => b.groups);
+    data.library = { bookmarks, groups: uniqueBy([...stringList(raw.library.groups), ...used], g => g) };
   }
   if (isRecord(raw.progress)) {
     const progress: Record<string, MangaProgress> = {};

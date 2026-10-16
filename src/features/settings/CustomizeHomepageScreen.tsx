@@ -20,7 +20,7 @@ import {
 import { Button, Divider, Header, IconButton, ListItem, Screen, Section, Stepper, confirm, toast } from '../../components/ui';
 import { displayUrl } from '../../lib/url';
 import { useBrowser, type QuickAccessItem } from '../../store/useBrowser';
-import { useSettings, type HomeWidget, type HomeWidgetId } from '../../store/useSettings';
+import { HOME_WIDGET_LIMITS, useSettings, type HomeWidget, type HomeWidgetId } from '../../store/useSettings';
 import { font, space, useTheme } from '../../theme';
 import { Favicon } from '../../components/Favicon';
 import { ShortcutDialog } from './ShortcutDialog';
@@ -31,11 +31,12 @@ const WIDGET_INFO: Record<HomeWidgetId, { title: string; icon: LucideIcon }> = {
   mediaSites: { title: 'Site truyện đã lưu', icon: Globe },
   mangaBookmarks: { title: 'Truyện tranh đã lưu', icon: BookOpen },
   novelBookmarks: { title: 'Tiểu thuyết đã lưu', icon: ScrollText },
-  webBookmarks: { title: 'Trang web đã đánh dấu', icon: Bookmark },
+  webBookmarks: { title: 'Trang đã đánh dấu', icon: Bookmark },
 };
 
-const MIN_ITEMS = 1;
-const MAX_ITEMS = 20;
+const MIN_ITEMS = HOME_WIDGET_LIMITS[0];
+const MAX_ITEMS = HOME_WIDGET_LIMITS[HOME_WIDGET_LIMITS.length - 1];
+const ITEM_STEP = 5;
 
 export function CustomizeHomepageScreen() {
   const { c } = useTheme();
@@ -57,7 +58,7 @@ export function CustomizeHomepageScreen() {
   const [editing, setEditing] = useState<QuickAccessItem | 'new' | null>(null);
 
   const resetWidgets = async () => {
-    const ok = await confirm('Khôi phục mặc định', 'Thứ tự, trạng thái bật/tắt và số mục của widget sẽ về mặc định.', {
+    const ok = await confirm('Khôi phục mặc định', 'Thứ tự, trạng thái bật/tắt, thu gọn và số mục của widget sẽ về mặc định.', {
       confirmText: 'Khôi phục',
     });
     if (ok) {
@@ -220,7 +221,7 @@ function WidgetRow({
       </View>
       <View style={[styles.widgetLimit, !widget.enabled && styles.dimmed]} pointerEvents={widget.enabled ? 'auto' : 'none'}>
         <Text style={[font.caption, styles.flex, { color: c.muted }]}>Số mục hiển thị</Text>
-        <Stepper value={widget.limit} min={MIN_ITEMS} max={MAX_ITEMS} onChange={onLimit} />
+        <Stepper value={widget.limit} min={MIN_ITEMS} max={MAX_ITEMS} step={ITEM_STEP} onChange={onLimit} />
       </View>
     </View>
   );

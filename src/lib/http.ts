@@ -16,6 +16,10 @@ export function getUserAgent(): string {
   return webUserAgent ?? DEFAULT_USER_AGENT;
 }
 
+export function withUserAgent(headers?: Record<string, string>): Record<string, string> {
+  return { 'User-Agent': getUserAgent(), ...headers };
+}
+
 export class HttpError extends Error {
   constructor(
     message: string,

@@ -21,11 +21,13 @@ export type ReaderSettings = ViewerPrefs & {
   autoScrollSpeed: number;
   tapToScroll: boolean;
   tapZone: TapZone;
+  doubleTapZoom: boolean;
   highResImages: boolean;
   preloadPages: number;
   nextChapterDelay: number;
   immersive: boolean;
   keepScreenOn: boolean;
+  statusInfo: boolean;
   orientationLock: OrientationLock;
   overrides: Record<string, Partial<ViewerPrefs>>;
 };
@@ -52,11 +54,13 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   autoScrollSpeed: 60,
   tapToScroll: true,
   tapZone: 'edges',
+  doubleTapZoom: true,
   highResImages: false,
   preloadPages: 3,
   nextChapterDelay: 3,
   immersive: false,
   keepScreenOn: true,
+  statusInfo: true,
   orientationLock: 'auto',
   overrides: {},
 };

@@ -14,16 +14,18 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useAppNavigation, type RootStackParamList } from '../../app/routes';
 import { ErrorView, useVerify } from '../../components/ErrorView';
-import { LoadingView, toast } from '../../components/ui';
+import { LoadingView, SwitchRow, toast } from '../../components/ui';
 import { sameUrl } from '../../lib/url';
 import { mangaKey } from '../../sources';
 import type { Chapter, Page } from '../../sources/types';
 import { getProgress } from '../../store/progress';
 import { resolveViewerPrefs, useReaderSettings, type ViewMode } from '../../store/useReaderSettings';
-import { useActiveTab } from '../../store/useBrowser';
+import { useChapterDownload, useDownloads } from '../../store/useDownloads';
+import { useIsBookmarked } from '../../store/useLibrary';
 import { useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
 import { useTheme } from '../../theme';
+import { BookmarkDialog } from '../detail/BookmarkDialog';
 import { BookmarkPrompt, useBookmarkTarget } from './BookmarkPrompt';
 import { ChapterPickerSheet } from './ChapterPickerSheet';
 import { BrightnessOverlay } from './chromeParts';
@@ -31,9 +33,11 @@ import { prefetchChapter } from './chapterCache';
 import { DARK_TONE, EndOfChapter } from './EndOfChapter';
 import { preloadPages, retryFailedPages } from './pageImageCache';
 import { PagedViewer } from './PagedViewer';
+import { PageOverview } from './PageOverview';
 import { ReaderChrome, type ReaderChromeActions } from './ReaderChrome';
 import { PageMenuSheet, ReaderMenuSheet } from './ReaderMenus';
 import { backToManga } from './readerNavigation';
+import { ReaderStatusInfo } from './ReaderStatusInfo';
 import { TapHelpDialog } from './TapHelpDialog';
 import { resolveTap } from './tapZones';
 import { useChapterNavigation } from './useChapterNavigation';
@@ -49,11 +53,14 @@ import type { ViewerHandle } from './viewerTypes';
 import { ViewModeMenu } from './ViewModeMenu';
 
 type ReaderNavigation = NativeStackNavigationProp<RootStackParamList, 'Reader'>;
-type SheetName = 'chapters' | 'settings' | 'menu' | 'modes' | 'help';
+type SheetName = 'chapters' | 'overview' | 'settings' | 'menu' | 'modes' | 'help' | 'bookmark';
+type PendingTap = { at: number; x: number; y: number; timer: ReturnType<typeof setTimeout> };
 
 const NO_PAGES: Page[] = [];
 const NO_CHAPTERS: Chapter[] = [];
 const PREFETCH_NEXT_WITHIN = 3;
+const DOUBLE_TAP_MS = 260;
+const DOUBLE_TAP_SLOP = 48;
 
 export function ReaderScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Reader'>>();
@@ -62,8 +69,7 @@ export function ReaderScreen() {
   const { sourceId, mangaUrl, chapterUrl, page: pageParam } = route.params;
   const key = mangaKey(sourceId, mangaUrl);
   const src = useSource(sourceId);
-  const { c, dark } = useTheme();
-  const incognito = useActiveTab().incognito;
+  const { c } = useTheme();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const screen = useWindowDimensions();
@@ -84,6 +90,8 @@ export function ReaderScreen() {
       autoScrollSpeed: state.autoScrollSpeed,
       tapToScroll: state.tapToScroll,
       tapZone: state.tapZone,
+      doubleTapZoom: state.doubleTapZoom,
+      statusInfo: state.statusInfo,
     })),
   );
   const longPressDisabled = useSettings(state => state.disableLongPressMenu);
@@ -138,6 +146,7 @@ export function ReaderScreen() {
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
   const viewerRef = useRef<ViewerHandle>(null);
   const pageOwner = useRef('');
+  const pendingTap = useRef<PendingTap | null>(null);
 
   const live = useRef({
     chapterUrl,
@@ -156,6 +165,7 @@ export function ReaderScreen() {
     preloadPages: settings.preloadPages,
     tapToScroll: settings.tapToScroll,
     tapZone: settings.tapZone,
+    doubleTapZoom: settings.doubleTapZoom,
   });
   live.current = {
     chapterUrl,
@@ -174,6 +184,7 @@ export function ReaderScreen() {
     preloadPages: settings.preloadPages,
     tapToScroll: settings.tapToScroll,
     tapZone: settings.tapZone,
+    doubleTapZoom: settings.doubleTapZoom,
   };
 
   useEffect(() => {
@@ -233,12 +244,6 @@ export function ReaderScreen() {
     }
   }, [openChapter]);
 
-  const goPrev = useCallback(() => {
-    const chapter = live.current.prev;
-    if (chapter) {
-      openChapter(chapter);
-    }
-  }, [openChapter]);
 
   const openManga = useCallback(() => {
     backToManga(appNavigation, {
@@ -249,18 +254,23 @@ export function ReaderScreen() {
     });
   }, [appNavigation, sourceId, mangaUrl]);
 
-  const handleTap = useCallback(
-    (event: GestureResponderEvent) => {
+  const tapAction = useCallback((x: number, y: number) => {
+    const l = live.current;
+    return resolveTap({
+      x,
+      y,
+      width: l.screen.width,
+      height: l.screen.height,
+      tapToScroll: l.tapToScroll,
+      zone: l.tapZone,
+      rtl: l.rtlAxis,
+    });
+  }, []);
+
+  const runTap = useCallback(
+    (x: number, y: number) => {
       const l = live.current;
-      const action = resolveTap({
-        x: event.nativeEvent.pageX,
-        y: event.nativeEvent.pageY,
-        width: l.screen.width,
-        height: l.screen.height,
-        tapToScroll: l.tapToScroll,
-        zone: l.tapZone,
-        rtl: l.rtlAxis,
-      });
+      const action = tapAction(x, y);
       if (action === 'menu') {
         setChromeVisible(visible => !visible);
         return;
@@ -271,7 +281,42 @@ export function ReaderScreen() {
         openChapter(l.next);
       }
     },
-    [openChapter],
+    [openChapter, tapAction],
+  );
+
+  const handleTap = useCallback(
+    (event: GestureResponderEvent) => {
+      const { pageX: x, pageY: y } = event.nativeEvent;
+      const pending = pendingTap.current;
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingTap.current = null;
+        if (Date.now() - pending.at < DOUBLE_TAP_MS && Math.hypot(x - pending.x, y - pending.y) < DOUBLE_TAP_SLOP) {
+          viewerRef.current?.toggleZoom(x, y);
+          return;
+        }
+        runTap(pending.x, pending.y);
+      }
+      if (!live.current.doubleTapZoom || tapAction(x, y) !== 'menu') {
+        runTap(x, y);
+        return;
+      }
+      const timer = setTimeout(() => {
+        pendingTap.current = null;
+        runTap(x, y);
+      }, DOUBLE_TAP_MS);
+      pendingTap.current = { at: Date.now(), x, y, timer };
+    },
+    [runTap, tapAction],
+  );
+
+  useEffect(
+    () => () => {
+      if (pendingTap.current) {
+        clearTimeout(pendingTap.current.timer);
+      }
+    },
+    [],
   );
 
   const verify = useVerify();
@@ -290,6 +335,11 @@ export function ReaderScreen() {
   );
 
   const openSettings = useCallback(() => setSheet('settings'), []);
+  const openHelp = useCallback(() => setSheet('help'), []);
+  const pickOverviewPage = useCallback((page: number) => {
+    setSheet(null);
+    viewerRef.current?.goToPage(page);
+  }, []);
   const openPageMenu = useCallback((index: number) => setPageMenu(index), []);
   const closePageMenu = useCallback(() => setPageMenu(null), []);
   const closeSheet = useCallback(() => setSheet(null), []);
@@ -309,20 +359,63 @@ export function ReaderScreen() {
   const orientation = useOrientationLock();
   const toggleOrientation = orientation.toggle;
 
+  const bookmarked = useIsBookmarked(key);
+  const downloadTask = useChapterDownload(key, current?.url ?? chapterUrl);
+  const live2 = useRef({ bookmarkTarget, downloadTask, current, chapterName, mangaTitle, cover });
+  live2.current = { bookmarkTarget, downloadTask, current, chapterName, mangaTitle, cover };
+
   const chromeActions = useMemo<ReaderChromeActions>(
     () => ({
-      onPrev: goPrev,
-      onNext: goNext,
+      onBack: () => navigation.goBack(),
       onSeek: page => viewerRef.current?.goToPage(page),
       onOpenChapters: () => setSheet('chapters'),
-      onOpenSettings: openSettings,
+      onOpenOverview: () => setSheet('overview'),
       onOpenMenu: () => setSheet('menu'),
       onOpenModes: () => setSheet('modes'),
-      onOpenHelp: () => setSheet('help'),
+      onBookmark: () => {
+        if (live2.current.bookmarkTarget) {
+          setSheet('bookmark');
+        } else {
+          toast('Đang tải thông tin truyện, thử lại sau giây lát');
+        }
+      },
+      onDownload: () => {
+        const l = live2.current;
+        const status = l.downloadTask?.status;
+        if (l.downloadTask && status === 'paused') {
+          useDownloads.getState().resume([l.downloadTask.id]);
+          toast('Đã tiếp tục tải chương');
+          return;
+        }
+        if (status && status !== 'error') {
+          toast(status === 'done' ? 'Chương này đã tải, đọc được khi không có mạng' : 'Chương này đang trong hàng tải');
+          return;
+        }
+        if (!src) {
+          return;
+        }
+        const added = useDownloads.getState().enqueue(
+          {
+            mangaKey: key,
+            sourceId,
+            mangaUrl,
+            mangaTitle: l.mangaTitle || l.chapterName,
+            cover: l.cover,
+            content: src.content,
+          },
+          [l.current ?? { url: chapterUrl, name: l.chapterName }],
+        );
+        toast(added ? 'Đã thêm chương vào hàng tải' : 'Chương này đã có trong danh sách tải');
+      },
       onToggleTapToScroll: () => {
         const { tapToScroll, set } = useReaderSettings.getState();
         set({ tapToScroll: !tapToScroll });
         toast(tapToScroll ? 'Đã tắt chạm để cuộn' : 'Đã bật chạm để cuộn');
+      },
+      onToggleViewMode: () => {
+        const viewMode = resolveViewerPrefs(useReaderSettings.getState(), key).viewMode === 'vertical' ? 'horizontal' : 'vertical';
+        updateViewerPrefs(key, { viewMode });
+        toast(`Chế độ xem: ${VIEW_MODE_NAMES[viewMode]}`);
       },
       onToggleDirection: () => {
         const rtl = resolveViewerPrefs(useReaderSettings.getState(), key).direction !== 'rtl';
@@ -340,14 +433,9 @@ export function ReaderScreen() {
         }
         setPlaying(value => !value);
       },
-      onToggleImmersive: () => {
-        const { immersive, set } = useReaderSettings.getState();
-        set({ immersive: !immersive });
-        toast(immersive ? 'Đã tắt chế độ toàn màn hình' : 'Đã bật chế độ toàn màn hình');
-      },
       onToggleOrientation: toggleOrientation,
     }),
-    [goPrev, goNext, openSettings, key, toggleOrientation],
+    [navigation, key, src, sourceId, mangaUrl, chapterUrl, toggleOrientation],
   );
 
   const onAreaLayout = useCallback((event: LayoutChangeEvent) => {
@@ -439,7 +527,9 @@ export function ReaderScreen() {
       'Chạm vùng Lùi/Tiến để cuộn hoặc lật trang; chạm Tiến ở cuối chương để sang chương sau.',
       'Vuốt để cuộn hoặc lật trang tự do.',
       ...(longPressDisabled ? [] : ['Nhấn giữ ảnh để sao chép, chia sẻ hoặc tải lại ảnh.']),
-      'Thanh bên phải: chế độ xem, khoảng cách trang (dọc) hoặc hướng đọc (lật ngang), tự cuộn hoặc toàn màn hình.',
+      'Chạm đúp vào giữa màn hình để phóng to hoặc thu nhỏ, dùng hai ngón để phóng to tuỳ ý.',
+      'Thanh trên: bookmark, chạm để cuộn, tự cuộn và cài đặt. Thanh bên phải: tổng quan trang, đổi cuộn dọc/lật trang (nhấn giữ để chọn chế độ khác), khoá xoay.',
+      'Thanh dưới: chọn chương, tải chương, khoảng cách trang (dọc) hoặc hướng đọc (lật ngang), độ sáng.',
     ],
     [longPressDisabled],
   );
@@ -448,7 +538,7 @@ export function ReaderScreen() {
     <View style={styles.root}>
       {focused && (
         <StatusBar
-          barStyle={showChrome && !dark && !incognito ? 'dark-content' : 'light-content'}
+          barStyle="light-content"
           hidden={hideStatusBar || (settings.immersive && !chromeVisible)}
           showHideTransition="fade"
           animated
@@ -460,10 +550,16 @@ export function ReaderScreen() {
         </View>
       </View>
       <BrightnessOverlay />
+      <ReaderStatusInfo
+        visible={settings.statusInfo && ready && !showChrome}
+        chapterName={chapterName}
+        pageStore={pageStore}
+        total={pages.length}
+        bottom={settings.immersive ? 0 : insets.bottom}
+      />
 
       <ReaderChrome
         visible={showChrome}
-        chapterUrl={chapterUrl}
         chapterName={chapterName}
         pageStore={pageStore}
         total={ready ? pages.length : 0}
@@ -471,11 +567,10 @@ export function ReaderScreen() {
         rtl={prefs.direction === 'rtl'}
         pageGap={prefs.pageGap}
         autoPlaying={playing}
-        immersive={settings.immersive}
         tapToScroll={settings.tapToScroll}
+        bookmarked={bookmarked}
+        downloadStatus={downloadTask?.status}
         orientationLock={orientation.supported ? orientation.lock : undefined}
-        hasPrev={!!prev}
-        hasNext={!!next}
         actions={chromeActions}
       />
       <ViewModeMenu visible={sheet === 'modes'} value={prefs.viewMode} onPick={pickViewMode} onClose={closeSheet} />
@@ -489,6 +584,14 @@ export function ReaderScreen() {
         onOpenSettings={openSettings}
       />
 
+      <PageOverview
+        visible={sheet === 'overview'}
+        onClose={closeSheet}
+        chapterName={chapterName}
+        pages={pages}
+        current={pageStore.get()}
+        onPick={pickOverviewPage}
+      />
       <ChapterPickerSheet
         visible={sheet === 'chapters'}
         onClose={closeSheet}
@@ -513,11 +616,40 @@ export function ReaderScreen() {
           chapter={current ?? { url: chapterUrl, name: chapterName }}
           onOpenManga={openManga}
           settings={{ label: 'Cài đặt trình xem', onPress: openSettings }}
+          onHelp={openHelp}
+          toggles={<ReaderToggles />}
         />
       )}
       <PageMenuSheet page={pageMenu !== null ? pages[pageMenu] : undefined} index={pageMenu} onClose={closePageMenu} />
+      {sheet === 'bookmark' && bookmarkTarget && (
+        <BookmarkDialog visible onClose={closeSheet} target={bookmarkTarget} />
+      )}
       <BookmarkPrompt target={bookmarkTarget} />
     </View>
+  );
+}
+
+function ReaderToggles() {
+  const highRes = useReaderSettings(state => state.highResImages);
+  const immersive = useReaderSettings(state => state.immersive);
+  const setReader = useReaderSettings(state => state.set);
+  const longPressDisabled = useSettings(state => state.disableLongPressMenu);
+  const setApp = useSettings(state => state.set);
+  return (
+    <>
+      <SwitchRow
+        title="Tắt menu nhấn giữ"
+        value={longPressDisabled}
+        onValueChange={disableLongPressMenu => setApp({ disableLongPressMenu })}
+      />
+      <SwitchRow
+        title="Ảnh độ phân giải cao"
+        subtitle="Nét hơn nhưng tốn bộ nhớ hơn"
+        value={highRes}
+        onValueChange={highResImages => setReader({ highResImages })}
+      />
+      <SwitchRow title="Toàn màn hình" value={immersive} onValueChange={value => setReader({ immersive: value })} />
+    </>
   );
 }
 

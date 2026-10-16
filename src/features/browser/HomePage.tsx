@@ -2,11 +2,9 @@ import { memo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useAppNavigation } from '../../app/routes';
-import { BookOpen, Search, SlidersHorizontal, VenetianMask } from '../../components/icons';
-import { Button } from '../../components/ui';
+import { BookOpen, VenetianMask } from '../../components/icons';
 import { useSettings, type HomeWidget } from '../../store/useSettings';
 import { font, radius, space, useTheme } from '../../theme';
-import { ADDRESS_PLACEHOLDER } from './AddressBar';
 import {
   BookmarksWidget,
   ContinueReadingWidget,
@@ -19,35 +17,33 @@ import type { TourRegister } from './Tour';
 export const HomePage = memo(function BrowserHome({
   incognito,
   onOpenUrl,
-  onFocusSearch,
   registerTour,
   style,
 }: {
   incognito: boolean;
   onOpenUrl: (url: string) => void;
-  onFocusSearch: () => void;
+  onFocusSearch?: () => void;
   registerTour: TourRegister;
   style?: StyleProp<ViewStyle>;
 }) {
   const { c } = useTheme();
   const navigation = useAppNavigation();
   const widgets = useSettings(s => s.homeWidgets);
-  const category = useSettings(s => s.searchCategory);
 
   const renderWidget = (widget: HomeWidget) => {
     switch (widget.id) {
       case 'quickAccess':
-        return <QuickAccessWidget key={widget.id} limit={widget.limit} onOpenUrl={onOpenUrl} />;
+        return <QuickAccessWidget key={widget.id} widget={widget} onOpenUrl={onOpenUrl} />;
       case 'continueReading':
-        return <ContinueReadingWidget key={widget.id} limit={widget.limit} />;
+        return <ContinueReadingWidget key={widget.id} widget={widget} />;
       case 'mediaSites':
-        return <MediaSitesWidget key={widget.id} limit={widget.limit} tourRef={registerTour('mediaSites')} />;
+        return <MediaSitesWidget key={widget.id} widget={widget} tourRef={registerTour('mediaSites')} />;
       case 'mangaBookmarks':
-        return <BookmarksWidget key={widget.id} content="manga" limit={widget.limit} />;
+        return <BookmarksWidget key={widget.id} widget={widget} content="manga" />;
       case 'novelBookmarks':
-        return <BookmarksWidget key={widget.id} content="novel" limit={widget.limit} />;
+        return <BookmarksWidget key={widget.id} widget={widget} content="novel" />;
       case 'webBookmarks':
-        return <WebBookmarksWidget key={widget.id} limit={widget.limit} onOpenUrl={onOpenUrl} />;
+        return <WebBookmarksWidget key={widget.id} widget={widget} onOpenUrl={onOpenUrl} />;
     }
   };
 
@@ -66,7 +62,7 @@ export const HomePage = memo(function BrowserHome({
               <BookOpen size={26} color={c.onPrimaryContainer} />
             )}
           </View>
-          <Text style={[styles.appName, { color: c.text }]}>Manga Reader</Text>
+          <Text numberOfLines={1} style={[styles.appName, { color: c.text }]}>Manga Reader</Text>
         </View>
         {incognito && (
           <View style={[styles.notice, { backgroundColor: c.incognito }]}>
@@ -76,40 +72,30 @@ export const HomePage = memo(function BrowserHome({
             </Text>
           </View>
         )}
-        <Pressable
-          onPress={onFocusSearch}
-          accessibilityRole="search"
-          android_ripple={{ color: c.border }}
-          style={({ pressed }) => [styles.search, { backgroundColor: c.surfaceAlt, opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Search size={20} color={c.textSecondary} />
-          <Text numberOfLines={1} style={[font.body, styles.flex, { color: c.muted }]}>
-            {category === 'manga' ? 'Tìm truyện trên các nguồn đã thêm' : ADDRESS_PLACEHOLDER}
-          </Text>
-        </Pressable>
       </View>
 
       {widgets.filter(w => w.enabled).map(renderWidget)}
 
-      <Button
-        title="Tuỳ chỉnh trang chủ"
-        icon={SlidersHorizontal}
-        variant="ghost"
-        small
+      <Pressable
         onPress={() => navigation.navigate('CustomizeHomepage')}
-        style={styles.customize}
-      />
+        accessibilityRole="button"
+        android_ripple={{ color: c.border }}
+        style={({ pressed }) => [styles.customize, pressed && styles.pressed]}
+      >
+        <Text style={[font.label, { color: c.accent }]}>Tuỳ chỉnh trang chủ</Text>
+      </Pressable>
     </ScrollView>
   );
 });
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingBottom: space.xl, gap: space.xl },
-  hero: { paddingHorizontal: space.lg, paddingTop: space.xl + space.md, gap: space.lg },
-  brand: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.md },
-  logo: { width: 48, height: 48, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
-  appName: { fontSize: 28, fontWeight: '700', letterSpacing: -0.3 },
+  pressed: { opacity: 0.7 },
+  content: { paddingBottom: space.xl, gap: space.lg },
+  hero: { paddingHorizontal: space.lg, paddingTop: space.xl, gap: space.lg },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  logo: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  appName: { flexShrink: 1, fontSize: 26, fontWeight: '700', letterSpacing: -0.3 },
   notice: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -118,14 +104,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
   },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    height: 56,
+  customize: {
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm + 2,
     borderRadius: radius.pill,
-    paddingHorizontal: space.lg + 2,
     overflow: 'hidden',
   },
-  customize: { alignSelf: 'center' },
 });

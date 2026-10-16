@@ -1,22 +1,29 @@
-import { useState } from 'react';
+import { CachesDirectoryPath } from '@dr.pogodin/react-native-fs';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useAppNavigation } from '../../app/routes';
 import {
+  ALargeSmall,
   AppWindow,
+  ArrowLeftRight,
   Ban,
-  BarChart3,
   Bell,
   BookmarkPlus,
   BookOpen,
   CircleHelp,
+  Contrast,
   DatabaseBackup,
   Download,
   Eraser,
   EyeOff,
+  Flame,
+  GalleryVertical,
   Globe,
   House,
+  Image,
   Info,
   LayoutGrid,
   MousePointerClick,
@@ -25,23 +32,47 @@ import {
   Puzzle,
   RefreshCw,
   Rocket,
+  ScreenShareOff,
   Search,
+  SeparatorHorizontal,
   Settings2,
   ShieldAlert,
   ShieldBan,
   ShieldCheck,
+  Smartphone,
   SquareArrowOutUpRight,
   Timer,
   Type,
   Zap,
 } from '../../components/icons';
-import { Divider, Header, ListItem, Screen, Section, SwitchRow, toast } from '../../components/ui';
-import { backgroundUpdatesSupported, ensureNotificationPermission } from '../library/backgroundUpdates';
-import { useAllowNsfw, useSettings, type AppSettings, type SearchEngineId } from '../../store/useSettings';
+import { Divider, Header, ListItem, Screen, Section, Stepper, SwitchRow, toast } from '../../components/ui';
+import { formatBytes } from '../../lib/format';
+import { useReaderSettings, type ViewMode } from '../../store/useReaderSettings';
+import {
+  useAllowNsfw,
+  useSettings,
+  type AppSettings,
+  type SafeSearch,
+  type SearchEngineId,
+} from '../../store/useSettings';
 import { font, space, useTheme } from '../../theme';
 import packageJson from '../../../package.json';
+import { backgroundUpdatesSupported, ensureNotificationPermission } from '../library/backgroundUpdates';
+import {
+  FONT_SIZE_RANGE,
+  NOVEL_FONTS,
+  NOVEL_THEME_ORDER,
+  NOVEL_THEMES,
+  setNovelTheme,
+  useNovelTheme,
+  type NovelThemeId,
+} from '../novel/novelThemes';
+import { DIRECTION_OPTIONS, VIEW_MODE_HINTS, VIEW_MODE_NAMES, VIEW_MODE_OPTIONS } from '../reader/viewerPrefs';
+import { StatsSummaryCard } from '../stats/StatsSummaryCard';
 import { AdultContentDialog } from './AdultContentDialog';
+import { folderSize } from './ClearDataScreen';
 import { SelectRow, type Option } from './OptionSheet';
+import { StartPageDialog } from './StartPageDialog';
 
 const THEME_OPTIONS: Option<AppSettings['themeMode']>[] = [
   { value: 'system', label: 'Theo hệ thống' },
@@ -52,6 +83,7 @@ const THEME_OPTIONS: Option<AppSettings['themeMode']>[] = [
 const START_PAGE_OPTIONS: Option<AppSettings['startPage']>[] = [
   { value: 'home', label: 'Trang chủ', description: 'Mở trang chủ của app với các widget' },
   { value: 'lastTab', label: 'Tab gần nhất', description: 'Mở lại trang đang xem lần trước' },
+  { value: 'custom', label: 'Trang tuỳ chọn', description: 'Mở một trang web do bạn chọn' },
 ];
 
 const SEARCH_ENGINE_OPTIONS: Option<SearchEngineId>[] = [
@@ -60,6 +92,16 @@ const SEARCH_ENGINE_OPTIONS: Option<SearchEngineId>[] = [
   { value: 'duckduckgo', label: 'DuckDuckGo' },
   { value: 'yahoo', label: 'Yahoo' },
   { value: 'yandex', label: 'Yandex' },
+];
+
+const SAFE_SEARCH_OPTIONS: Option<SafeSearch>[] = [
+  { value: 'strict', label: 'Lọc nội dung nhạy cảm', description: 'Ẩn kết quả nhạy cảm khỏi trang tìm kiếm' },
+  {
+    value: 'moderate',
+    label: 'Mức vừa phải',
+    description: 'Làm mờ kết quả nhạy cảm theo mặc định của công cụ tìm kiếm',
+  },
+  { value: 'off', label: 'Hiện tất cả', description: 'Không lọc kết quả tìm kiếm' },
 ];
 
 const SEARCH_CATEGORY_OPTIONS: Option<AppSettings['searchCategory']>[] = [
@@ -85,6 +127,17 @@ const LAYOUT_OPTIONS: Option<AppSettings['libraryLayout']>[] = [
   { value: 'list', label: 'Danh sách' },
 ];
 
+const VIEW_MODE_SELECT: Option<ViewMode>[] = VIEW_MODE_OPTIONS.map(o => ({
+  value: o.value,
+  label: VIEW_MODE_NAMES[o.value],
+  description: VIEW_MODE_HINTS[o.value],
+}));
+
+const NOVEL_THEME_SELECT: Option<NovelThemeId>[] = NOVEL_THEME_ORDER.map(id => ({
+  value: id,
+  label: NOVEL_THEMES[id].label,
+}));
+
 export function SettingsScreen() {
   const navigation = useAppNavigation();
   const { c } = useTheme();
@@ -92,6 +145,7 @@ export function SettingsScreen() {
     useShallow(state => ({
       themeMode: state.themeMode,
       startPage: state.startPage,
+      startPageUrl: state.startPageUrl,
       hideStatusBar: state.hideStatusBar,
       searchEngine: state.searchEngine,
       searchCategory: state.searchCategory,
@@ -108,14 +162,39 @@ export function SettingsScreen() {
       libraryLayout: state.libraryLayout,
       checkUpdatesOnLaunch: state.checkUpdatesOnLaunch,
       promptBookmark: state.promptBookmark,
+      streakPopup: state.streakPopup,
       notifyUpdates: state.notifyUpdates,
       ageConfirmed: state.ageConfirmed,
+      novel: state.novel,
+      set: state.set,
+      setNovel: state.setNovel,
+    })),
+  );
+  const viewer = useReaderSettings(
+    useShallow(state => ({
+      viewMode: state.viewMode,
+      direction: state.direction,
+      pageGap: state.pageGap,
+      highResImages: state.highResImages,
       set: state.set,
     })),
   );
+  const novelTheme = useNovelTheme().id;
   const allowNsfw = useAllowNsfw();
   const [ageDialog, setAgeDialog] = useState(false);
+  const [startPageDialog, setStartPageDialog] = useState(false);
+  const [cacheSize, setCacheSize] = useState<number | null>(null);
   const set = s.set;
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      folderSize(CachesDirectoryPath).then(size => alive && setCacheSize(size));
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
 
   const toggleNsfw = (value: boolean) => {
     if (value && !s.ageConfirmed) {
@@ -129,34 +208,9 @@ export function SettingsScreen() {
     <Screen>
       <Header title="Cài đặt" />
       <ScrollView contentContainerStyle={styles.content}>
-        <Section title="Chung">
-          <SelectRow
-            title="Giao diện"
-            sheetTitle="Chọn giao diện"
-            icon={Palette}
-            options={THEME_OPTIONS}
-            value={s.themeMode}
-            onChange={themeMode => set({ themeMode })}
-          />
-          <Divider inset={52} />
-          <SelectRow
-            title="Trang mở khi khởi động"
-            sheetTitle="Chọn trang mở khi khởi động"
-            icon={Rocket}
-            options={START_PAGE_OPTIONS}
-            value={s.startPage}
-            onChange={startPage => set({ startPage })}
-          />
-          <Divider inset={52} />
-          <SwitchRow
-            title="Ẩn thanh trạng thái"
-            icon={PanelTop}
-            value={s.hideStatusBar}
-            onValueChange={hideStatusBar => set({ hideStatusBar })}
-          />
-        </Section>
+        <StatsSummaryCard onPress={() => navigation.navigate('ReadingStats')} />
 
-        <Section title="Trình duyệt">
+        <Section title="Chung">
           <SelectRow
             title="Công cụ tìm kiếm mặc định"
             sheetTitle="Chọn công cụ tìm kiếm"
@@ -175,12 +229,25 @@ export function SettingsScreen() {
             onChange={searchCategory => set({ searchCategory })}
           />
           <Divider inset={52} />
-          <SwitchRow
+          <SelectRow
             title="Tìm kiếm an toàn"
-            subtitle="Làm mờ/ẩn kết quả nhạy cảm của công cụ tìm kiếm"
+            sheetTitle="Chọn mức tìm kiếm an toàn"
+            sheetSubtitle="Áp dụng cho kết quả của công cụ tìm kiếm mặc định"
             icon={ShieldCheck}
+            options={SAFE_SEARCH_OPTIONS}
             value={s.safeSearch}
-            onValueChange={safeSearch => set({ safeSearch })}
+            onChange={safeSearch => set({ safeSearch })}
+          />
+          <Divider inset={52} />
+          <SelectRow
+            title="Trang mở khi khởi động"
+            subtitle={s.startPage === 'custom' && s.startPageUrl ? s.startPageUrl : undefined}
+            sheetTitle="Chọn trang mở khi khởi động"
+            icon={Rocket}
+            options={START_PAGE_OPTIONS}
+            value={s.startPage}
+            onChange={startPage => (startPage === 'custom' ? setStartPageDialog(true) : set({ startPage }))}
+            onReselect={startPage => startPage === 'custom' && setStartPageDialog(true)}
           />
           <Divider inset={52} />
           <ListItem
@@ -201,12 +268,13 @@ export function SettingsScreen() {
             onChange={autoCloseTabs => set({ autoCloseTabs })}
           />
           <Divider inset={52} />
-          <SwitchRow
-            title="Chặn popup"
-            subtitle="Chặn trang tự mở cửa sổ mới"
-            icon={Ban}
-            value={s.blockPopups}
-            onValueChange={blockPopups => set({ blockPopups })}
+          <SelectRow
+            title="Giao diện"
+            sheetTitle="Chọn giao diện"
+            icon={Palette}
+            options={THEME_OPTIONS}
+            value={s.themeMode}
+            onChange={themeMode => set({ themeMode })}
           />
           <Divider inset={52} />
           <SelectRow
@@ -219,40 +287,44 @@ export function SettingsScreen() {
           />
           <Divider inset={52} />
           <SwitchRow
-            title="Tắt menu nhấn giữ"
-            subtitle="Không hiện menu khi nhấn giữ liên kết hoặc ảnh"
-            icon={MousePointerClick}
-            value={s.disableLongPressMenu}
-            onValueChange={disableLongPressMenu => set({ disableLongPressMenu })}
-          />
-          <Divider inset={52} />
-          <SwitchRow
             title="Mở link từ màn native trong tab mới"
             subtitle="Ví dụ nút “Xem trang gốc” ở chi tiết truyện"
             icon={AppWindow}
             value={s.openNativeLinksInNewTab}
             onValueChange={openNativeLinksInNewTab => set({ openNativeLinksInNewTab })}
           />
-          <Divider inset={52} />
-          <SwitchRow
-            title="Tự chạy addon trên site đã thêm"
-            subtitle="Mở site truyện đã thêm là chuyển sang giao diện native khi trang hỗ trợ"
-            icon={Zap}
-            value={s.autoRunAddon}
-            onValueChange={autoRunAddon => set({ autoRunAddon })}
-          />
         </Section>
 
         <Section
           title="Quyền riêng tư & bảo mật"
-          footer="Chống chụp màn hình: cần bản build có hỗ trợ native để có hiệu lực."
+          footer="Chống chụp màn hình: cần bản build có hỗ trợ native để có hiệu lực. Khi tắt nội dung 18+, nguồn 18+ bị ẩn và ảnh bìa truyện 18+ được làm mờ."
         >
           <ListItem
-            title="Chặn quảng cáo"
-            subtitle={s.adblock ? 'Đang bật' : 'Đang tắt'}
-            icon={ShieldBan}
+            title="Xoá dữ liệu duyệt web"
+            subtitle={
+              cacheSize === null
+                ? 'Lịch sử, cookie, bộ nhớ đệm…'
+                : `Bộ nhớ đệm ${formatBytes(cacheSize)} · lịch sử, cookie…`
+            }
+            icon={Eraser}
             chevron
-            onPress={() => navigation.navigate('AdblockSettings')}
+            onPress={() => navigation.navigate('ClearData')}
+          />
+          <Divider inset={52} />
+          <ListItem
+            title="Sao lưu & khôi phục"
+            subtitle="Bookmark, lịch sử, cài đặt"
+            icon={DatabaseBackup}
+            chevron
+            onPress={() => navigation.navigate('BackupRestore')}
+          />
+          <Divider inset={52} />
+          <SwitchRow
+            title="Chống chụp màn hình"
+            subtitle="Chặn chụp và quay màn hình trong app"
+            icon={ScreenShareOff}
+            value={s.preventCapture}
+            onValueChange={preventCapture => set({ preventCapture })}
           />
           <Divider inset={52} />
           <SwitchRow
@@ -263,46 +335,97 @@ export function SettingsScreen() {
             onValueChange={trackingProtection => set({ trackingProtection })}
           />
           <Divider inset={52} />
-          <ListItem
-            title="Xoá dữ liệu duyệt web"
-            subtitle="Lịch sử, cookie, bộ nhớ đệm…"
-            icon={Eraser}
-            chevron
-            onPress={() => navigation.navigate('ClearData')}
-          />
-          <Divider inset={52} />
           <SwitchRow
-            title="Chống chụp màn hình"
-            subtitle="Chặn chụp và quay màn hình trong app"
+            title="Hiện nội dung 18+"
+            subtitle={s.ageConfirmed ? 'Đã xác nhận đủ 18 tuổi' : 'Cần xác nhận đủ 18 tuổi'}
             icon={ShieldAlert}
-            value={s.preventCapture}
-            onValueChange={preventCapture => set({ preventCapture })}
+            value={allowNsfw}
+            onValueChange={toggleNsfw}
           />
         </Section>
 
-        <Section title="Đọc truyện">
+        <Section title="Chặn quảng cáo">
           <ListItem
-            title="Cài đặt trình xem"
-            subtitle="Chế độ xem, hướng đọc, tự cuộn, tải trước"
-            icon={BookOpen}
+            title="Chặn quảng cáo"
+            subtitle={s.adblock ? 'Đang bật' : 'Đang tắt'}
+            icon={ShieldBan}
             chevron
-            onPress={() => navigation.navigate('ViewerSettings')}
+            onPress={() => navigation.navigate('AdblockSettings')}
           />
           <Divider inset={52} />
-          <ListItem
-            title="Cài đặt đọc tiểu thuyết"
-            subtitle="Phông chữ, cỡ chữ, màu nền, đọc thành tiếng"
-            icon={Type}
-            chevron
-            onPress={() => navigation.navigate('NovelSettings')}
+          <SwitchRow
+            title="Chặn popup"
+            subtitle="Chặn trang tự mở cửa sổ mới"
+            icon={Ban}
+            value={s.blockPopups}
+            onValueChange={blockPopups => set({ blockPopups })}
           />
-          <Divider inset={52} />
+        </Section>
+
+        <Section title="Trình xem truyện">
           <SelectRow
             title="Bố cục thư viện mặc định"
             icon={LayoutGrid}
             options={LAYOUT_OPTIONS}
             value={s.libraryLayout}
             onChange={libraryLayout => set({ libraryLayout })}
+          />
+          <Divider inset={52} />
+          <SelectRow
+            title="Chế độ xem mặc định"
+            icon={GalleryVertical}
+            options={VIEW_MODE_SELECT}
+            value={viewer.viewMode}
+            onChange={viewMode => viewer.set({ viewMode })}
+          />
+          <Divider inset={52} />
+          <SelectRow
+            title="Hướng đọc khi lật trang"
+            sheetSubtitle="Phải → trái dành cho manga Nhật: vuốt sang phải để sang trang."
+            icon={ArrowLeftRight}
+            options={DIRECTION_OPTIONS}
+            value={viewer.direction}
+            onChange={direction => viewer.set({ direction })}
+          />
+          <Divider inset={52} />
+          <SwitchRow
+            title="Khoảng cách giữa các trang"
+            subtitle="Chèn vạch ngăn giữa các ảnh ở chế độ dọc"
+            icon={SeparatorHorizontal}
+            value={viewer.pageGap}
+            onValueChange={pageGap => viewer.set({ pageGap })}
+          />
+          <Divider inset={52} />
+          <SwitchRow
+            title="Ẩn thanh trạng thái"
+            subtitle="Áp dụng cho cả trình duyệt và khi đọc truyện"
+            icon={PanelTop}
+            value={s.hideStatusBar}
+            onValueChange={hideStatusBar => set({ hideStatusBar })}
+          />
+          <Divider inset={52} />
+          <SwitchRow
+            title="Tắt menu nhấn giữ"
+            subtitle="Không hiện menu khi nhấn giữ liên kết hoặc ảnh"
+            icon={MousePointerClick}
+            value={s.disableLongPressMenu}
+            onValueChange={disableLongPressMenu => set({ disableLongPressMenu })}
+          />
+          <Divider inset={52} />
+          <SwitchRow
+            title="Ảnh độ phân giải cao"
+            subtitle="Hiển thị ảnh gốc, nét hơn nhưng tốn bộ nhớ"
+            icon={Image}
+            value={viewer.highResImages}
+            onValueChange={highResImages => viewer.set({ highResImages })}
+          />
+          <Divider inset={52} />
+          <ListItem
+            title="Cài đặt trình xem"
+            subtitle="Tự cuộn, vùng chạm, tải trước, màn hình"
+            icon={BookOpen}
+            chevron
+            onPress={() => navigation.navigate('ViewerSettings')}
           />
           <Divider inset={52} />
           <SwitchRow
@@ -338,43 +461,76 @@ export function SettingsScreen() {
             value={s.promptBookmark}
             onValueChange={promptBookmark => set({ promptBookmark })}
           />
-        </Section>
-
-        <Section title="Nội dung người lớn" footer="Khi tắt, nguồn 18+ bị ẩn và ảnh bìa truyện 18+ được làm mờ.">
+          <Divider inset={52} />
           <SwitchRow
-            title="Hiện nội dung 18+"
-            subtitle={s.ageConfirmed ? 'Đã xác nhận đủ 18 tuổi' : 'Cần xác nhận đủ 18 tuổi'}
-            icon={ShieldAlert}
-            value={allowNsfw}
-            onValueChange={toggleNsfw}
-          />
-        </Section>
-
-        <Section title="Dữ liệu">
-          <ListItem
-            title="Sao lưu & khôi phục"
-            subtitle="Bookmark, lịch sử, cài đặt"
-            icon={DatabaseBackup}
-            chevron
-            onPress={() => navigation.navigate('BackupRestore')}
+            title="Thông báo chuỗi ngày đọc"
+            subtitle="Chúc mừng chuỗi ngày đọc khi rời trình đọc, mỗi ngày một lần"
+            icon={Flame}
+            value={s.streakPopup}
+            onValueChange={streakPopup => set({ streakPopup })}
           />
           <Divider inset={52} />
-          <ListItem title="Thống kê đọc" icon={BarChart3} chevron onPress={() => navigation.navigate('ReadingStats')} />
-          <Divider inset={52} />
-          <ListItem title="Tải xuống" icon={Download} chevron onPress={() => navigation.navigate('Downloads')} />
-          <Divider inset={52} />
-          <ListItem title="Site được hỗ trợ" icon={Puzzle} chevron onPress={() => navigation.navigate('Addons')} />
+          <SwitchRow
+            title="Tự chạy addon trên site đã thêm"
+            subtitle="Mở site truyện đã thêm là chuyển sang giao diện native khi trang hỗ trợ"
+            icon={Zap}
+            value={s.autoRunAddon}
+            onValueChange={autoRunAddon => set({ autoRunAddon })}
+          />
           <Divider inset={52} />
           <ListItem
-            title="Quản lý addon"
+            title="Add-ons"
             subtitle="Phiên bản addon, cập nhật từ kho addon"
-            icon={Settings2}
+            icon={Puzzle}
             chevron
             onPress={() => navigation.navigate('AddonManager')}
           />
+          <Divider inset={52} />
+          <ListItem title="Site được hỗ trợ" icon={Globe} chevron onPress={() => navigation.navigate('Addons')} />
+          <Divider inset={52} />
+          <ListItem title="Tải xuống" icon={Download} chevron onPress={() => navigation.navigate('Downloads')} />
         </Section>
 
-        <Section title="Khác">
+        <Section title="Đọc tiểu thuyết">
+          <SelectRow
+            title="Phông chữ mặc định"
+            icon={Type}
+            options={NOVEL_FONTS}
+            value={s.novel.font}
+            onChange={fontName => s.setNovel({ font: fontName })}
+          />
+          <Divider inset={52} />
+          <ListItem
+            title="Cỡ chữ mặc định"
+            icon={ALargeSmall}
+            right={
+              <Stepper
+                value={s.novel.fontSize}
+                min={FONT_SIZE_RANGE.min}
+                max={FONT_SIZE_RANGE.max}
+                onChange={fontSize => s.setNovel({ fontSize })}
+              />
+            }
+          />
+          <Divider inset={52} />
+          <SelectRow
+            title="Màu nền mặc định"
+            icon={Contrast}
+            options={NOVEL_THEME_SELECT}
+            value={novelTheme}
+            onChange={setNovelTheme}
+          />
+          <Divider inset={52} />
+          <ListItem
+            title="Cài đặt đọc tiểu thuyết"
+            subtitle="Giãn dòng, đọc thành tiếng"
+            icon={Settings2}
+            chevron
+            onPress={() => navigation.navigate('NovelSettings')}
+          />
+        </Section>
+
+        <Section title="Giới thiệu">
           <ListItem
             title="Xem lại hướng dẫn"
             icon={CircleHelp}
@@ -385,17 +541,26 @@ export function SettingsScreen() {
           />
           <Divider inset={52} />
           <ListItem title="Giới thiệu" icon={Info} chevron onPress={() => navigation.navigate('About')} />
+          <Divider inset={52} />
+          <ListItem
+            title="Phiên bản"
+            icon={Smartphone}
+            right={<Text style={[font.caption, { color: c.muted }]}>Manga Reader {packageJson.version}</Text>}
+          />
         </Section>
-
-        <Text style={[font.caption, styles.version, { color: c.muted }]}>Manga Reader {packageJson.version}</Text>
       </ScrollView>
 
       <AdultContentDialog visible={ageDialog} onClose={() => setAgeDialog(false)} />
+      <StartPageDialog
+        visible={startPageDialog}
+        url={s.startPageUrl}
+        onClose={() => setStartPageDialog(false)}
+        onSave={startPageUrl => set({ startPage: 'custom', startPageUrl })}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingVertical: space.lg, gap: space.xl },
-  version: { textAlign: 'center' },
 });

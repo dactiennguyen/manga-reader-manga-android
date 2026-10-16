@@ -1,8 +1,11 @@
+import { parseBackup } from '../src/features/settings/backup';
 import { classifyHost, classifyUrl } from '../src/lib/adblock';
+import { storage } from '../src/lib/storage';
 import { addDays, dayKey } from '../src/lib/time';
 import { getProgress, markChaptersRead, setLastRead } from '../src/store/progress';
 import { useBrowser } from '../src/store/useBrowser';
-import { sortBookmarks, type Bookmark } from '../src/store/useLibrary';
+import { useSettings } from '../src/store/useSettings';
+import { sortBookmarks, useLibrary, type Bookmark } from '../src/store/useLibrary';
 import { computeStreak, lastDays, type DailyStats } from '../src/store/useStats';
 
 const day = (seconds: number, chapters = 0): DailyStats => ({ seconds, chapters, sessions: 1 });
@@ -116,7 +119,7 @@ describe('sortBookmarks', () => {
     url: 'u',
     title: 'T',
     content: 'manga',
-    group: '',
+    groups: [],
     addedAt: 0,
     ...patch,
   });
@@ -129,5 +132,135 @@ describe('sortBookmarks', () => {
     ];
     expect(sortBookmarks(list, 'updated').map(b => b.title)).toEqual(['B', 'C', 'A']);
     expect(sortBookmarks(list, 'title').map(b => b.title)).toEqual(['A', 'B', 'C']);
+  });
+});
+
+describe('nhóm bookmark', () => {
+  const add = (key: string, groups?: string[]) =>
+    useLibrary.getState().addBookmark({ key, sourceId: 's', url: key, title: key, content: 'manga', groups });
+  const groupsOf = (key: string) => useLibrary.getState().bookmarks[key].groups;
+
+  beforeEach(() => useLibrary.getState().clear());
+
+  test('migrate từ v1: group chuỗi thành mảng groups', async () => {
+    const old = (key: string, group: string) => ({ key, sourceId: 's', url: key, content: 'manga', group, addedAt: 1 });
+    storage.set(
+      'library',
+      JSON.stringify({
+        state: { bookmarks: { a: old('a', 'Action'), b: old('b', '') }, groups: ['Action'], sort: 'title' },
+        version: 1,
+      }),
+    );
+    await useLibrary.persist.rehydrate();
+    const { bookmarks, groups, sort } = useLibrary.getState();
+    expect(bookmarks.a.groups).toEqual(['Action']);
+    expect(bookmarks.b.groups).toEqual([]);
+    expect('group' in bookmarks.a).toBe(false);
+    expect(groups).toEqual(['Action']);
+    expect(sort).toBe('title');
+  });
+
+  test('migrate từ v1: nhóm chỉ có trên bookmark vẫn được thêm vào danh sách nhóm', async () => {
+    storage.set(
+      'library',
+      JSON.stringify({
+        state: {
+          bookmarks: { a: { key: 'a', sourceId: 's', url: 'a', content: 'manga', group: 'Lạc', addedAt: 1 } },
+          groups: [],
+        },
+        version: 1,
+      }),
+    );
+    await useLibrary.persist.rehydrate();
+    expect(useLibrary.getState().groups).toEqual(['Lạc']);
+  });
+
+  test('addBookmark thêm nhóm mới vào danh sách, thêm lại không mất nhóm cũ', () => {
+    add('a', ['Later', 'Action', 'Later']);
+    expect(useLibrary.getState().groups).toEqual(['Later', 'Action']);
+    expect(groupsOf('a')).toEqual(['Later', 'Action']);
+    add('a');
+    expect(groupsOf('a')).toEqual(['Later', 'Action']);
+    add('a', []);
+    expect(groupsOf('a')).toEqual([]);
+  });
+
+  test('setBookmarkGroups chỉ thêm/bỏ các nhóm được chỉ định cho nhiều truyện', () => {
+    useLibrary.getState().addGroup('Action');
+    useLibrary.getState().addGroup('Later');
+    add('a', ['Action']);
+    add('b', ['Later']);
+    add('c');
+    useLibrary.getState().setBookmarkGroups(['a', 'b', 'c'], { add: ['Mới', 'Later'], remove: ['Action'] });
+    expect(groupsOf('a')).toEqual(['Later', 'Mới']);
+    expect(groupsOf('b')).toEqual(['Later', 'Mới']);
+    expect(groupsOf('c')).toEqual(['Later', 'Mới']);
+    expect(useLibrary.getState().groups).toEqual(['Action', 'Later', 'Mới']);
+    useLibrary.getState().setGroupsFor('a', ['Action']);
+    expect(groupsOf('a')).toEqual(['Action']);
+  });
+
+  test('đổi tên và xoá nhóm cập nhật mọi truyện', () => {
+    add('a', ['Action', 'Later']);
+    add('b', ['Later']);
+    useLibrary.getState().renameGroup('Later', 'Đọc sau');
+    expect(groupsOf('a')).toEqual(['Action', 'Đọc sau']);
+    expect(groupsOf('b')).toEqual(['Đọc sau']);
+    useLibrary.getState().removeGroup('Đọc sau');
+    expect(groupsOf('a')).toEqual(['Action']);
+    expect(groupsOf('b')).toEqual([]);
+    expect(useLibrary.getState().groups).toEqual(['Action']);
+  });
+
+  test('khôi phục bản sao lưu cũ (group) và mới (groups)', () => {
+    const item = (key: string, extra: object) => ({ key, sourceId: 's', url: key, title: key, ...extra });
+    const data = parseBackup(
+      JSON.stringify({
+        app: 'manga-reader',
+        version: 1,
+        library: {
+          bookmarks: {
+            a: item('a', { content: 'manga', group: 'Action' }),
+            b: item('b', { content: 'manga', group: '' }),
+            c: item('c', { content: 'novel', groups: ['Later', 'Action', 3] }),
+          },
+          groups: ['Action'],
+        },
+      }),
+    );
+    expect(data.library?.bookmarks.a.groups).toEqual(['Action']);
+    expect(data.library?.bookmarks.b.groups).toEqual([]);
+    expect(data.library?.bookmarks.c.groups).toEqual(['Later', 'Action']);
+    expect(data.library?.bookmarks.a).not.toHaveProperty('group');
+    expect(data.library?.groups).toEqual(['Action', 'Later']);
+  });
+});
+
+describe('migrate cài đặt', () => {
+  afterEach(() => useSettings.getState().reset());
+
+  test('từ v1: safeSearch boolean thành mức, số mục widget làm tròn lên 5/10/15/20', async () => {
+    storage.set(
+      'settings',
+      JSON.stringify({
+        state: {
+          safeSearch: true,
+          searchEngine: 'bing',
+          homeWidgets: [
+            { id: 'quickAccess', enabled: true, limit: 8 },
+            { id: 'continueReading', enabled: false, limit: 3 },
+            { id: 'mediaSites', enabled: true, limit: 40 },
+          ],
+        },
+        version: 1,
+      }),
+    );
+    await useSettings.persist.rehydrate();
+    const { safeSearch, searchEngine, homeWidgets } = useSettings.getState();
+    expect(safeSearch).toBe('strict');
+    expect(searchEngine).toBe('bing');
+    expect(homeWidgets.slice(0, 3).map(w => w.limit)).toEqual([10, 5, 20]);
+    expect(homeWidgets).toHaveLength(6);
+    expect(homeWidgets[1].enabled).toBe(false);
   });
 });

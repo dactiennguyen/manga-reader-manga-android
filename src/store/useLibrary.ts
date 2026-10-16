@@ -11,7 +11,7 @@ export type Bookmark = {
   title: string;
   cover?: string;
   content: ContentType;
-  group: string;
+  groups: string[];
   addedAt: number;
   nsfw?: boolean;
   checkedAt?: number;
@@ -24,14 +24,17 @@ export type Bookmark = {
 
 export type LibrarySort = 'updated' | 'added' | 'title' | 'unread';
 
+export type GroupChanges = { add?: string[]; remove?: string[] };
+
 type LibraryState = {
   bookmarks: Record<string, Bookmark>;
   groups: string[];
   sort: LibrarySort;
-  addBookmark: (bookmark: Omit<Bookmark, 'addedAt' | 'group'> & { group?: string }) => void;
+  addBookmark: (bookmark: Omit<Bookmark, 'addedAt' | 'groups'> & { groups?: string[] }) => void;
   removeBookmarks: (keys: string[]) => void;
   updateBookmark: (key: string, patch: Partial<Bookmark>) => void;
-  setGroup: (keys: string[], group: string) => void;
+  setBookmarkGroups: (keys: string[], changes: GroupChanges) => void;
+  setGroupsFor: (key: string, groups: string[]) => void;
   addGroup: (name: string) => void;
   renameGroup: (from: string, to: string) => void;
   removeGroup: (name: string) => void;
@@ -39,28 +42,37 @@ type LibraryState = {
   clear: () => void;
 };
 
+const cleanNames = (names: string[]) => [...new Set(names.map(n => n.trim()).filter(Boolean))];
+
+function withGroups(all: string[], names: string[]): string[] {
+  const missing = names.filter(n => !all.includes(n));
+  return missing.length ? [...all, ...missing] : all;
+}
+
 export const useLibrary = create<LibraryState>()(
   persist(
     set => ({
       bookmarks: {},
       groups: [],
       sort: 'updated',
-      addBookmark: bookmark =>
-        set(state => ({
-          bookmarks: {
-            ...state.bookmarks,
-            [bookmark.key]: {
-              ...state.bookmarks[bookmark.key],
-              ...bookmark,
-              group: bookmark.group ?? state.bookmarks[bookmark.key]?.group ?? '',
-              addedAt: state.bookmarks[bookmark.key]?.addedAt ?? Date.now(),
+      addBookmark: ({ groups: names, ...bookmark }) =>
+        set(state => {
+          const existing = state.bookmarks[bookmark.key];
+          const chosen = cleanNames(names ?? existing?.groups ?? []);
+          const groups = withGroups(state.groups, chosen);
+          return {
+            bookmarks: {
+              ...state.bookmarks,
+              [bookmark.key]: {
+                ...existing,
+                ...bookmark,
+                groups: groups.filter(g => chosen.includes(g)),
+                addedAt: existing?.addedAt ?? Date.now(),
+              },
             },
-          },
-          groups:
-            bookmark.group && !state.groups.includes(bookmark.group)
-              ? [...state.groups, bookmark.group]
-              : state.groups,
-        })),
+            groups,
+          };
+        }),
       removeBookmarks: keys =>
         set(state => {
           const next = { ...state.bookmarks };
@@ -75,17 +87,34 @@ export const useLibrary = create<LibraryState>()(
             ? { bookmarks: { ...state.bookmarks, [key]: { ...state.bookmarks[key], ...patch } } }
             : state,
         ),
-      setGroup: (keys, group) =>
+      setBookmarkGroups: (keys, { add = [], remove = [] }) =>
         set(state => {
-          const next = { ...state.bookmarks };
+          const added = cleanNames(add);
+          const groups = withGroups(state.groups, added);
+          const bookmarks = { ...state.bookmarks };
           for (const key of keys) {
-            if (next[key]) {
-              next[key] = { ...next[key], group };
+            if (bookmarks[key]) {
+              const next = new Set(bookmarks[key].groups);
+              remove.forEach(name => next.delete(name));
+              added.forEach(name => next.add(name));
+              bookmarks[key] = { ...bookmarks[key], groups: groups.filter(g => next.has(g)) };
             }
           }
+          return { bookmarks, groups };
+        }),
+      setGroupsFor: (key, names) =>
+        set(state => {
+          if (!state.bookmarks[key]) {
+            return state;
+          }
+          const chosen = cleanNames(names);
+          const groups = withGroups(state.groups, chosen);
           return {
-            bookmarks: next,
-            groups: group && !state.groups.includes(group) ? [...state.groups, group] : state.groups,
+            bookmarks: {
+              ...state.bookmarks,
+              [key]: { ...state.bookmarks[key], groups: groups.filter(g => chosen.includes(g)) },
+            },
+            groups,
           };
         }),
       addGroup: name =>
@@ -100,23 +129,22 @@ export const useLibrary = create<LibraryState>()(
           if (!target || from === target) {
             return state;
           }
+          const groups = [...new Set(state.groups.map(g => (g === from ? target : g)))];
           const bookmarks = { ...state.bookmarks };
           for (const key of Object.keys(bookmarks)) {
-            if (bookmarks[key].group === from) {
-              bookmarks[key] = { ...bookmarks[key], group: target };
+            if (bookmarks[key].groups.includes(from)) {
+              const next = bookmarks[key].groups.map(g => (g === from ? target : g));
+              bookmarks[key] = { ...bookmarks[key], groups: groups.filter(g => next.includes(g)) };
             }
           }
-          return {
-            bookmarks,
-            groups: [...new Set(state.groups.map(g => (g === from ? target : g)))],
-          };
+          return { bookmarks, groups };
         }),
       removeGroup: name =>
         set(state => {
           const bookmarks = { ...state.bookmarks };
           for (const key of Object.keys(bookmarks)) {
-            if (bookmarks[key].group === name) {
-              bookmarks[key] = { ...bookmarks[key], group: '' };
+            if (bookmarks[key].groups.includes(name)) {
+              bookmarks[key] = { ...bookmarks[key], groups: bookmarks[key].groups.filter(g => g !== name) };
             }
           }
           return { bookmarks, groups: state.groups.filter(g => g !== name) };
@@ -124,7 +152,27 @@ export const useLibrary = create<LibraryState>()(
       setSort: sort => set({ sort }),
       clear: () => set({ bookmarks: {}, groups: [] }),
     }),
-    { name: 'library', storage: persistStorage, version: 1 },
+    {
+      name: 'library',
+      storage: persistStorage,
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = persisted as {
+          bookmarks?: Record<string, Partial<Bookmark> & { group?: string }>;
+          groups?: string[];
+        };
+        if (version < 2) {
+          const names = new Set(state.groups ?? []);
+          for (const bookmark of Object.values(state.bookmarks ?? {})) {
+            bookmark.groups = bookmark.group ? [bookmark.group] : [];
+            delete bookmark.group;
+            bookmark.groups.forEach(name => names.add(name));
+          }
+          state.groups = [...names];
+        }
+        return state as LibraryState;
+      },
+    },
   ),
 );
 

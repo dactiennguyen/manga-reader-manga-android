@@ -1,35 +1,111 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Dialog, Sheet } from '../../components/Sheet';
-import { FolderPlus, Trash2 } from '../../components/icons';
-import { Button, Divider, Radio, TextField, confirm, toast } from '../../components/ui';
-import { useLibrary } from '../../store/useLibrary';
-import { space } from '../../theme';
+import { Check, FolderPlus, SquareCheck, SquareDashed, SquareMinus, Trash2 } from '../../components/icons';
+import { Button, Divider, TextField, confirm, toast } from '../../components/ui';
+import { useLibrary, type GroupChanges } from '../../store/useLibrary';
+import { font, space, useTheme } from '../../theme';
+
+export type CheckState = 'checked' | 'mixed' | 'unchecked';
+
+const CHECK_ICONS = { checked: SquareCheck, mixed: SquareMinus, unchecked: SquareDashed };
+
+export function GroupCheck({ label, state, onPress }: { label: string; state: CheckState; onPress: () => void }) {
+  const { c } = useTheme();
+  const Icon = CHECK_ICONS[state];
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: state === 'mixed' ? 'mixed' : state === 'checked' }}
+      android_ripple={{ color: c.border }}
+      style={styles.check}
+    >
+      <Icon size={24} color={state === 'unchecked' ? c.muted : c.accent} />
+      <Text numberOfLines={1} style={[font.body, styles.flex, { color: c.text }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+export function NewGroupField({
+  value,
+  onChangeText,
+  onCreate,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  onCreate: () => void;
+}) {
+  return (
+    <View style={styles.create}>
+      <TextField
+        value={value}
+        onChangeText={onChangeText}
+        placeholder="Tạo nhóm mới"
+        icon={FolderPlus}
+        style={styles.flex}
+        returnKeyType="done"
+        onSubmitEditing={onCreate}
+      />
+      <Button title="Tạo" small disabled={!value.trim()} onPress={onCreate} />
+    </View>
+  );
+}
+
+const nextState = (shown: CheckState, initial: CheckState): CheckState =>
+  shown === 'checked' ? 'unchecked' : shown === 'unchecked' && initial === 'mixed' ? 'mixed' : 'checked';
 
 export function GroupSheet({
   visible,
   onClose,
-  current,
-  onSelect,
+  keys,
+  onApply,
 }: {
   visible: boolean;
   onClose: () => void;
-  current?: string;
-  onSelect: (group: string) => void;
+  keys: string[];
+  onApply: (changes: GroupChanges) => void;
 }) {
+  const { c } = useTheme();
   const groups = useLibrary(s => s.groups);
+  const bookmarks = useLibrary(s => s.bookmarks);
+  const addGroup = useLibrary(s => s.addGroup);
+  const [changes, setChanges] = useState<Record<string, boolean>>({});
   const [name, setName] = useState('');
 
   useEffect(() => {
     if (visible) {
       setName('');
+      setChanges({});
     }
   }, [visible]);
 
-  const choose = (group: string) => {
-    onClose();
-    onSelect(group);
+  const initial = useMemo(() => {
+    const states: Record<string, CheckState> = {};
+    for (const group of groups) {
+      const count = keys.filter(key => bookmarks[key]?.groups.includes(group)).length;
+      states[group] = !count ? 'unchecked' : count === keys.length ? 'checked' : 'mixed';
+    }
+    return states;
+  }, [groups, keys, bookmarks]);
+
+  const shown = (group: string): CheckState =>
+    group in changes ? (changes[group] ? 'checked' : 'unchecked') : initial[group];
+
+  const cycle = (group: string) => {
+    const next = nextState(shown(group), initial[group]);
+    setChanges(current => {
+      const updated = { ...current };
+      if (next === initial[group]) {
+        delete updated[group];
+      } else {
+        updated[group] = next === 'checked';
+      }
+      return updated;
+    });
   };
 
   const create = () => {
@@ -37,27 +113,35 @@ export function GroupSheet({
     if (!value) {
       return;
     }
-    choose(value);
+    addGroup(value);
+    setChanges(current => ({ ...current, [value]: true }));
+    setName('');
+  };
+
+  const apply = () => {
+    const pending = name.trim();
+    const add = Object.keys(changes).filter(group => changes[group]);
+    const remove = Object.keys(changes).filter(group => !changes[group]);
+    if (pending && !add.includes(pending)) {
+      add.push(pending);
+    }
+    onClose();
+    if (add.length || remove.length) {
+      onApply({ add, remove });
+    }
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="Chuyển nhóm" subtitle="Chọn nhóm bookmark">
-      <Radio label="Không nhóm" selected={current === ''} onPress={() => choose('')} />
+    <Sheet visible={visible} onClose={onClose} title="Đặt nhóm" subtitle={`Đã chọn ${keys.length} truyện`}>
       {groups.map(group => (
-        <Radio key={group} label={group} selected={current === group} onPress={() => choose(group)} />
+        <GroupCheck key={group} label={group} state={shown(group)} onPress={() => cycle(group)} />
       ))}
-      <Divider />
-      <View style={styles.create}>
-        <TextField
-          value={name}
-          onChangeText={setName}
-          placeholder="Tên nhóm mới"
-          icon={FolderPlus}
-          style={styles.flex}
-          returnKeyType="done"
-          onSubmitEditing={create}
-        />
-        <Button title="Tạo" small disabled={!name.trim()} onPress={create} />
+      {groups.length > 0 && <Divider />}
+      <NewGroupField value={name} onChangeText={setName} onCreate={create} />
+      <Text style={[font.caption, styles.note, { color: c.muted }]}>Chỉ áp dụng các nhóm bạn thay đổi.</Text>
+      <View style={styles.actions}>
+        <Button title="Huỷ" variant="secondary" onPress={onClose} style={styles.flex} />
+        <Button title="Áp dụng" icon={Check} onPress={apply} style={styles.flex} />
       </View>
     </Sheet>
   );
@@ -138,7 +222,7 @@ export function EditGroupDialog({
     if (!group) {
       return;
     }
-    const ok = await confirm('Xoá nhóm', `Xoá nhóm “${group}”? Truyện trong nhóm sẽ chuyển về Không nhóm.`, {
+    const ok = await confirm('Xoá nhóm', `Xoá nhóm “${group}”? Truyện trong nhóm vẫn còn trong bookmark.`, {
       confirmText: 'Xoá',
       destructive: true,
     });
@@ -167,6 +251,9 @@ export function EditGroupDialog({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  check: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 48, paddingHorizontal: space.lg },
   create: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.lg },
+  note: { paddingHorizontal: space.lg },
+  actions: { flexDirection: 'row', gap: space.sm, padding: space.lg },
   remove: { alignSelf: 'flex-start' },
 });

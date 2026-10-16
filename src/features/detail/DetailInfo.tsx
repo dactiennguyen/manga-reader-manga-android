@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ErrorView } from '../../components/ErrorView';
 import { Favicon } from '../../components/Favicon';
 import { Cover } from '../../components/MangaCard';
-import { ChevronDown, ChevronRight, ChevronUp, House, Lock, Star } from '../../components/icons';
+import { ChevronDown, ChevronRight, ChevronUp, Lock, Star } from '../../components/icons';
 import { Button, Chip } from '../../components/ui';
 import type { Genre, MangaDetail, SourceConfig } from '../../sources/types';
 import { font, radius, space, useTheme } from '../../theme';
@@ -34,46 +34,65 @@ export function DetailInfo(props: Props) {
   const latest = detail?.chapters[0];
   const updated = latest ? chapterDate(latest) : undefined;
 
+  const sourceField = (
+    <Field label="Nguồn">
+      <Pressable
+        onPress={props.onSource}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`Catalog ${source.name}`}
+        style={styles.source}
+      >
+        <Favicon url={source.baseUrl} label={source.name} size={16} />
+        <Text numberOfLines={1} style={[font.body, styles.sourceName, { color: c.accent }]}>
+          {source.name}
+        </Text>
+        <ChevronRight size={18} color={c.accent} />
+      </Pressable>
+    </Field>
+  );
+
   let body: ReactNode;
   if (locked) {
     body = (
-      <View style={[styles.lock, { backgroundColor: c.surface }]}>
-        <View style={[styles.lockIcon, { backgroundColor: c.dangerSoft }]}>
-          <Lock size={22} color={c.danger} />
+      <>
+        {sourceField}
+        <View style={[styles.lock, { backgroundColor: c.surface }]}>
+          <View style={[styles.lockIcon, { backgroundColor: c.dangerSoft }]}>
+            <Lock size={22} color={c.danger} />
+          </View>
+          <Text style={[font.heading, styles.center, { color: c.text }]}>Nội dung 18+</Text>
+          <Text style={[font.body, styles.center, { color: c.muted }]}>
+            Truyện này có nội dung người lớn. Bật hiển thị nội dung 18+ và xác nhận đủ tuổi trong Cài đặt để đọc.
+          </Text>
+          <Button title="Mở Cài đặt" onPress={props.onUnlock} small />
         </View>
-        <Text style={[font.heading, styles.center, { color: c.text }]}>Nội dung 18+</Text>
-        <Text style={[font.body, styles.center, { color: c.muted }]}>
-          Truyện này có nội dung người lớn. Bật hiển thị nội dung 18+ và xác nhận đủ tuổi trong Cài đặt để đọc.
-        </Text>
-        <Button title="Mở Cài đặt" onPress={props.onUnlock} small />
-      </View>
+      </>
     );
   } else if (!detail && error) {
-    body = <ErrorView error={error} onRetry={props.onRetry} url={url} style={styles.inline} />;
+    body = (
+      <>
+        {sourceField}
+        <ErrorView error={error} onRetry={props.onRetry} url={url} style={styles.inline} />
+      </>
+    );
   } else if (!detail) {
     body = (
-      <View style={styles.skeletons}>
-        <View style={[styles.skeleton, { backgroundColor: c.skeleton }]} />
-        <View style={[styles.skeleton, { backgroundColor: c.skeleton }]} />
-        <View style={[styles.skeleton, styles.skeletonShort, { backgroundColor: c.skeleton }]} />
-      </View>
+      <>
+        {sourceField}
+        <View style={styles.skeletons}>
+          <View style={[styles.skeleton, { backgroundColor: c.skeleton }]} />
+          <View style={[styles.skeleton, { backgroundColor: c.skeleton }]} />
+          <View style={[styles.skeleton, styles.skeletonShort, { backgroundColor: c.skeleton }]} />
+        </View>
+      </>
     );
   } else {
     body = (
       <>
         {altTitles.length > 0 && <Field label="Tên khác" value={altTitles.join(', ')} />}
-        {detail.rating !== undefined && detail.rating > 0 && (
-          <Field label="Đánh giá">
-            <View style={styles.rating}>
-              <Star size={16} color={c.warning} fill={c.warning} />
-              <Text style={[font.body, { color: c.text }]}>{detail.rating.toFixed(1)}</Text>
-            </View>
-          </Field>
-        )}
-        {!!updated && <Field label="Cập nhật" value={updated} />}
         {authors.length > 0 && <Field label="Tác giả" value={authors.join(', ')} />}
-        {!!detail.status && <Field label="Trạng thái" value={detail.status} />}
-        {!!detail.views && <Field label="Lượt xem" value={detail.views} />}
+        {sourceField}
         <Field label="Mô tả">
           <Description text={detail.description} />
         </Field>
@@ -91,31 +110,29 @@ export function DetailInfo(props: Props) {
     );
   }
 
+  const stats =
+    detail && !locked ? (
+      <>
+        {!!detail.status && <Field label="Trạng thái" value={detail.status} first />}
+        {!!detail.views && <Field label="Lượt xem" value={detail.views} first={!detail.status} />}
+        {!!updated && <Field label="Cập nhật" value={updated} first={!detail.status && !detail.views} />}
+        {detail.rating !== undefined && detail.rating > 0 && (
+          <Field label="Đánh giá" first={!detail.status && !detail.views && !updated}>
+            <View style={styles.rating}>
+              <Star size={16} color={c.warning} fill={c.warning} />
+              <Text style={[font.body, { color: c.text }]}>{detail.rating.toFixed(1)}</Text>
+            </View>
+          </Field>
+        )}
+      </>
+    ) : null;
+
   return (
-    <View>
-      <View style={styles.crumbs}>
-        <Pressable
-          onPress={props.onSource}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel={`Catalog ${source.name}`}
-        >
-          <House size={24} color={c.text} fill={c.text} />
-        </Pressable>
-        <ChevronRight size={20} color={c.text} />
-        <Text numberOfLines={2} style={[styles.crumbTitle, { color: c.text }]}>
-          {title}
-        </Text>
+    <View style={styles.wrap}>
+      <View style={styles.top}>
+        <Cover uri={cover} headers={headers} blur={locked} style={styles.cover} />
+        <View style={styles.stats}>{stats}</View>
       </View>
-
-      <Cover uri={cover} headers={headers} blur={locked} style={styles.cover} />
-      <Pressable onPress={props.onSource} hitSlop={6} style={styles.source}>
-        <Favicon url={source.baseUrl} label={source.name} size={16} />
-        <Text numberOfLines={1} style={[font.caption, styles.sourceName, { color: c.muted }]}>
-          {source.name}
-        </Text>
-      </Pressable>
-
       <View style={styles.fields}>
         <Field label="Tên truyện" value={title} />
         {body}
@@ -124,11 +141,21 @@ export function DetailInfo(props: Props) {
   );
 }
 
-function Field({ label, value, children }: { label: string; value?: string; children?: ReactNode }) {
+function Field({
+  label,
+  value,
+  first,
+  children,
+}: {
+  label: string;
+  value?: string;
+  first?: boolean;
+  children?: ReactNode;
+}) {
   const { c } = useTheme();
   return (
     <View>
-      <Text style={[styles.label, { color: c.text }]}>{label}</Text>
+      <Text style={[styles.label, first && styles.firstLabel, { color: c.text }]}>{label}</Text>
       {value !== undefined ? (
         <Text selectable style={[font.body, styles.value, { color: c.text }]}>
           {value}
@@ -165,7 +192,7 @@ function Description({ text }: { text?: string }) {
           accessibilityLabel={expanded ? 'Thu gọn mô tả' : 'Xem toàn bộ mô tả'}
           style={styles.more}
         >
-          <Arrow size={22} color={c.text} />
+          <Arrow size={26} color={c.text} />
         </Pressable>
       )}
     </View>
@@ -174,33 +201,21 @@ function Description({ text }: { text?: string }) {
 
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
-  crumbs: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingHorizontal: space.lg,
-    paddingTop: space.lg,
-    paddingBottom: space.md,
-  },
-  crumbTitle: { flex: 1, fontSize: 17, fontWeight: '700' },
-  cover: { width: '55%', alignSelf: 'center', borderRadius: radius.sm },
-  source: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: 6,
-    maxWidth: '80%',
-    marginTop: space.sm,
-  },
+  wrap: { paddingTop: space.lg },
+  top: { flexDirection: 'row', gap: space.lg, paddingHorizontal: space.lg },
+  cover: { width: '50%', borderRadius: radius.sm },
+  stats: { flex: 1, paddingTop: space.sm },
+  source: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, maxWidth: '100%' },
   sourceName: { flexShrink: 1 },
   fields: { paddingHorizontal: space.lg },
   label: { fontSize: 15, fontWeight: '700', marginTop: space.lg },
+  firstLabel: { marginTop: 0 },
   value: { marginTop: 6, lineHeight: 22 },
   valueBox: { marginTop: space.sm },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   descText: { lineHeight: 22 },
   italic: { fontStyle: 'italic' },
-  more: { alignSelf: 'center', paddingTop: 2 },
+  more: { alignSelf: 'center', paddingTop: space.xs, paddingHorizontal: space.xl },
   genres: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   skeletons: { gap: space.sm, paddingTop: space.lg },
   skeleton: { height: 12, borderRadius: 6 },

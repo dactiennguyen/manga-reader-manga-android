@@ -12,6 +12,7 @@ import {
 import type { ViewMode } from '../../store/useReaderSettings';
 import { PageImage } from './PageImage';
 import type { ViewerProps } from './viewerTypes';
+import { ZoomContainer, type ZoomHandle } from './ZoomContainer';
 
 type Props = ViewerProps & {
   mode: Exclude<ViewMode, 'vertical'>;
@@ -50,6 +51,8 @@ export const PagedViewer = memo(function PagedViewerView({
   onVerify,
 }: Props) {
   const listRef = useRef<FlatList<Slot>>(null);
+  const zoomRef = useRef<ZoomHandle>(null);
+  const [zoomed, setZoomed] = useState(false);
   const horizontal = mode !== 'single';
   const reversed = horizontal && rtl;
   const perSlot = mode === 'double' ? 2 : 1;
@@ -109,6 +112,7 @@ export const PagedViewer = memo(function PagedViewerView({
     () => ({
       goToPage: page => {
         const slot = Math.min(lastSlot, Math.max(0, Math.floor(page / perSlot)));
+        zoomRef.current?.reset();
         listRef.current?.scrollToIndex({ index: toDataIndex(slot), animated: false });
         showSlot(slot);
       },
@@ -117,9 +121,11 @@ export const PagedViewer = memo(function PagedViewerView({
         if (slot < 0 || slot > lastSlot) {
           return false;
         }
+        zoomRef.current?.reset();
         listRef.current?.scrollToIndex({ index: toDataIndex(slot), animated: true });
         return true;
       },
+      toggleZoom: (pageX, pageY) => zoomRef.current?.toggleAt(pageX, pageY),
     }),
     [lastSlot, perSlot, toDataIndex, showSlot],
   );
@@ -161,25 +167,28 @@ export const PagedViewer = memo(function PagedViewerView({
   );
 
   return (
-    <FlatList
-      ref={listRef}
-      data={data}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      horizontal={horizontal}
-      pagingEnabled
-      getItemLayout={getItemLayout}
-      initialScrollIndex={toDataIndex(initialSlot)}
-      initialNumToRender={1}
-      maxToRenderPerBatch={2}
-      windowSize={Math.max(3, preloadPages * 2 + 1)}
-      removeClippedSubviews
-      onScroll={handleScroll}
-      scrollEventThrottle={16}
-      decelerationRate="fast"
-      showsHorizontalScrollIndicator={false}
-      showsVerticalScrollIndicator={false}
-    />
+    <ZoomContainer ref={zoomRef} width={width} height={height} mode="paged" onZoomChange={setZoomed}>
+      <FlatList
+        ref={listRef}
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        horizontal={horizontal}
+        pagingEnabled
+        scrollEnabled={!zoomed}
+        getItemLayout={getItemLayout}
+        initialScrollIndex={toDataIndex(initialSlot)}
+        initialNumToRender={1}
+        maxToRenderPerBatch={2}
+        windowSize={Math.max(3, preloadPages * 2 + 1)}
+        removeClippedSubviews
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+      />
+    </ZoomContainer>
   );
 });
 

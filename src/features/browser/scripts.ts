@@ -211,6 +211,22 @@ export function buildBridgeScript(config: BridgeConfig): string {
     var cancelLp = function () {
       if (lp.timer) { clearTimeout(lp.timer); lp.timer = 0; }
     };
+    var imageSrc = function (img) {
+      var src = img.currentSrc || img.src || '';
+      if (!src || /^data:/i.test(src)) {
+        var lazy = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-lazy-src');
+        if (lazy) { try { src = new URL(lazy.trim(), location.href).href; } catch (err) {} }
+      }
+      return /^(https?|data):/i.test(src) ? src : '';
+    };
+    var imageInLink = function (link, x, y) {
+      var imgs = link.getElementsByTagName('img');
+      for (var i = 0; i < imgs.length; i++) {
+        var r = imgs[i].getBoundingClientRect();
+        if (r.width >= 24 && r.height >= 24 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) { return imgs[i]; }
+      }
+      return null;
+    };
     document.addEventListener('touchstart', function (e) {
       cancelLp();
       if (!e.touches || e.touches.length !== 1) { return; }
@@ -219,13 +235,14 @@ export function buildBridgeScript(config: BridgeConfig): string {
       var link = target.closest('a[href]');
       var img = target.closest('img');
       var href = link && /^https?:/i.test(link.href) ? link.href : '';
-      var src = img ? (img.currentSrc || img.src || '') : '';
-      if (src && !/^(https?|data):/i.test(src)) { src = ''; }
-      if (!href && !src) { return; }
+      if (!href && !img) { return; }
       lp.x = e.touches[0].clientX;
       lp.y = e.touches[0].clientY;
       lp.timer = setTimeout(function () {
         lp.timer = 0;
+        var pic = img || (href ? imageInLink(link, lp.x, lp.y) : null);
+        var src = pic ? imageSrc(pic) : '';
+        if (!href && !src) { return; }
         lp.suppressUntil = Date.now() + 800;
         var text = link ? String(link.innerText || link.textContent || '').trim().slice(0, 500) : '';
         try { window.getSelection().removeAllRanges(); } catch (err) {}

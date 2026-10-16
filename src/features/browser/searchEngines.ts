@@ -1,11 +1,11 @@
 import { ensureScheme, looksLikeUrl, withQuery } from '../../lib/url';
-import type { SearchEngineId } from '../../store/useSettings';
+import type { SafeSearch, SearchEngineId } from '../../store/useSettings';
 
 export type SearchEngine = {
   id: SearchEngineId;
   name: string;
   glyph: string;
-  searchUrl: (query: string, safe: boolean) => string;
+  searchUrl: (query: string, safe: SafeSearch) => string;
   suggestUrl: (query: string) => string;
 };
 
@@ -17,7 +17,10 @@ export const SEARCH_ENGINES: SearchEngine[] = [
     name: 'Google',
     glyph: 'G',
     searchUrl: (q, safe) =>
-      withQuery('https://www.google.com/search', { q, safe: safe ? 'active' : undefined }),
+      withQuery('https://www.google.com/search', {
+        q,
+        safe: { strict: 'active', moderate: undefined, off: 'off' }[safe],
+      }),
     suggestUrl: q =>
       `https://suggestqueries.google.com/complete/search?client=firefox&oe=utf-8&q=${enc(q)}`,
   },
@@ -26,14 +29,18 @@ export const SEARCH_ENGINES: SearchEngine[] = [
     name: 'Bing',
     glyph: 'B',
     searchUrl: (q, safe) =>
-      withQuery('https://www.bing.com/search', { q, adlt: safe ? 'strict' : undefined }),
+      withQuery('https://www.bing.com/search', {
+        q,
+        adlt: { strict: 'strict', moderate: 'moderate', off: 'off' }[safe],
+      }),
     suggestUrl: q => `https://api.bing.com/osjson.aspx?query=${enc(q)}`,
   },
   {
     id: 'duckduckgo',
     name: 'DuckDuckGo',
     glyph: 'D',
-    searchUrl: (q, safe) => withQuery('https://duckduckgo.com/', { q, kp: safe ? '1' : undefined }),
+    searchUrl: (q, safe) =>
+      withQuery('https://duckduckgo.com/', { q, kp: { strict: '1', moderate: '-1', off: '-2' }[safe] }),
     suggestUrl: q => `https://duckduckgo.com/ac/?type=list&q=${enc(q)}`,
   },
   {
@@ -41,7 +48,7 @@ export const SEARCH_ENGINES: SearchEngine[] = [
     name: 'Yahoo',
     glyph: 'Y',
     searchUrl: (q, safe) =>
-      withQuery('https://search.yahoo.com/search', { p: q, vm: safe ? 'r' : undefined }),
+      withQuery('https://search.yahoo.com/search', { p: q, vm: { strict: 'r', moderate: 'i', off: 'p' }[safe] }),
     suggestUrl: q => `https://ff.search.yahoo.com/gossip?output=fxjson&command=${enc(q)}`,
   },
   {
@@ -49,7 +56,10 @@ export const SEARCH_ENGINES: SearchEngine[] = [
     name: 'Yandex',
     glyph: 'Я',
     searchUrl: (q, safe) =>
-      withQuery('https://yandex.com/search/', { text: q, family: safe ? 'yes' : undefined }),
+      withQuery('https://yandex.com/search/', {
+        text: q,
+        family: { strict: 'yes', moderate: undefined, off: 'no' }[safe],
+      }),
     suggestUrl: q => `https://suggest.yandex.com/suggest-ff.cgi?part=${enc(q)}`,
   },
 ];
@@ -58,11 +68,11 @@ export function getSearchEngine(id: SearchEngineId): SearchEngine {
   return SEARCH_ENGINES.find(e => e.id === id) ?? SEARCH_ENGINES[0];
 }
 
-export function buildSearchUrl(id: SearchEngineId, query: string, safe: boolean): string {
+export function buildSearchUrl(id: SearchEngineId, query: string, safe: SafeSearch): string {
   return getSearchEngine(id).searchUrl(query.trim(), safe);
 }
 
-export function resolveInput(input: string, id: SearchEngineId, safe: boolean): string {
+export function resolveInput(input: string, id: SearchEngineId, safe: SafeSearch): string {
   const value = input.trim();
   return looksLikeUrl(value) ? ensureScheme(value) : buildSearchUrl(id, value, safe);
 }

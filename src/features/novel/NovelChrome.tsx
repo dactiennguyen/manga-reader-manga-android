@@ -3,12 +3,11 @@ import { Animated, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } f
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
-import { AddonBar } from '../../components/AddressBarParts';
 import {
   ArrowLeft,
   ArrowUpDown,
+  Bookmark,
   ChevronRight,
-  CircleHelp,
   Hand,
   Headphones,
   List,
@@ -16,6 +15,7 @@ import {
   Pause,
   Play,
   Plus,
+  Settings,
   SkipBack,
   SkipForward,
   Square,
@@ -54,7 +54,7 @@ export type NovelChromeActions = {
   onSeek: (paragraph: number) => void;
   onOpenChapters: () => void;
   onOpenMenu: () => void;
-  onOpenHelp: () => void;
+  onBookmark: () => void;
   onOpenFonts: () => void;
   onToggleTapToScroll: () => void;
   onToggleAutoScroll: () => void;
@@ -67,8 +67,8 @@ export type NovelChromeActions = {
 
 type Props = {
   visible: boolean;
-  chapterUrl: string;
   chapterName: string;
+  bookmarked: boolean;
   palette: NovelPalette;
   themeId: NovelThemeId;
   positionStore: ValueStore<number>;
@@ -321,8 +321,8 @@ function AutoScrollControls({ palette, onStop }: { palette: NovelPalette; onStop
 
 export const NovelChrome = memo(function NovelChromeView({
   visible,
-  chapterUrl,
   chapterName,
+  bookmarked,
   palette,
   themeId,
   positionStore,
@@ -350,24 +350,30 @@ export const NovelChrome = memo(function NovelChromeView({
   return (
     <>
       <Animated.View pointerEvents={anim.pointerEvents} style={[styles.top, anim.top]}>
-        <AddonBar url={chapterUrl} onMenu={actions.onOpenMenu} />
-        <View style={[styles.titleRow, { backgroundColor: palette.bar, borderColor: palette.border }]}>
+        <View
+          style={[
+            styles.titleRow,
+            { paddingTop: insets.top, backgroundColor: palette.bar, borderColor: palette.border },
+          ]}
+        >
           <ChromeButton icon={ArrowLeft} color={palette.text} onPress={actions.onBack} accessibilityLabel="Quay lại" />
           <Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>
             {chapterName}
           </Text>
+          <ChromeButton
+            icon={Bookmark}
+            color={tone(bookmarked)}
+            filled={bookmarked}
+            onPress={actions.onBookmark}
+            accessibilityLabel={bookmarked ? 'Đã lưu bookmark' : 'Thêm vào bookmark'}
+          />
           <ChromeButton
             icon={Hand}
             color={tone(tapToScroll)}
             onPress={actions.onToggleTapToScroll}
             accessibilityLabel={tapToScroll ? 'Tắt chạm để cuộn' : 'Bật chạm để cuộn'}
           />
-          <ChromeButton
-            icon={CircleHelp}
-            color={palette.text}
-            onPress={actions.onOpenHelp}
-            accessibilityLabel="Vùng chạm và cử chỉ"
-          />
+          <ChromeButton icon={Settings} color={palette.text} onPress={actions.onOpenMenu} accessibilityLabel="Cài đặt đọc" />
         </View>
       </Animated.View>
 
@@ -462,7 +468,7 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
+    minHeight: 52,
     paddingHorizontal: space.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },

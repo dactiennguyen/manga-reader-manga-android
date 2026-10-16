@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { addonEntries, uninstallAddon, useAddonRevision, type AddonEntry } from '../../addons/registry';
+import { addonEntries, useAddonRevision, type AddonEntry } from '../../addons/registry';
 import { SDK_VERSION } from '../../addons/sdk';
 import { ADDON_CHECK_KEY, checkAddonUpdates, type UpdateReport } from '../../addons/updater';
 import { useAppNavigation } from '../../app/routes';
-import { Link, Puzzle, RefreshCw, RotateCcw } from '../../components/icons';
+import { CircleCheck, Globe, Link, Puzzle, RefreshCw } from '../../components/icons';
 import {
   Button,
-  confirm,
   Divider,
   FieldLabel,
   Header,
@@ -25,8 +24,6 @@ import { formatRelative } from '../../lib/time';
 import { useSettings } from '../../store/useSettings';
 import { font, radius, space, useTheme } from '../../theme';
 
-const CONTENT_NAME = { manga: 'truyện tranh', novel: 'tiểu thuyết' } as const;
-
 export function describeReport(report: UpdateReport): string {
   const parts: string[] = [];
   if (report.installed.length) {
@@ -39,6 +36,35 @@ export function describeReport(report: UpdateReport): string {
     parts.push(`Lỗi: ${report.errors.join('; ')}`);
   }
   return parts.join('. ') || 'Mọi addon đều đã là bản mới nhất';
+}
+
+export function AddonIcon({ size = 40 }: { size?: number }) {
+  const { c } = useTheme();
+  return (
+    <View style={[styles.icon, { width: size, height: size, backgroundColor: c.surfaceAlt }]}>
+      <Puzzle size={Math.round(size * 0.6)} color={c.addon} />
+    </View>
+  );
+}
+
+function AddonRow({ entry, onPress }: { entry: AddonEntry; onPress: () => void }) {
+  const { c } = useTheme();
+  return (
+    <Pressable onPress={onPress} android_ripple={{ color: c.border }} style={styles.row}>
+      <AddonIcon />
+      <View style={styles.body}>
+        <View style={styles.titleRow}>
+          <Text numberOfLines={1} style={[font.body, styles.title, { color: c.text }]}>
+            {entry.info.label}
+          </Text>
+          <CircleCheck size={16} color={c.addon} fill={c.addon} accessibilityLabel="Đang bật" />
+        </View>
+        <Text numberOfLines={2} style={[font.caption, { color: c.textSecondary }]}>
+          {entry.info.desc}
+        </Text>
+      </View>
+    </Pressable>
+  );
 }
 
 export function AddonManagerScreen() {
@@ -81,69 +107,27 @@ export function AddonManagerScreen() {
     }
   };
 
-  const restore = async (entry: AddonEntry) => {
-    const ok = await confirm(
-      `Gỡ bản cập nhật của ${entry.info.label}?`,
-      `Addon sẽ quay về bản có sẵn trong app (v${entry.builtinVersion}).`,
-      { confirmText: 'Gỡ' },
-    );
-    if (ok) {
-      uninstallAddon(entry.info.uid);
-      toast(`${entry.info.label}: đã về bản có sẵn`);
-    }
-  };
-
   return (
     <Screen>
-      <Header title="Quản lý addon" />
+      <Header
+        title="Add-ons"
+        right={
+          <IconButton
+            icon={Globe}
+            color={c.onAppBar}
+            onPress={() => navigation.navigate('Addons')}
+            accessibilityLabel="Site được hỗ trợ"
+          />
+        }
+      />
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <Section title={`Addon (${entries.length})`}>
-          {entries.map((entry, index) => {
-            const sites = Object.keys(entry.info.siteInfo ?? {}).length;
-            const content = entry.info.content.map(k => CONTENT_NAME[k]).join(', ');
-            return (
-              <View key={entry.info.uid}>
-                {index > 0 && <Divider inset={68} />}
-                <View style={styles.row}>
-                  <View style={[styles.icon, { backgroundColor: c.surfaceAlt }]}>
-                    <Puzzle size={24} color={c.addon} />
-                  </View>
-                  <View style={styles.body}>
-                    <View style={styles.titleRow}>
-                      <Text numberOfLines={1} style={[font.body, styles.title, { color: c.text }]}>
-                        {entry.info.label}
-                      </Text>
-                      <View
-                        style={[styles.badge, { backgroundColor: entry.origin === 'update' ? c.accentSoft : c.surfaceAlt }]}
-                      >
-                        <Text style={[styles.badgeText, { color: entry.origin === 'update' ? c.accent : c.muted }]}>
-                          v{entry.info.version}
-                          {entry.origin === 'update' ? ' · từ kho' : ''}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text numberOfLines={2} style={[font.caption, { color: c.textSecondary }]}>
-                      {entry.info.desc}
-                    </Text>
-                    <Text style={[font.caption, { color: c.muted }]}>
-                      {content}
-                      {sites ? ` · ${sites} site` : ''}
-                      {entry.info.allowCustomSites ? ' · thêm được site khác' : ''}
-                    </Text>
-                  </View>
-                  {entry.origin === 'update' && entry.builtinVersion !== undefined && (
-                    <IconButton
-                      icon={RotateCcw}
-                      size={20}
-                      color={c.muted}
-                      onPress={() => restore(entry)}
-                      accessibilityLabel={`Gỡ bản cập nhật của ${entry.info.label}`}
-                    />
-                  )}
-                </View>
-              </View>
-            );
-          })}
+          {entries.map((entry, index) => (
+            <View key={entry.info.uid}>
+              {index > 0 && <Divider inset={68} />}
+              <AddonRow entry={entry} onPress={() => navigation.navigate('AddonDetail', { uid: entry.info.uid })} />
+            </View>
+          ))}
         </Section>
 
         <Section
@@ -178,28 +162,17 @@ export function AddonManagerScreen() {
             onValueChange={autoUpdateAddons => set({ autoUpdateAddons })}
           />
         </Section>
-
-        <Button
-          title="Site được hỗ trợ"
-          icon={Puzzle}
-          variant="ghost"
-          onPress={() => navigation.navigate('Addons')}
-          style={styles.sites}
-        />
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: space.xl },
+  content: { paddingVertical: space.lg, gap: space.xl },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
-  icon: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  icon: { borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { flexShrink: 1, fontWeight: '600' },
-  badge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.sm },
-  badgeText: { fontSize: 11, fontWeight: '700' },
   fields: { gap: space.sm, padding: space.lg },
-  sites: { alignSelf: 'center', marginTop: space.md },
 });

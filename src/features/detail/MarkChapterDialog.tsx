@@ -1,6 +1,21 @@
+import Clipboard from '@react-native-clipboard/clipboard';
+import { Share } from 'react-native';
+
 import { Sheet } from '../../components/Sheet';
-import { CheckCheck, Download, Eye, EyeOff, Globe, Undo2 } from '../../components/icons';
+import {
+  CheckCheck,
+  Copy,
+  Download,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Globe,
+  ScanEye,
+  Share2,
+  Undo2,
+} from '../../components/icons';
 import { Divider, ListItem, toast } from '../../components/ui';
+import { displayUrl } from '../../lib/url';
 import type { Chapter } from '../../sources/types';
 import { markChaptersRead, useProgress } from '../../store/progress';
 import { useChapterDownload, type DownloadTask } from '../../store/useDownloads';
@@ -25,6 +40,8 @@ export function MarkChapterDialog({
   mangaKey,
   onDownload,
   onOpenWeb,
+  onOpenTab,
+  onPreview,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -33,6 +50,8 @@ export function MarkChapterDialog({
   mangaKey: string;
   onDownload: (chapter: Chapter) => void;
   onOpenWeb: (chapter: Chapter) => void;
+  onOpenTab: (chapter: Chapter) => void;
+  onPreview: (chapter: Chapter) => void;
 }) {
   const progress = useProgress(mangaKey);
   const task = useChapterDownload(mangaKey, target?.chapter.url ?? '');
@@ -53,6 +72,11 @@ export function MarkChapterDialog({
     refreshUnread(mangaKey);
     toast(message);
     onClose();
+  };
+
+  const run = (action: () => void) => () => {
+    onClose();
+    action();
   };
 
   const canDownload = !task || task.status === 'error';
@@ -84,18 +108,28 @@ export function MarkChapterDialog({
         title="Tải chương này"
         subtitle={task ? DOWNLOAD_LABEL[task.status] : 'Đọc offline khi không có mạng'}
         disabled={!canDownload}
-        onPress={() => {
-          onDownload(chapter);
-          onClose();
-        }}
+        onPress={run(() => onDownload(chapter))}
+      />
+      <Divider />
+      <ListItem icon={Globe} title="Mở chương trên web" onPress={run(() => onOpenWeb(chapter))} />
+      <ListItem icon={ExternalLink} title="Mở trong tab mới" onPress={run(() => onOpenTab(chapter))} />
+      <ListItem icon={ScanEye} title="Xem trước trang" onPress={run(() => onPreview(chapter))} />
+      <Divider />
+      <ListItem
+        icon={Copy}
+        title="Sao chép link"
+        subtitle={displayUrl(chapter.url)}
+        onPress={run(() => {
+          Clipboard.setString(chapter.url);
+          toast('Đã sao chép link');
+        })}
       />
       <ListItem
-        icon={Globe}
-        title="Mở chương trên web"
-        onPress={() => {
-          onClose();
-          onOpenWeb(chapter);
-        }}
+        icon={Share2}
+        title="Chia sẻ link"
+        onPress={run(() => {
+          Share.share({ message: chapter.url }).catch(() => {});
+        })}
       />
     </Sheet>
   );

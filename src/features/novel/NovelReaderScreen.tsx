@@ -29,11 +29,12 @@ import { sameUrl } from '../../lib/url';
 import { mangaKey } from '../../sources';
 import type { Chapter } from '../../sources/types';
 import { getProgress } from '../../store/progress';
-import { useActiveTab } from '../../store/useBrowser';
 import { useReaderSettings } from '../../store/useReaderSettings';
+import { useIsBookmarked } from '../../store/useLibrary';
 import { useSettings } from '../../store/useSettings';
 import { useSource } from '../../store/useSources';
 import { font, space, useTheme } from '../../theme';
+import { BookmarkDialog } from '../detail/BookmarkDialog';
 import { BookmarkPrompt, useBookmarkTarget } from '../reader/BookmarkPrompt';
 import { ChapterPickerSheet } from '../reader/ChapterPickerSheet';
 import { prefetchChapter } from '../reader/chapterCache';
@@ -57,7 +58,7 @@ import { NovelSettingsSheet } from './NovelSettingsSheet';
 import { useTts } from './useTts';
 
 type NovelNavigation = NativeStackNavigationProp<RootStackParamList, 'NovelReader'>;
-type SheetName = 'chapters' | 'settings' | 'menu' | 'fonts' | 'help';
+type SheetName = 'chapters' | 'settings' | 'menu' | 'fonts' | 'help' | 'bookmark';
 
 const NO_PARAGRAPHS: string[] = [];
 const NO_CHAPTERS: Chapter[] = [];
@@ -107,8 +108,7 @@ export function NovelReaderScreen() {
   const { sourceId, mangaUrl, chapterUrl, paragraph: paragraphParam } = route.params;
   const key = mangaKey(sourceId, mangaUrl);
   const src = useSource(sourceId);
-  const { c, dark } = useTheme();
-  const incognito = useActiveTab().incognito;
+  const { c } = useTheme();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const screen = useWindowDimensions();
@@ -145,6 +145,7 @@ export function NovelReaderScreen() {
   const mangaTitle = detail?.title ?? known.title ?? '';
   const cover = detail?.cover ?? known.cover;
   const bookmarkTarget = useBookmarkTarget(key, src, mangaUrl, detail, mangaTitle, cover);
+  const bookmarked = useIsBookmarked(key);
   const chapterName = current?.name ?? content?.title ?? 'Chương đang đọc';
 
   useEffect(() => {
@@ -202,8 +203,29 @@ export function NovelReaderScreen() {
   });
   const ttsContinue = useRef(false);
 
-  const live = useRef({ paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll, autoScrolling });
-  live.current = { paragraphs, next, prev, src, key, screen, tapToScroll: reader.tapToScroll, autoScrolling };
+  const bookmarkReady = !!bookmarkTarget;
+  const live = useRef({
+    paragraphs,
+    next,
+    prev,
+    src,
+    key,
+    screen,
+    tapToScroll: reader.tapToScroll,
+    autoScrolling,
+    bookmarkReady,
+  });
+  live.current = {
+    paragraphs,
+    next,
+    prev,
+    src,
+    key,
+    screen,
+    tapToScroll: reader.tapToScroll,
+    autoScrolling,
+    bookmarkReady,
+  };
 
 
   const handleTtsChapterEnd = useCallback(() => {
@@ -530,7 +552,13 @@ export function NovelReaderScreen() {
       },
       onOpenChapters: () => setSheet('chapters'),
       onOpenMenu: () => setSheet('menu'),
-      onOpenHelp: () => setSheet('help'),
+      onBookmark: () => {
+        if (live.current.bookmarkReady) {
+          setSheet('bookmark');
+        } else {
+          toast('Đang tải thông tin truyện, thử lại sau giây lát');
+        }
+      },
       onOpenFonts: () => setSheet('fonts'),
       onToggleTapToScroll: () => {
         const { tapToScroll, set } = useReaderSettings.getState();
@@ -683,7 +711,7 @@ export function NovelReaderScreen() {
     <View style={[styles.fill, { backgroundColor: palette.bg }]}>
       {focused && (
         <StatusBar
-          barStyle={showChrome ? (dark || incognito ? 'light-content' : 'dark-content') : palette.statusBar}
+          barStyle={palette.statusBar}
           hidden={hideStatusBar || (reader.immersive && !chromeVisible)}
           showHideTransition="fade"
           animated
@@ -694,8 +722,8 @@ export function NovelReaderScreen() {
 
       <NovelChrome
         visible={showChrome}
-        chapterUrl={chapterUrl}
         chapterName={chapterName}
+        bookmarked={bookmarked}
         palette={palette}
         themeId={themeId}
         positionStore={positionStore}
@@ -744,7 +772,11 @@ export function NovelReaderScreen() {
           chapter={current ?? { url: chapterUrl, name: chapterName }}
           onOpenManga={openManga}
           settings={{ label: 'Cài đặt đọc', onPress: openSettings }}
+          onHelp={() => setSheet('help')}
         />
+      )}
+      {sheet === 'bookmark' && bookmarkTarget && (
+        <BookmarkDialog visible onClose={closeSheet} target={bookmarkTarget} />
       )}
       <BookmarkPrompt target={bookmarkTarget} />
     </View>

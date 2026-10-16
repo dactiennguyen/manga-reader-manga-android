@@ -5,21 +5,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useAppNavigation } from '../../app/routes';
+import { AppDrawer, useAppDrawerActions, type DrawerAction } from '../../components/AppDrawer';
+import { PreviewSheet } from '../../components/PreviewSheet';
 import { Dialog } from '../../components/Sheet';
 import { confirm, toast } from '../../components/ui';
 import { errorMessage } from '../../lib/http';
 import { storage } from '../../lib/storage';
 import { getHost, getOrigin, looksLikeUrl, sameUrl } from '../../lib/url';
-import { detectEngine, type EngineId } from '../../sources';
+import { detectEngine, getEngine, type EngineId, type SourceConfig } from '../../sources';
 import { useActiveTab, useBrowser } from '../../store/useBrowser';
 import { useHistory } from '../../store/useHistory';
 import { useSettings } from '../../store/useSettings';
 import { findSourceForUrl, useSources } from '../../store/useSources';
 import { useIsWide, useTheme } from '../../theme';
-import { AdblockSheet } from './AdblockSheet';
+import type { AdblockPanelProps } from './AdblockSheet';
 import { runAddonOnPage } from './addon';
+import { AddonPrompt } from './AddonPrompt';
+import { consumeAddonPromptSkip } from './addonPromptSkip';
 import { AddressBar, type AddonState, type AddressBarHandle } from './AddressBar';
-import { BrowserMenu, type MenuAction } from './BrowserMenu';
 import {
   BrowserWebView,
   type BlockStats,
@@ -44,6 +47,7 @@ import {
   type HtmlPurpose,
 } from './scripts';
 import { resolveInput } from './searchEngines';
+import { SiteInfoSheet } from './SiteInfoSheet';
 import { Snackbar, type SnackbarData } from './Snackbar';
 import { SuggestionsPanel } from './SuggestionsPanel';
 import { TabStrip } from './TabStrip';
@@ -51,20 +55,20 @@ import { CoachMarks, useTourTargets, type TourStep } from './Tour';
 
 const ADDON_STEP: TourStep = {
   key: 'addon',
-  text: 'Mảnh ghép chuyển xanh khi trang đang xem được addon hỗ trợ: bấm để đọc trang bằng giao diện đọc truyện của app. Khi mảnh ghép xám, bấm để xem các site được hỗ trợ.',
+  text: 'Biểu tượng đầu thanh địa chỉ chuyển xanh khi trang đang xem được addon hỗ trợ: bấm vào rồi chọn Chạy addon để đọc trang bằng giao diện đọc truyện của app. Ở trang chủ, bấm vào đây để đổi công cụ tìm kiếm.',
 };
 
 const TOUR_STEPS: TourStep[] = [
+  {
+    key: 'menu',
+    text: 'Menu: lùi, tiến, bookmark trang này, chia sẻ, tải lại, cùng tab mới, lịch sử, tải xuống, add-ons, cài đặt và các công cụ cho trang đang xem.',
+  },
   ADDON_STEP,
   {
     key: 'address',
     text: 'Nhập địa chỉ web hoặc từ khoá. Trong lúc gõ, bạn có thể đổi công cụ tìm kiếm hoặc chuyển sang tìm truyện.',
   },
   { key: 'tabs', text: 'Xem và quản lý các tab đang mở, kể cả tab ẩn danh. Nhấn giữ để mở tab mới.' },
-  {
-    key: 'menu',
-    text: 'Menu: lùi, tiến, tải lại, trang chủ, bookmark trang này, cùng lịch sử, tải xuống, addon, cài đặt và các công cụ cho trang đang xem.',
-  },
   { key: 'mediaSites', text: 'Các site truyện bạn đã thêm nằm ở đây. Bấm vào một site để mở danh sách truyện.' },
 ];
 
@@ -81,6 +85,14 @@ let bootHandled = false;
 function cleanTitle(title: string, url: string): string {
   const value = (title ?? '').trim();
   return !value || value === url || /^(https?|about|data):/i.test(value) ? '' : value;
+}
+
+function addonHandles(source: SourceConfig, url: string): boolean {
+  try {
+    return getEngine(source.engine).classifyUrl(source, url) !== null;
+  } catch {
+    return false;
+  }
 }
 
 export function BrowserScreen() {
@@ -129,7 +141,8 @@ export function BrowserScreen() {
   const [find, setFind] = useState<{ tabId: string; result: FindResult } | null>(null);
   const findOpen = !!find && find.tabId === tab.id && !showingHome;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [adblockSheet, setAdblockSheet] = useState(false);
+  const [siteInfo, setSiteInfo] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [bookmarkDialog, setBookmarkDialog] = useState(false);
   const [mediaFound, setMediaFound] = useState<MediaFound | null>(null);
   const mediaPending = useRef(false);
@@ -142,12 +155,15 @@ export function BrowserScreen() {
   const [tourPrompt, setTourPrompt] = useState(false);
   const [promptDismissed, setPromptDismissed] = useState(false);
   const [tourSteps, setTourSteps] = useState<TourStep[] | null>(null);
+  const [addonPrompt, setAddonPrompt] = useState<{ tabId: string; url: string; anchorX: number | null } | null>(
+    null,
+  );
 
   const pendingRun = useRef(false);
   const autoRan = useRef(new Set<string>());
+  const prompted = useRef(new Set<string>());
   const detectCache = useRef(new Map<string, EngineId | number>());
   const saveName = useRef<string | null>(null);
-  const homeViaButton = useRef(false);
   const runTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -160,9 +176,17 @@ export function BrowserScreen() {
     ? 'detected'
     : null;
   const bookmark = pageUrl ? webBookmarks.find(b => sameUrl(b.url, pageUrl)) : undefined;
+  const promptVisible =
+    !!addonPrompt &&
+    addonState === 'source' &&
+    addonPrompt.tabId === tab.id &&
+    sameUrl(addonPrompt.url, pageUrl) &&
+    !editing;
   const overlayOpen =
     menuOpen ||
-    adblockSheet ||
+    promptVisible ||
+    siteInfo ||
+    !!previewUrl ||
     bookmarkDialog ||
     !!saveDialog ||
     !!linkTarget ||
@@ -181,10 +205,13 @@ export function BrowserScreen() {
 
   useEffect(() => {
     pendingRun.current = false;
-    homeViaButton.current = false;
     clearTimeout(runTimer.current);
     setAddonBusy(false);
   }, [tab.id]);
+
+  useEffect(() => {
+    setAddonPrompt(prev => (prev && (prev.tabId !== tab.id || !sameUrl(prev.url, pageUrl)) ? null : prev));
+  }, [tab.id, pageUrl]);
 
   useEffect(() => {
     if (!bootHandled) {
@@ -223,7 +250,6 @@ export function BrowserScreen() {
   );
 
   const openInTab = useEvent((url: string) => {
-    homeViaButton.current = false;
     useBrowser.getState().openUrl(url, { incognito: tab.incognito });
   });
 
@@ -248,6 +274,19 @@ export function BrowserScreen() {
     addressRef.current?.blur();
     setEditing(false);
     openInTab(url);
+  });
+
+  const searchSite = useEvent((raw: string) => {
+    const text = raw.trim();
+    if (!text || !source) {
+      return;
+    }
+    addressRef.current?.blur();
+    setEditing(false);
+    if (!tab.incognito) {
+      useHistory.getState().addSearch(text, 'manga');
+    }
+    navigation.navigate('Catalog', { sourceId: source.id, query: text });
   });
 
   const focusAddress = useEvent(() => addressRef.current?.focus());
@@ -281,11 +320,29 @@ export function BrowserScreen() {
     requestHtml('run');
   };
 
-  const onAddonPress = () => {
-    if (addonState) {
+  const showAddonPrompt = (url: string) => {
+    const key = `${tab.id}|${url}`;
+    if (prompted.current.has(key)) {
+      return;
+    }
+    prompted.current.add(key);
+    const tabId = tab.id;
+    setAddonPrompt({ tabId, url, anchorX: null });
+    tour.measure('addon').then(rect => {
+      if (rect) {
+        const anchorX = rect.x + rect.width / 2;
+        setAddonPrompt(prev => (prev && prev.tabId === tabId && prev.url === url ? { ...prev, anchorX } : prev));
+      }
+    });
+  };
+
+  const resolveAddonPrompt = (run: boolean, autoNext = false) => {
+    setAddonPrompt(null);
+    if (autoNext) {
+      settings.set({ autoRunAddon: true });
+    }
+    if (run) {
       startRun();
-    } else {
-      navigation.navigate('Addons');
     }
   };
 
@@ -364,8 +421,16 @@ export function BrowserScreen() {
       startRun();
       return;
     }
-    if (findSourceForUrl(url)) {
-      if (settings.autoRunAddon && isFocused && !tab.showHome && !autoRan.current.has(url)) {
+    const pageSource = findSourceForUrl(url);
+    if (pageSource) {
+      if (!isFocused || tab.showHome || consumeAddonPromptSkip(url)) {
+        return;
+      }
+      if (!settings.autoRunAddon) {
+        if (addonHandles(pageSource, url)) {
+          showAddonPrompt(url);
+        }
+      } else if (!autoRan.current.has(url)) {
         autoRan.current.add(url);
         requestHtml('autorun');
       }
@@ -454,6 +519,20 @@ export function BrowserScreen() {
 
   const showHome = (show: boolean) => useBrowser.getState().showHome(tab.id, show);
 
+  const homeFromMenu = useRef<string | null>(null);
+  useEffect(() => {
+    if (!tab.showHome) {
+      homeFromMenu.current = null;
+    }
+  }, [tab.id, tab.showHome]);
+
+  const goHome = () => {
+    if (!tab.showHome && hasPage) {
+      homeFromMenu.current = tab.id;
+      showHome(true);
+    }
+  };
+
   const goBack = () => {
     if (showingHome) {
       return;
@@ -461,7 +540,6 @@ export function BrowserScreen() {
     if (navState.canGoBack) {
       webRef.current?.goBack();
     } else {
-      homeViaButton.current = false;
       showHome(true);
     }
   };
@@ -471,13 +549,6 @@ export function BrowserScreen() {
       showHome(false);
     } else if (navState.canGoForward) {
       webRef.current?.goForward();
-    }
-  };
-
-  const goHome = () => {
-    if (!tab.showHome) {
-      homeViaButton.current = hasPage;
-      showHome(true);
     }
   };
 
@@ -500,6 +571,10 @@ export function BrowserScreen() {
       addressRef.current?.blur();
       return true;
     }
+    if (promptVisible) {
+      setAddonPrompt(null);
+      return true;
+    }
     if (findOpen) {
       closeFind();
       return true;
@@ -508,8 +583,8 @@ export function BrowserScreen() {
       goBack();
       return true;
     }
-    if (tab.showHome && hasPage && homeViaButton.current) {
-      homeViaButton.current = false;
+    if (tab.showHome && hasPage && homeFromMenu.current === tab.id) {
+      homeFromMenu.current = null;
       showHome(false);
       return true;
     }
@@ -531,7 +606,15 @@ export function BrowserScreen() {
     }, [handleBack]),
   );
 
-  useFocusEffect(useCallback(() => () => setMenuOpen(false), []));
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        setMenuOpen(false);
+        setAddonPrompt(null);
+      },
+      [],
+    ),
+  );
 
   const clearSiteData = async () => {
     const url = pageUrl;
@@ -552,7 +635,9 @@ export function BrowserScreen() {
     }
   };
 
-  const handleMenu = (action: MenuAction) => {
+  const appAction = useAppDrawerActions();
+
+  const handleMenu = (action: DrawerAction) => {
     setMenuOpen(false);
     const store = useBrowser.getState();
     switch (action) {
@@ -568,6 +653,9 @@ export function BrowserScreen() {
       case 'stop':
         webRef.current?.stop();
         return;
+      case 'reload':
+        webRef.current?.reload();
+        return;
       case 'newTab':
         store.newTab();
         focusAddressSoon();
@@ -575,30 +663,6 @@ export function BrowserScreen() {
       case 'newIncognitoTab':
         store.newTab('', { incognito: true });
         focusAddressSoon();
-        return;
-      case 'bookmarks':
-        navigation.navigate('Bookmarks');
-        return;
-      case 'history':
-        navigation.navigate('History');
-        return;
-      case 'downloads':
-        navigation.navigate('Downloads');
-        return;
-      case 'addons':
-        navigation.navigate('Addons');
-        return;
-      case 'stats':
-        navigation.navigate('ReadingStats');
-        return;
-      case 'settings':
-        navigation.navigate('Settings');
-        return;
-      case 'qr':
-        navigation.navigate('QRScanner');
-        return;
-      case 'runAddon':
-        startRun();
         return;
       case 'bookmarkPage':
         setBookmarkDialog(true);
@@ -618,22 +682,12 @@ export function BrowserScreen() {
       case 'savePage':
         setSaveDialog({ saving: false });
         return;
-      case 'viewSource':
-        navigation.navigate('ViewSource', { url: pageUrl });
-        return;
       case 'findMedia':
         mediaPending.current = true;
         webRef.current?.inject(JS_FIND_MEDIA);
         return;
-      case 'adblock':
-        setAdblockSheet(true);
-        return;
-      case 'clearSiteData':
-        clearSiteData();
-        return;
-      case 'reload':
-        webRef.current?.reload();
-        return;
+      default:
+        appAction(action);
     }
   };
 
@@ -724,6 +778,29 @@ export function BrowserScreen() {
 
   const showProgress = !showingHome && navState.loading && navState.progress < 1;
 
+  const adblockPanel: AdblockPanelProps = {
+    stats: pageStats,
+    globalEnabled: settings.adblock,
+    tabEnabled: !tab.adblockOff,
+    onToggleTab: enabled => useBrowser.getState().updateTab(tab.id, { adblockOff: !enabled }),
+    onOpenSettings: () => {
+      setSiteInfo(false);
+      navigation.navigate('AdblockSettings');
+    },
+  };
+
+  const openSiteInfo = () => {
+    setAddonPrompt(null);
+    setSiteInfo(true);
+  };
+
+  const canForward = (tab.showHome && hasPage) || (!showingHome && navState.canGoForward);
+
+  const fromSiteInfo = (action: () => void) => () => {
+    setSiteInfo(false);
+    action();
+  };
+
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
       <AddressBar
@@ -731,10 +808,13 @@ export function BrowserScreen() {
         url={pageUrl}
         incognito={tab.incognito}
         category={settings.searchCategory}
+        engine={settings.searchEngine}
+        onChangeEngine={id => settings.set({ searchEngine: id })}
         editing={editing}
         query={query}
         onChangeQuery={setQuery}
         onFocus={() => {
+          setAddonPrompt(null);
           setQuery(pageUrl);
           setEditing(true);
         }}
@@ -742,20 +822,21 @@ export function BrowserScreen() {
         onSubmit={() => submitText(query)}
         addon={addonState}
         addonBusy={addonBusy}
-        onAddonPress={onAddonPress}
-        shield={pageUrl ? { active: adblockActive, count: pageStats.ads + pageStats.trackers } : null}
-        onShieldPress={() => setAdblockSheet(true)}
-        onQrPress={() => navigation.navigate('QRScanner')}
+        site={pageUrl ? { adblock: adblockActive, blocked: pageStats.ads + pageStats.trackers } : null}
+        onSitePress={openSiteInfo}
         tabCount={tabCount}
         onTabsPress={() => navigation.navigate('Tabs')}
         onNewTab={newTabFromBar}
-        onMenuPress={() => setMenuOpen(true)}
+        onMenuPress={() => {
+          setAddonPrompt(null);
+          setMenuOpen(true);
+        }}
         registerTour={tour.register}
         wide={
           wide
             ? {
                 canBack: !showingHome,
-                canForward: (tab.showHome && hasPage) || (!showingHome && navState.canGoForward),
+                canForward,
                 loading: showProgress,
                 onBack: goBack,
                 onForward: goForward,
@@ -808,12 +889,22 @@ export function BrowserScreen() {
             query={query}
             pageUrl={pageUrl}
             title={tab.title}
+            siteName={source?.name}
             onSubmitText={submitText}
+            onSearchSite={searchSite}
             onOpenUrl={openFromSuggestion}
             onFill={setQuery}
           />
         )}
         <Snackbar data={snack} onHide={hideSnack} />
+        {promptVisible && addonPrompt && source && (
+          <AddonPrompt
+            title={source.name}
+            anchorX={addonPrompt.anchorX}
+            onCancel={() => resolveAddonPrompt(false)}
+            onRun={autoNext => resolveAddonPrompt(true, autoNext)}
+          />
+        )}
       </View>
 
       {!editing && findOpen && find && (
@@ -826,36 +917,48 @@ export function BrowserScreen() {
       )}
       <View style={{ height: insets.bottom, backgroundColor: !editing && findOpen ? c.surface : c.bg }} />
 
-      <BrowserMenu
+      <AppDrawer
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
-        page={pageUrl ? { url: pageUrl, title: tab.title } : null}
         nav={{
           canBack: !showingHome,
-          canForward: (tab.showHome && hasPage) || (!showingHome && navState.canGoForward),
+          canForward,
+          canReload: !!pageUrl,
           loading: showProgress,
-          atHome: showingHome,
+          canBookmark: !!pageUrl,
+          bookmarked: !!bookmark,
+          canShare: !!pageUrl,
         }}
-        bookmarked={!!bookmark}
-        desktop={tab.desktop}
-        blocked={pageStats.ads + pageStats.trackers}
-        adblockActive={adblockActive}
-        addon={addonState}
+        page={pageUrl ? { desktop: tab.desktop } : null}
         onAction={handleMenu}
       />
-      <AdblockSheet
-        visible={adblockSheet}
-        onClose={() => setAdblockSheet(false)}
-        stats={pageStats}
-        globalEnabled={settings.adblock}
-        tabEnabled={!tab.adblockOff}
-        onToggleTab={enabled => useBrowser.getState().updateTab(tab.id, { adblockOff: !enabled })}
-        onOpenSettings={() => {
-          setAdblockSheet(false);
-          navigation.navigate('AdblockSettings');
-        }}
+      <SiteInfoSheet
+        visible={siteInfo}
+        onClose={() => setSiteInfo(false)}
+        url={pageUrl}
+        title={tab.title}
+        addon={addonState}
+        addonBusy={addonBusy}
+        sourceName={source?.name}
+        onRunAddon={fromSiteInfo(startRun)}
+        onShowSites={fromSiteInfo(() => navigation.navigate('Addons'))}
+        onViewSource={fromSiteInfo(() => navigation.navigate('ViewSource', { url: pageUrl }))}
+        onClearSiteData={fromSiteInfo(clearSiteData)}
+        adblock={adblockPanel}
       />
-      <LinkMenu target={linkTarget} pageUrl={tab.url} incognito={tab.incognito} onClose={() => setLinkTarget(null)} />
+      <LinkMenu
+        target={linkTarget}
+        pageUrl={tab.url}
+        incognito={tab.incognito}
+        onPreview={setPreviewUrl}
+        onClose={() => setLinkTarget(null)}
+      />
+      <PreviewSheet
+        url={previewUrl}
+        incognito={tab.incognito}
+        onClose={() => setPreviewUrl(null)}
+        onOpenInTab={url => useBrowser.getState().newTab(url, { incognito: tab.incognito })}
+      />
       <MediaSheet found={mediaFound} onClose={() => setMediaFound(null)} />
       {bookmarkDialog && !!pageUrl && (
         <BookmarkDialog
@@ -911,14 +1014,18 @@ function SuggestionsPanelHost({
   query,
   pageUrl,
   title,
+  siteName,
   onSubmitText,
+  onSearchSite,
   onOpenUrl,
   onFill,
 }: {
   query: string;
   pageUrl: string;
   title: string;
+  siteName?: string;
   onSubmitText: (text: string) => void;
+  onSearchSite: (text: string) => void;
   onOpenUrl: (url: string) => void;
   onFill: (text: string) => void;
 }) {
@@ -932,7 +1039,9 @@ function SuggestionsPanelHost({
       engine={engine}
       currentUrl={pageUrl}
       currentTitle={title}
+      siteName={siteName}
       onSubmitText={onSubmitText}
+      onSearchSite={onSearchSite}
       onOpenUrl={onOpenUrl}
       onFill={onFill}
       onChangeCategory={value => set({ searchCategory: value })}

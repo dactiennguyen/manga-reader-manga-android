@@ -6,6 +6,7 @@ import type { Page } from '../../sources/types';
 export type ViewerHandle = {
   goToPage: (page: number) => void;
   step: (direction: 1 | -1) => boolean;
+  toggleZoom: (pageX: number, pageY: number) => void;
 };
 
 export type ViewerProps = {

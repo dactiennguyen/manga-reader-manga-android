@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import type { EngineId, Genre } from '../sources/types';
+import { skipAddonPrompt } from '../features/browser/addonPromptSkip';
 import { useBrowser } from '../store/useBrowser';
 
 export type RootStackParamList = {
@@ -10,8 +11,9 @@ export type RootStackParamList = {
   Bookmarks: { tab?: 'media' | 'web' | 'sites' } | undefined;
   History: { tab?: 'reading' | 'web' } | undefined;
   Downloads: { tab?: 'chapters' | 'pages' | 'files' } | undefined;
-  Addons: undefined;
+  Addons: { engine?: EngineId } | undefined;
   AddonManager: undefined;
+  AddonDetail: { uid: string };
   AddSite: { url?: string; engine?: EngineId } | undefined;
   SourceSettings: { sourceId: string };
   Catalog: { sourceId: string; query?: string; genre?: Genre };
@@ -43,8 +45,11 @@ export function useAppNavigation(): AppNavigation {
 export function openInBrowser(
   navigation: AppNavigation,
   url: string,
-  options: { newTab?: boolean } = {},
+  options: { newTab?: boolean; original?: boolean } = {},
 ): void {
+  if (options.original) {
+    skipAddonPrompt(url);
+  }
   useBrowser.getState().openUrl(url, { newTab: options.newTab ?? true });
   navigation.popTo('Browser');
 }

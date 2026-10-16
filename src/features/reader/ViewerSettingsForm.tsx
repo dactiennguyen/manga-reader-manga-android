@@ -27,11 +27,13 @@ export function ViewerSettingsForm({ prefs, onPrefsChange }: Props) {
       autoScrollSpeed: state.autoScrollSpeed,
       tapToScroll: state.tapToScroll,
       tapZone: state.tapZone,
+      doubleTapZoom: state.doubleTapZoom,
       highResImages: state.highResImages,
       preloadPages: state.preloadPages,
       nextChapterDelay: state.nextChapterDelay,
       immersive: state.immersive,
       keepScreenOn: state.keepScreenOn,
+      statusInfo: state.statusInfo,
     })),
   );
   const set = useReaderSettings(state => state.set);
@@ -118,6 +120,13 @@ export function ViewerSettingsForm({ prefs, onPrefsChange }: Props) {
           />
           <Text style={caption}>{TAP_ZONE_HINTS[s.tapToScroll ? s.tapZone : 'off']}</Text>
         </View>
+        <Divider />
+        <SwitchRow
+          title="Chạm đúp để phóng to"
+          subtitle="Chạm đúp vào giữa màn hình để phóng to hoặc thu nhỏ. Dùng hai ngón để phóng to tuỳ ý."
+          value={s.doubleTapZoom}
+          onValueChange={doubleTapZoom => set({ doubleTapZoom })}
+        />
       </Section>
 
       <Section title="Ảnh và tải trước">
@@ -155,6 +164,13 @@ export function ViewerSettingsForm({ prefs, onPrefsChange }: Props) {
           subtitle="Ẩn thanh trạng thái và thanh điều khiển khi đọc"
           value={s.immersive}
           onValueChange={immersive => set({ immersive })}
+        />
+        <Divider />
+        <SwitchRow
+          title="Dòng trạng thái"
+          subtitle="Khi ẩn thanh điều khiển, hiện tên chương, giờ, pin và số trang ở góc dưới"
+          value={s.statusInfo}
+          onValueChange={statusInfo => set({ statusInfo })}
         />
         <Divider />
         <SwitchRow

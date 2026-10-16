@@ -1,18 +1,16 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { Sheet } from '../../components/Sheet';
-import { ArrowLeft, ChevronRight, Download } from '../../components/icons';
-import { Button, IconButton, Radio, toast } from '../../components/ui';
+import { Download } from '../../components/icons';
+import { Button, Radio, toast } from '../../components/ui';
 import type { Chapter } from '../../sources/types';
 import { useProgress } from '../../store/progress';
 import { downloadId, useDownloads, type DownloadManga } from '../../store/useDownloads';
-import { font, radius, space, useTheme } from '../../theme';
-import { chapterMeta } from './chapters';
+import { font, space, useTheme } from '../../theme';
+import { ChapterPicker, RangeFields, type RangeEnd } from './ChapterRange';
 
 type Mode = 'all' | 'unread' | 'missing' | 'range';
-
-const ROW_HEIGHT = 56;
 
 export function DownloadChapterDialog({
   visible,
@@ -33,7 +31,7 @@ export function DownloadChapterDialog({
   const [mode, setMode] = useState<Mode>('all');
   const [from, setFrom] = useState(0);
   const [to, setTo] = useState(Math.max(0, ordered.length - 1));
-  const [picking, setPicking] = useState<'from' | 'to' | null>(null);
+  const [picking, setPicking] = useState<RangeEnd | null>(null);
 
   const { counts, selected, pending } = useMemo(() => {
     const queuedOrDone = (ch: Chapter) => {
@@ -62,7 +60,6 @@ export function DownloadChapterDialog({
   };
 
   if (picking) {
-    const value = picking === 'from' ? from : to;
     const choose = (index: number) => {
       if (picking === 'from') {
         setFrom(index);
@@ -73,40 +70,12 @@ export function DownloadChapterDialog({
     };
     return (
       <Sheet visible={visible} onClose={onClose} scroll={false}>
-        <View style={styles.pickHeader}>
-          <IconButton icon={ArrowLeft} onPress={() => setPicking(null)} accessibilityLabel="Quay lại" />
-          <Text style={[font.heading, styles.flex, { color: c.text }]}>
-            {picking === 'from' ? 'Từ chương' : 'Đến chương'}
-          </Text>
-        </View>
-        <FlatList
-          data={ordered}
-          keyExtractor={item => item.url}
-          style={{ height: height * 0.6 }}
-          initialScrollIndex={Math.max(0, value - 3)}
-          getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
-          renderItem={({ item, index }) => {
-            const active = index === value;
-            return (
-              <Pressable
-                onPress={() => choose(index)}
-                android_ripple={{ color: c.border }}
-                style={[styles.pickRow, active && { backgroundColor: c.accentSoft }]}
-              >
-                <Text style={[font.caption, styles.pickIndex, { color: c.muted }]}>{index + 1}</Text>
-                <View style={styles.flex}>
-                  <Text numberOfLines={1} style={[font.body, { color: active ? c.accent : c.text }]}>
-                    {item.name}
-                  </Text>
-                  {!!chapterMeta(item) && (
-                    <Text numberOfLines={1} style={[font.caption, { color: c.muted }]}>
-                      {chapterMeta(item)}
-                    </Text>
-                  )}
-                </View>
-              </Pressable>
-            );
-          }}
+        <ChapterPicker
+          end={picking}
+          chapters={ordered}
+          value={picking === 'from' ? from : to}
+          onBack={() => setPicking(null)}
+          onPick={choose}
         />
       </Sheet>
     );
@@ -140,11 +109,7 @@ export function DownloadChapterDialog({
           onPress={() => setMode('range')}
         />
         {mode === 'range' && ordered.length > 0 && (
-          <View style={[styles.range, { backgroundColor: c.surfaceAlt }]}>
-            <RangeRow label="Từ chương" chapter={ordered[from]} onPress={() => setPicking('from')} />
-            <View style={[styles.rangeDivider, { backgroundColor: c.border }]} />
-            <RangeRow label="Đến chương" chapter={ordered[to]} onPress={() => setPicking('to')} />
-          </View>
+          <RangeFields chapters={ordered} from={from} to={to} onPick={setPicking} />
         )}
       </ScrollView>
 
@@ -170,25 +135,8 @@ export function DownloadChapterDialog({
   );
 }
 
-function RangeRow({ label, chapter, onPress }: { label: string; chapter?: Chapter; onPress: () => void }) {
-  const { c } = useTheme();
-  return (
-    <Pressable onPress={onPress} android_ripple={{ color: c.border }} style={styles.rangeRow}>
-      <Text style={[font.caption, styles.rangeLabel, { color: c.muted }]}>{label}</Text>
-      <Text numberOfLines={1} style={[font.body, styles.flex, { color: c.text }]}>
-        {chapter?.name ?? '—'}
-      </Text>
-      <ChevronRight size={18} color={c.muted} />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  range: { marginHorizontal: space.lg, marginBottom: space.sm, borderRadius: radius.md, overflow: 'hidden' },
-  rangeRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 50, paddingHorizontal: space.md },
-  rangeLabel: { width: 76 },
-  rangeDivider: { height: StyleSheet.hairlineWidth },
   summary: {
     gap: 2,
     marginTop: space.sm,
@@ -197,13 +145,4 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   actions: { flexDirection: 'row', gap: space.sm, padding: space.lg },
-  pickHeader: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.xs },
-  pickRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    height: ROW_HEIGHT,
-    paddingHorizontal: space.lg,
-  },
-  pickIndex: { width: 36, textAlign: 'right' },
 });

@@ -1,21 +1,33 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppNavigation } from '../../app/routes';
+import { TabCountBox } from '../../components/AddressBarParts';
+import { Favicon } from '../../components/Favicon';
 import { Sheet } from '../../components/Sheet';
-import { BookOpen, EllipsisVertical, House, Layers, Plus, VenetianMask, X } from '../../components/icons';
-import { EmptyState, Header, IconButton, ListItem, Screen, Segmented, confirm } from '../../components/ui';
+import {
+  ArrowLeft,
+  BookOpen,
+  EllipsisVertical,
+  House,
+  Layers,
+  Plus,
+  VenetianMask,
+  X,
+} from '../../components/icons';
+import { EmptyState, IconButton, ListItem, Screen, confirm } from '../../components/ui';
 import { formatRelative } from '../../lib/time';
 import { displayUrl } from '../../lib/url';
 import { useBrowser, type BrowserTab } from '../../store/useBrowser';
 import { WIDE_MIN_WIDTH, font, radius, space, useTheme } from '../../theme';
-import { Favicon } from '../../components/Favicon';
 
 type Mode = 'normal' | 'incognito';
 
 export function TabsScreen() {
   const { c } = useTheme();
   const navigation = useAppNavigation();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const tabs = useBrowser(s => s.tabs);
   const activeTabId = useBrowser(s => s.activeTabId);
@@ -28,6 +40,7 @@ export function TabsScreen() {
   const incognito = mode === 'incognito';
   const list = tabs.filter(t => t.incognito === incognito);
   const normalCount = tabs.filter(t => !t.incognito).length;
+  const incognitoCount = tabs.length - normalCount;
   const columns = width >= WIDE_MIN_WIDTH ? 3 : 2;
   const cardWidth = Math.floor((width - space.md * (columns + 1)) / columns);
 
@@ -58,33 +71,22 @@ export function TabsScreen() {
 
   return (
     <Screen>
-      <Header
-        title="Tab"
-        right={
-          <>
-            <IconButton
-              icon={Plus}
-              color={c.onAppBar}
-              onPress={newTab}
-              accessibilityLabel={incognito ? 'Tab ẩn danh mới' : 'Tab mới'}
-            />
-            <IconButton
-              icon={EllipsisVertical}
-              color={c.onAppBar}
-              onPress={() => setMenuOpen(true)}
-              accessibilityLabel="Tuỳ chọn"
-            />
-          </>
-        }
-      />
-      <View style={styles.segment}>
-        <Segmented
-          options={[
-            { value: 'normal', label: `Tab (${normalCount})` },
-            { value: 'incognito', label: `Ẩn danh (${tabs.length - normalCount})` },
-          ]}
-          value={mode}
-          onChange={setMode}
+      <View style={[styles.header, { backgroundColor: c.appBar }]}>
+        <IconButton icon={ArrowLeft} color={c.onAppBar} onPress={() => navigation.goBack()} accessibilityLabel="Quay lại" />
+        <View style={styles.kinds} accessibilityRole="tablist">
+          <KindTab selected={!incognito} label={`${normalCount} tab`} onPress={() => setMode('normal')}>
+            <TabCountBox count={normalCount} color={c.onAppBar} />
+          </KindTab>
+          <KindTab selected={incognito} label={`${incognitoCount} tab ẩn danh`} onPress={() => setMode('incognito')}>
+            <VenetianMask size={22} color={c.onAppBar} />
+            <Text style={[styles.kindCount, { color: c.onAppBar }]}>{incognitoCount}</Text>
+          </KindTab>
+        </View>
+        <IconButton
+          icon={EllipsisVertical}
+          color={c.onAppBar}
+          onPress={() => setMenuOpen(true)}
+          accessibilityLabel="Tuỳ chọn"
         />
       </View>
 
@@ -119,6 +121,18 @@ export function TabsScreen() {
         />
       )}
 
+      <Pressable
+        onPress={newTab}
+        accessibilityRole="button"
+        accessibilityLabel={incognito ? 'Tab ẩn danh mới' : 'Tab mới'}
+        style={({ pressed }) => [
+          styles.fab,
+          { backgroundColor: c.accentSoft, bottom: insets.bottom + space.lg, opacity: pressed ? 0.85 : 1 },
+        ]}
+      >
+        <Plus size={28} color={c.accent} />
+      </Pressable>
+
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)}>
         <ListItem icon={Plus} title="Tab mới" onPress={() => openNew(false)} />
         <ListItem icon={VenetianMask} title="Tab ẩn danh mới" onPress={() => openNew(true)} />
@@ -127,11 +141,38 @@ export function TabsScreen() {
           icon={X}
           title="Đóng tất cả tab ẩn danh"
           destructive
-          disabled={normalCount === tabs.length}
+          disabled={!incognitoCount}
           onPress={() => closeAll(true)}
         />
       </Sheet>
     </Screen>
+  );
+}
+
+function KindTab({
+  selected,
+  label,
+  onPress,
+  children,
+}: {
+  selected: boolean;
+  label: string;
+  onPress: () => void;
+  children: ReactNode;
+}) {
+  const { c } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      android_ripple={{ color: c.border }}
+      style={styles.kind}
+    >
+      <View style={[styles.kindBody, !selected && styles.unselected]}>{children}</View>
+      <View style={[styles.indicator, selected && { backgroundColor: c.onAppBar }]} />
+    </Pressable>
   );
 }
 
@@ -196,8 +237,19 @@ function TabCard({
 }
 
 const styles = StyleSheet.create({
-  segment: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm },
-  list: { paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.xl, gap: space.md },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    paddingHorizontal: space.xs,
+  },
+  kinds: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignSelf: 'stretch' },
+  kind: { width: 76, alignItems: 'center', justifyContent: 'flex-end' },
+  kindBody: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  kindCount: { fontSize: 13, fontWeight: '700' },
+  unselected: { opacity: 0.55 },
+  indicator: { height: 3, alignSelf: 'stretch', borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  list: { paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: 96, gap: space.md },
   column: { gap: space.md },
   card: { borderRadius: radius.lg + 2, borderWidth: 1, overflow: 'hidden' },
   cardActive: { borderWidth: 2 },
@@ -219,4 +271,18 @@ const styles = StyleSheet.create({
   },
   previewText: { fontSize: 12, textAlign: 'center' },
   time: { fontSize: 10, opacity: 0.8 },
+  fab: {
+    position: 'absolute',
+    right: space.lg,
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
 });

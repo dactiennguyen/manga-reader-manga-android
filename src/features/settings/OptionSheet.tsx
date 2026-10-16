@@ -14,6 +14,7 @@ export function OptionSheet<T extends string | number>({
   options,
   value,
   onSelect,
+  onReselect,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -22,6 +23,7 @@ export function OptionSheet<T extends string | number>({
   options: readonly Option<T>[];
   value: T;
   onSelect: (value: T) => void;
+  onReselect?: (value: T) => void;
 }) {
   return (
     <Sheet visible={visible} onClose={onClose} title={title} subtitle={subtitle}>
@@ -35,6 +37,8 @@ export function OptionSheet<T extends string | number>({
             onClose();
             if (option.value !== value) {
               onSelect(option.value);
+            } else {
+              onReselect?.(option.value);
             }
           }}
         />
@@ -45,20 +49,24 @@ export function OptionSheet<T extends string | number>({
 
 export function SelectRow<T extends string | number>({
   title,
+  subtitle,
   icon,
   sheetTitle,
   sheetSubtitle,
   options,
   value,
   onChange,
+  onReselect,
 }: {
   title: string;
+  subtitle?: string;
   icon?: LucideIcon;
   sheetTitle?: string;
   sheetSubtitle?: string;
   options: readonly Option<T>[];
   value: T;
   onChange: (value: T) => void;
+  onReselect?: (value: T) => void;
 }) {
   const [open, setOpen] = useState(false);
   const current = options.find(o => o.value === value);
@@ -66,7 +74,7 @@ export function SelectRow<T extends string | number>({
     <>
       <ListItem
         title={title}
-        subtitle={current?.label}
+        subtitle={subtitle ?? current?.label}
         icon={icon}
         chevron
         onPress={() => setOpen(true)}
@@ -79,6 +87,7 @@ export function SelectRow<T extends string | number>({
         options={options}
         value={value}
         onSelect={onChange}
+        onReselect={onReselect}
       />
     </>
   );

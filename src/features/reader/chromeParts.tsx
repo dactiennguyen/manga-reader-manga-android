@@ -56,16 +56,20 @@ export function useChromeAnimation(visible: boolean) {
 export function ChromeButton({
   icon: Icon,
   onPress,
+  onLongPress,
   color = CHROME_FG,
   size = 22,
+  filled,
   disabled,
   accessibilityLabel,
   style,
 }: {
   icon: LucideIcon;
   onPress?: () => void;
+  onLongPress?: () => void;
   color?: string;
   size?: number;
+  filled?: boolean;
   disabled?: boolean;
   accessibilityLabel: string;
   style?: StyleProp<ViewStyle>;
@@ -73,6 +77,7 @@ export function ChromeButton({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       disabled={disabled}
       hitSlop={4}
       accessibilityRole="button"
@@ -81,7 +86,7 @@ export function ChromeButton({
       android_ripple={RIPPLE}
       style={[styles.button, disabled && styles.disabled, style]}
     >
-      <Icon size={size} color={color} strokeWidth={2} />
+      <Icon size={size} color={color} fill={filled ? color : undefined} strokeWidth={2} />
     </Pressable>
   );
 }

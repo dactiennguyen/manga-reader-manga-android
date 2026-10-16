@@ -1,10 +1,10 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View, type ListRenderItemInfo } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Sheet } from '../../components/Sheet';
-import { Download, ListOrdered } from '../../components/icons';
-import { EmptyState } from '../../components/ui';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, Download, ListOrdered } from '../../components/icons';
+import { EmptyState, IconButton } from '../../components/ui';
 import type { Chapter } from '../../sources/types';
 import { useProgress } from '../../store/progress';
 import { useDownloads, type DownloadTask } from '../../store/useDownloads';
@@ -22,17 +22,40 @@ type Props = {
   onPick: (chapter: Chapter) => void;
 };
 
+let rememberedAscending = false;
+
 export function ChapterPickerSheet({ visible, onClose, chapters, currentUrl, mangaKey, onPick }: Props) {
+  const [ascending, setAscending] = useState(rememberedAscending);
+  const ordered = useMemo(() => (ascending ? [...chapters].reverse() : chapters), [chapters, ascending]);
+  const toggleOrder = () => {
+    rememberedAscending = !ascending;
+    setAscending(rememberedAscending);
+  };
   return (
     <Sheet
       visible={visible}
       onClose={onClose}
       title="Chọn chương"
-      subtitle={chapters.length ? `${chapters.length} chương` : undefined}
+      subtitle={chapters.length ? `${chapters.length} chương · ${ascending ? 'Cũ → mới' : 'Mới → cũ'}` : undefined}
       scroll={false}
+      right={
+        chapters.length > 1 ? (
+          <IconButton
+            icon={ascending ? ArrowUpNarrowWide : ArrowDownWideNarrow}
+            onPress={toggleOrder}
+            accessibilityLabel={ascending ? 'Xếp chương mới trước' : 'Xếp chương cũ trước'}
+          />
+        ) : undefined
+      }
     >
       {chapters.length ? (
-        <ChapterList chapters={chapters} currentUrl={currentUrl} mangaKey={mangaKey} onPick={onPick} />
+        <ChapterList
+          key={ascending ? 'asc' : 'desc'}
+          chapters={ordered}
+          currentUrl={currentUrl}
+          mangaKey={mangaKey}
+          onPick={onPick}
+        />
       ) : (
         <EmptyState
           icon={ListOrdered}

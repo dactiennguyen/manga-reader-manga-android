@@ -3,23 +3,11 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppNavigation } from '../app/routes';
-import { displayUrl } from '../lib/url';
 import { useActiveTab, useBrowser } from '../store/useBrowser';
 import { radius, space, useTheme } from '../theme';
-import { Sheet } from './Sheet';
-import {
-  Bookmark,
-  Download,
-  EllipsisVertical,
-  Globe,
-  History,
-  Plus,
-  Puzzle,
-  ScanQrCode,
-  Settings,
-} from './icons';
-import { IconButton, ListItem } from './ui';
-
+import { AppDrawer, useAppDrawerActions } from './AppDrawer';
+import { EllipsisVertical, Menu, Puzzle } from './icons';
+import { IconButton } from './ui';
 
 export function PuzzleButton({
   active,
@@ -40,9 +28,11 @@ export function PuzzleButton({
       <Pressable
         onPress={onPress}
         disabled={busy || !onPress}
+        hitSlop={4}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? 'Addon'}
-        style={({ pressed }) => [styles.puzzle, { backgroundColor: c.appBarField, opacity: pressed ? 0.7 : 1 }]}
+        android_ripple={{ color: c.border, borderless: true, radius: 20 }}
+        style={({ pressed }) => [styles.puzzle, { opacity: pressed ? 0.7 : 1 }]}
       >
         {busy ? (
           <ActivityIndicator size="small" color={c.addon} />
@@ -55,6 +45,14 @@ export function PuzzleButton({
           />
         )}
       </Pressable>
+    </View>
+  );
+}
+
+export function TabCountBox({ count, color }: { count: number; color: string }) {
+  return (
+    <View style={[styles.tabBox, { borderColor: color }]}>
+      <Text style={[styles.tabCount, { color }]}>{count > 99 ? ':D' : count}</Text>
     </View>
   );
 }
@@ -73,7 +71,6 @@ export function TabCountButton({
   ref?: Ref<ComponentRef<typeof View>>;
 }) {
   const { c } = useTheme();
-  const fg = incognito ? c.onIncognito : c.onAppBar;
   return (
     <View ref={ref} collapsable={false}>
       <Pressable
@@ -85,9 +82,7 @@ export function TabCountButton({
         android_ripple={{ color: c.border, borderless: true, radius: 22 }}
         style={styles.tabButton}
       >
-        <View style={[styles.tabBox, { borderColor: fg }]}>
-          <Text style={[styles.tabCount, { color: fg }]}>{count > 99 ? ':D' : count}</Text>
-        </View>
+        <TabCountBox count={count} color={incognito ? c.onIncognito : c.onAppBar} />
       </Pressable>
     </View>
   );
@@ -99,67 +94,45 @@ export function AddonBar({ url, onMenu }: { url: string; onMenu?: () => void }) 
   const navigation = useAppNavigation();
   const tab = useActiveTab();
   const tabCount = useBrowser(s => s.tabs.reduce((n, t) => (t.incognito === tab.incognito ? n + 1 : n), 0));
-  const [menu, setMenu] = useState(false);
+  const [drawer, setDrawer] = useState(false);
+  const onDrawerAction = useAppDrawerActions(url);
+  const fg = tab.incognito ? c.onIncognito : c.onAppBar;
 
-  const openWeb = () => {
-    useBrowser.getState().openUrl(url);
-    navigation.popTo('Browser');
-  };
-  const go = (action: () => void) => {
-    setMenu(false);
-    action();
-  };
+  const openWeb = () => onDrawerAction('openWeb');
 
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: tab.incognito ? c.incognito : c.appBar }}>
       <View style={styles.bar}>
-        <PuzzleButton active onPress={openWeb} accessibilityLabel="Xem trang web gốc" />
-        <Pressable
-          onPress={openWeb}
-          accessibilityRole="button"
-          accessibilityLabel={`Mở ${url} trên trình duyệt`}
-          style={[styles.field, { backgroundColor: c.appBarField }]}
-        >
-          <Text numberOfLines={1} style={[styles.url, { color: tab.incognito ? c.onIncognito : c.onAppBar }]}>
-            {url}
-          </Text>
-          <IconButton
-            icon={ScanQrCode}
-            size={20}
-            color={tab.incognito ? c.onIncognito : c.onAppBar}
-            onPress={() => navigation.navigate('QRScanner')}
-            accessibilityLabel="Quét mã QR"
-            style={styles.qr}
-          />
-        </Pressable>
+        <IconButton icon={Menu} color={fg} onPress={() => setDrawer(true)} accessibilityLabel="Menu" />
+        <View style={[styles.field, { backgroundColor: c.appBarField }]}>
+          <PuzzleButton active onPress={openWeb} accessibilityLabel="Xem trang web gốc" />
+          <Pressable
+            onPress={openWeb}
+            accessibilityRole="button"
+            accessibilityLabel={`Mở ${url} trên trình duyệt`}
+            style={styles.urlButton}
+          >
+            <Text numberOfLines={1} style={[styles.url, { color: fg }]}>
+              {url}
+            </Text>
+          </Pressable>
+        </View>
         <TabCountButton count={tabCount} incognito={tab.incognito} onPress={() => navigation.navigate('Tabs')} />
-        <IconButton
-          icon={EllipsisVertical}
-          color={tab.incognito ? c.onIncognito : c.onAppBar}
-          onPress={onMenu ?? (() => setMenu(true))}
-          accessibilityLabel="Menu"
-        />
+        {onMenu && <IconButton icon={EllipsisVertical} color={fg} onPress={onMenu} accessibilityLabel="Tuỳ chọn" />}
       </View>
-      {!onMenu && (
-        <Sheet visible={menu} onClose={() => setMenu(false)} title={displayUrl(url)}>
-          <ListItem icon={Globe} title="Xem trang web gốc" onPress={() => go(openWeb)} />
-          <ListItem
-            icon={Plus}
-            title="Tab mới"
-            onPress={() =>
-              go(() => {
-                useBrowser.getState().newTab();
-                navigation.popTo('Browser');
-              })
-            }
-          />
-          <ListItem icon={Bookmark} title="Bookmark" onPress={() => go(() => navigation.navigate('Bookmarks'))} />
-          <ListItem icon={History} title="Lịch sử" onPress={() => go(() => navigation.navigate('History'))} />
-          <ListItem icon={Download} title="Tải xuống" onPress={() => go(() => navigation.navigate('Downloads'))} />
-          <ListItem icon={Puzzle} title="Site được hỗ trợ" onPress={() => go(() => navigation.navigate('Addons'))} />
-          <ListItem icon={Settings} title="Cài đặt" onPress={() => go(() => navigation.navigate('Settings'))} />
-        </Sheet>
-      )}
+      <AppDrawer
+        visible={drawer}
+        onClose={() => setDrawer(false)}
+        nav={{
+          canBack: navigation.canGoBack(),
+          canForward: false,
+          canReload: false,
+          canBookmark: false,
+          canShare: !!url,
+        }}
+        showOriginal={!!url}
+        onAction={onDrawerAction}
+      />
     </View>
   );
 }
@@ -169,13 +142,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.xs,
-    paddingHorizontal: space.sm,
+    paddingHorizontal: space.xs,
     height: 60,
   },
   puzzle: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.md,
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -184,12 +157,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 44,
-    borderRadius: radius.md,
-    paddingLeft: space.md,
+    borderRadius: radius.pill,
+    paddingLeft: space.xs,
+    paddingRight: space.md,
   },
-  url: { flex: 1, fontSize: 15 },
-  qr: { width: 40, height: 40 },
-  tabButton: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
+  urlButton: { flex: 1, height: 44, justifyContent: 'center', paddingLeft: space.xs },
+  url: { fontSize: 15 },
+  tabButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   tabBox: {
     minWidth: 22,
     height: 22,
